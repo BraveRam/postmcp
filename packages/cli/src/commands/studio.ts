@@ -94,6 +94,7 @@ export async function studioCommand(specArg?: string, options: StudioCommandOpti
           ...process.env,
           PORT: port,
           NEXT_PUBLIC_INITIAL_SPEC: specArg || '',
+          STUDIO_INITIAL_SPEC: specArg || '',
           POSTMCP_WORKSPACE: process.cwd(),
           WORKSPACE_CWD: process.cwd(),
         },

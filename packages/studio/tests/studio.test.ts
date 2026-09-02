@@ -7,7 +7,8 @@ import { POST as parseHandler } from '../src/app/api/parse/route.js';
 import { POST as tokenDietHandler } from '../src/app/api/token-diet/route.js';
 import { POST as exportHandler } from '../src/app/api/export/route.js';
 import { POST as persistHandler } from '../src/app/api/persist/route.js';
-import { POST as sandboxHandler } from '../src/app/api/sandbox/route.js';
+import { POST as sandboxHandler, isPrivateOrBlockedHost } from '../src/app/api/sandbox/route.js';
+import { GET as initialSpecHandler } from '../src/app/api/initial-spec/route.js';
 
 describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
   it('GET /api/presets should return all 60+ curated presets with categories', async () => {
@@ -23,6 +24,15 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
     const stripe = data.presets.find((p: { id: string; name: string }) => p.id === 'stripe');
     expect(stripe).toBeDefined();
     expect(stripe.name).toBe('Stripe API');
+  });
+
+  it('GET /api/initial-spec should return runtime initial spec environment variable', async () => {
+    process.env.STUDIO_INITIAL_SPEC = '@linear';
+    const res = await initialSpecHandler();
+    const data = await res.json();
+
+    expect(data.initialSpec).toBe('@linear');
+    delete process.env.STUDIO_INITIAL_SPEC;
   });
 
   it('POST /api/parse should load presets with macros and fieldMasks attached', async () => {
@@ -165,5 +175,15 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
     expect(data.content).toBeDefined();
     expect(data.toolCall?.name).toBe('createRefund');
     expect(data.result?.text).toContain('DRY RUN SAFEGUARD ACTIVE');
+  });
+
+  it('SSRF Safeguard should block private and loopback hosts', () => {
+    expect(isPrivateOrBlockedHost('http://localhost:8080/api')).toBe(true);
+    expect(isPrivateOrBlockedHost('http://127.0.0.1:3000/secret')).toBe(true);
+    expect(isPrivateOrBlockedHost('http://169.254.169.254/latest/meta-data')).toBe(true);
+    expect(isPrivateOrBlockedHost('http://192.168.1.1/admin')).toBe(true);
+    expect(isPrivateOrBlockedHost('http://10.0.0.1/internal')).toBe(true);
+    expect(isPrivateOrBlockedHost('https://api.stripe.com/v1/charges')).toBe(false);
+    expect(isPrivateOrBlockedHost('https://api.github.com/user')).toBe(false);
   });
 });

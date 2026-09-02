@@ -1,8 +1,49 @@
 import { NextResponse } from 'next/server';
 import { generateText, tool, jsonSchema } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { applyTokenDiet, ResilientHttpClient } from '@postmcp/core';
 import { NormalizedSpec, NormalizedOperation } from '@postmcp/types';
+
+export function isPrivateOrBlockedHost(urlString: string): boolean {
+  try {
+    const parsed = new URL(urlString);
+    const hostname = parsed.hostname.toLowerCase();
+
+    // Loopback, local, internal, cloud metadata
+    if (
+      hostname === 'localhost' ||
+      hostname.endsWith('.localhost') ||
+      hostname.endsWith('.local') ||
+      hostname.endsWith('.internal') ||
+      hostname === '169.254.169.254' ||
+      hostname === '0.0.0.0' ||
+      hostname === '::1'
+    ) {
+      return true;
+    }
+
+    // IPv4 private/local range validation
+    const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4Match) {
+      const octet1 = parseInt(ipv4Match[1], 10);
+      const octet2 = parseInt(ipv4Match[2], 10);
+
+      if (octet1 === 127) return true; // Loopback 127.0.0.0/8
+      if (octet1 === 10) return true; // Private 10.0.0.0/8
+      if (octet1 === 172 && octet2 >= 16 && octet2 <= 31) return true; // Private 172.16.0.0/12
+      if (octet1 === 192 && octet2 === 168) return true; // Private 192.168.0.0/16
+      if (octet1 === 169 && octet2 === 254) return true; // Link-local / metadata 169.254.0.0/16
+      if (octet1 === 100 && octet2 >= 64 && octet2 <= 127) return true; // CGNAT 100.64.0.0/10
+      if (octet1 === 0) return true;
+    }
+
+    return false;
+  } catch {
+    return true;
+  }
+}
 
 async function executeMcpOperation(
   op: NormalizedOperation,
@@ -52,6 +93,16 @@ async function executeMcpOperation(
   // Safe Read-Only GET Execution with user-provided credentials
   const baseUrl = spec.servers?.[0]?.url;
   if (baseUrl && !baseUrl.includes('example.com') && authConfig) {
+    // Enforce SSRF & Private Network Safeguard
+    if (isPrivateOrBlockedHost(baseUrl)) {
+      return {
+        operationId: op.id,
+        status: 403,
+        result: `🛡️ **[SSRF Safeguard Blocked]**: Live GET requests to private or loopback host (${baseUrl}) are restricted in Web Studio.`,
+        savings: 0,
+      };
+    }
+
     try {
       const client = new ResilientHttpClient({
         baseUrl,
@@ -95,7 +146,6 @@ async function executeMcpOperation(
         savings: diet.savingsPercentage,
       };
     } catch (err: any) {
-      // Fall back with error report
       return {
         operationId: op.id,
         status: 500,
@@ -127,6 +177,31 @@ async function executeMcpOperation(
   };
 }
 
+function resolveModelProvider(model: string, apiKey?: string): any {
+  if (model.startsWith('claude')) {
+    const key = apiKey || process.env.ANTHROPIC_API_KEY;
+    if (!key) return null;
+    const anthropic = createAnthropic({ apiKey: key });
+    const modelId = model === 'claude-3-5-sonnet' ? 'claude-3-5-sonnet-latest' : model;
+    return anthropic(modelId);
+  }
+
+  if (model.startsWith('gemini')) {
+    const key = apiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
+    if (!key) return null;
+    const google = createGoogleGenerativeAI({ apiKey: key });
+    const modelId = model === 'gemini-2-flash' ? 'gemini-2.0-flash-exp' : model;
+    return google(modelId);
+  }
+
+  // Default to OpenAI provider
+  const key = apiKey || process.env.OPENAI_API_KEY || process.env.AI_GATEWAY_TOKEN;
+  if (!key) return null;
+  const openai = createOpenAI({ apiKey: key });
+  const modelId = model === 'gpt-4o' ? 'gpt-4o' : model === 'gpt-4o-mini' ? 'gpt-4o-mini' : 'gpt-4o';
+  return openai(modelId);
+}
+
 export async function POST(request: Request) {
   try {
     const {
@@ -145,8 +220,6 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-
-    const openAiApiKey = apiKey || process.env.OPENAI_API_KEY || process.env.AI_GATEWAY_TOKEN;
 
     // Dynamically mount tools for active operations
     const dynamicTools: Record<string, any> = {};
@@ -168,12 +241,12 @@ export async function POST(request: Request) {
       } as any);
     }
 
-    // 1. Live LLM Generation via Vercel AI SDK if API key is provided
-    if (openAiApiKey) {
-      const openai = createOpenAI({ apiKey: openAiApiKey });
+    // 1. Live LLM Generation via Vercel AI SDK if provider credentials exist
+    const selectedLanguageModel = resolveModelProvider(model, apiKey);
 
+    if (selectedLanguageModel) {
       const result = await generateText({
-        model: openai(model === 'gpt-4o' ? 'gpt-4o' : 'gpt-4o-mini') as any,
+        model: selectedLanguageModel,
         messages,
         tools: dynamicTools,
       });
@@ -181,7 +254,7 @@ export async function POST(request: Request) {
       const toolName = (executedToolCall as any)?.name;
       return NextResponse.json({
         role: 'assistant',
-        content: result.text || `Executed tool **${toolName || 'operation'}** successfully.`,
+        content: result.text || `Executed tool **${toolName || 'operation'}** successfully with ${model}.`,
         toolCall: executedToolCall,
         result: executedToolResult,
       });

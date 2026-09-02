@@ -170,7 +170,13 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
               value={aiApiKey}
               onChange={(e) => setAiApiKey(e.target.value)}
               type="password"
-              placeholder="OpenAI / AI Gateway Key (simulated if blank)"
+              placeholder={
+                model.startsWith('claude')
+                  ? 'Anthropic API Key (sk-ant-...)'
+                  : model.startsWith('gemini')
+                  ? 'Google Gemini API Key (AIzaSy...)'
+                  : 'OpenAI / Gateway Key (simulated if blank)'
+              }
               className="text-xs h-7 bg-[#070a10]"
             />
           </div>

@@ -23,6 +23,9 @@ importers:
       '@postmcp/presets':
         specifier: workspace:*
         version: link:../presets
+      '@postmcp/studio':
+        specifier: workspace:*
+        version: link:../studio
       '@postmcp/types':
         specifier: workspace:*
         version: link:../types
@@ -122,6 +125,12 @@ importers:
 
   packages/studio:
     dependencies:
+      '@ai-sdk/anthropic':
+        specifier: ^4.0.48
+        version: 4.0.48(zod@3.25.76)
+      '@ai-sdk/google':
+        specifier: ^4.0.62
+        version: 4.0.62(zod@3.25.76)
       '@ai-sdk/openai':
         specifier: ^4.0.56
         version: 4.0.56(zod@3.25.76)
@@ -240,8 +249,20 @@ importers:
 
 packages:
 
+  '@ai-sdk/anthropic@4.0.48':
+    resolution: {integrity: sha512-9KRW3ySRQ8pGn1ZHWgek42OqOcOTKlRrVOOiEHA9k2BiiRn7Hzd0QNYtrYjvI+TCo9K7DaE0uLoW2yyB+L8/Bw==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
   '@ai-sdk/gateway@4.0.72':
     resolution: {integrity: sha512-iNNgagJ0+Ow1kdOFSyKPRk8kTh7qwhLZPLFdbXw4KMbMMF7JLzWlBSkyMSjh6U4O6D4D+76xj0HGws4JTLNeYA==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/google@4.0.62':
+    resolution: {integrity: sha512-DB8i10h9S3ki9b/bPz51B9f9Uy8/5vLfyYsyHuRgHDraro1TM+eqo6RqErZ5RA3smZZ5uFcNzK43ks07qr7vrA==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -3798,11 +3819,23 @@ packages:
 
 snapshots:
 
+  '@ai-sdk/anthropic@4.0.48(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.10
+      '@ai-sdk/provider-utils': 5.0.36(zod@3.25.76)
+      zod: 3.25.76
+
   '@ai-sdk/gateway@4.0.72(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 4.0.10
       '@ai-sdk/provider-utils': 5.0.36(zod@3.25.76)
       '@vercel/oidc': 3.2.0
+      zod: 3.25.76
+
+  '@ai-sdk/google@4.0.62(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.10
+      '@ai-sdk/provider-utils': 5.0.36(zod@3.25.76)
       zod: 3.25.76
 
   '@ai-sdk/openai@4.0.56(zod@3.25.76)':

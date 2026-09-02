@@ -1,7 +1,17 @@
 {
   "name": "@postmcp/studio",
   "version": "0.1.0",
-  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    ".next",
+    "src",
+    "public",
+    "next.config.mjs",
+    "postcss.config.mjs",
+    "tailwind.config.ts"
+  ],
   "description": "PostMCP Visual Web Studio - Interactive OpenAPI to MCP workbench with Token Diet Curator and Live Sandbox",
   "scripts": {
     "dev": "next dev --turbopack",
@@ -12,6 +22,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.48",
+    "@ai-sdk/google": "^4.0.62",
     "@ai-sdk/openai": "^4.0.56",
     "@postmcp/core": "workspace:*",
     "@postmcp/presets": "workspace:*",

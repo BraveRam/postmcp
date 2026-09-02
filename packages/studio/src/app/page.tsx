@@ -91,27 +91,40 @@ export default function StudioPage() {
   };
 
   useEffect(() => {
-    let initialSpec = process.env.NEXT_PUBLIC_INITIAL_SPEC;
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const querySpec = urlParams.get('spec') || urlParams.get('preset');
-      if (querySpec) {
-        initialSpec = querySpec;
+    async function initSpec() {
+      let initialSpec: string | null = null;
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        initialSpec = urlParams.get('spec') || urlParams.get('preset');
+      }
+
+      if (!initialSpec) {
+        try {
+          const res = await fetch('/api/initial-spec');
+          const data = await res.json();
+          if (data.initialSpec) {
+            initialSpec = data.initialSpec;
+          }
+        } catch {
+          // Ignore fetch errors
+        }
+      }
+
+      if (initialSpec && initialSpec.trim()) {
+        const trimmed = initialSpec.trim();
+        if (trimmed.startsWith('@')) {
+          loadPreset(trimmed.slice(1));
+        } else if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+          handleIngestSpec({ url: trimmed });
+        } else {
+          handleIngestSpec({ spec: trimmed });
+        }
+      } else {
+        loadPreset('stripe');
       }
     }
 
-    if (initialSpec && initialSpec.trim()) {
-      const trimmed = initialSpec.trim();
-      if (trimmed.startsWith('@')) {
-        loadPreset(trimmed.slice(1));
-      } else if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-        handleIngestSpec({ url: trimmed });
-      } else {
-        handleIngestSpec({ spec: trimmed });
-      }
-    } else {
-      loadPreset('stripe');
-    }
+    initSpec();
   }, []);
 
   const handleToggleOperation = (id: string, enabled: boolean) => {
