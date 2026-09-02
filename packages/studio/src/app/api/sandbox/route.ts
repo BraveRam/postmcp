@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { generateText, streamText, tool, jsonSchema } from 'ai';
+import { createGateway, generateText, streamText, tool, jsonSchema } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { applyTokenDiet, ResilientHttpClient } from '@postmcp/core';
 import { NormalizedSpec, NormalizedOperation } from '@postmcp/types';
@@ -172,21 +172,29 @@ function resolveVercelAiGatewayModel(model: string, apiKey?: string, customGatew
   const key = apiKey || process.env.AI_GATEWAY_API_KEY || process.env.AI_GATEWAY_TOKEN || process.env.OPENAI_API_KEY;
   if (!key) return null;
 
-  const baseURL = (customGatewayUrl || process.env.AI_GATEWAY_URL || 'https://ai-gateway.vercel.app/v1').replace(/\/$/, '');
+  const rawUrl = customGatewayUrl || process.env.AI_GATEWAY_URL || 'https://ai-gateway.vercel.sh/v1';
+  const baseURL = rawUrl.replace(/\/$/, '');
 
-  const gateway = createOpenAI({
-    baseURL,
-    apiKey: key,
-  });
-
-  return gateway(model);
+  try {
+    const gateway = createGateway({
+      apiKey: key,
+      baseURL: baseURL.endsWith('/ai') ? baseURL : `${baseURL}/ai`,
+    });
+    return gateway(model);
+  } catch {
+    const gateway = createOpenAI({
+      baseURL,
+      apiKey: key,
+    });
+    return gateway(model);
+  }
 }
 
 export async function POST(request: Request) {
   try {
     const {
       messages,
-      model = 'openai/gpt-4o',
+      model = 'zai/glm-5.3-flash',
       apiKey,
       gatewayUrl,
       spec,
@@ -227,28 +235,33 @@ export async function POST(request: Request) {
     const gatewayModel = resolveVercelAiGatewayModel(model, apiKey, gatewayUrl);
 
     if (gatewayModel) {
-      if (stream) {
-        const streamResult = streamText({
+      try {
+        if (stream) {
+          const streamResult = streamText({
+            model: gatewayModel,
+            messages,
+            tools: dynamicTools,
+          });
+          return streamResult.toTextStreamResponse();
+        }
+
+        const result = await generateText({
           model: gatewayModel,
           messages,
           tools: dynamicTools,
         });
-        return streamResult.toTextStreamResponse();
+
+        const toolName = (executedToolCall as any)?.name;
+        return NextResponse.json({
+          role: 'assistant',
+          content: result.text || `Executed tool **${toolName || 'operation'}** via Vercel AI Gateway (${model}).`,
+          toolCall: executedToolCall,
+          result: executedToolResult,
+        });
+      } catch (gatewayError: any) {
+        console.warn('Vercel AI Gateway request failed, falling back to simulated execution:', gatewayError.message);
+        // Fall through to simulated execution if gateway throws (e.g. 404, invalid model, network error)
       }
-
-      const result = await generateText({
-        model: gatewayModel,
-        messages,
-        tools: dynamicTools,
-      });
-
-      const toolName = (executedToolCall as any)?.name;
-      return NextResponse.json({
-        role: 'assistant',
-        content: result.text || `Executed tool **${toolName || 'operation'}** via Vercel AI Gateway (${model}).`,
-        toolCall: executedToolCall,
-        result: executedToolResult,
-      });
     }
 
     // 2. Offline / Simulated Intelligent Agent Mode
@@ -273,7 +286,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       role: 'assistant',
-      content: `Dispatched tool **${targetOp.id}** for query: _"${lastUserMessage}"_.\n\nSimulated through Vercel AI Gateway runner with **Token Diet** output optimization.`,
+      content: `Dispatched tool **${targetOp.id}** for query: _"${lastUserMessage}"_.\n\nSimulated through Vercel AI Gateway runner (${model}) with **Token Diet** output optimization.`,
       toolCall: {
         name: targetOp.id,
         args: mockArgs,
