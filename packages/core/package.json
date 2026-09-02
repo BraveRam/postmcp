@@ -20,10 +20,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@modelcontextprotocol/node": "^2.0.0",
     "@modelcontextprotocol/sdk": "^1.6.1",
+    "@modelcontextprotocol/server": "^2.0.0",
     "@postmcp/types": "workspace:*",
+    "@types/dotenv": "^8.2.3",
     "axios": "^1.7.9",
     "csv-parse": "^7.0.2",
+    "dotenv": "^16.6.1",
     "jsonpath-plus": "^10.3.0",
     "mime-types": "^3.0.2",
     "yaml": "^2.7.0",

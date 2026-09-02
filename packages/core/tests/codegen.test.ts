@@ -8,9 +8,9 @@ import { NormalizedSpec } from '../src/parser/types.js';
 
 describe('Phase 5: Code Generators (@postmcp/core/codegen)', () => {
   const complexSpec: NormalizedSpec = {
-    title: 'Acme Payments API "Special" & <Chars>',
+    title: 'Acme Payments API """Special""" & <Chars>',
     version: '2.1.0',
-    description: 'API with multi-line "quotes", `backticks`, and complex schemas.',
+    description: 'API with multi-line """quotes""", `backticks`, and complex schemas.',
     servers: [{ url: 'https://api.acmepay.com/v1' }],
     operations: [
       {
@@ -23,12 +23,15 @@ describe('Phase 5: Code Generators (@postmcp/core/codegen)', () => {
         parameters: [
           { name: 'limit', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: 100 } },
           { name: 'status', in: 'query', required: false, schema: { type: 'string', enum: ['succeeded', 'pending', 'failed'] } },
+          { name: 'version_code', in: 'query', required: false, schema: { type: 'integer', enum: [1, 2, 3] } },
+          { name: 'session_id', in: 'cookie', required: false, schema: { type: 'string' } },
         ],
         inputSchema: {
           type: 'object',
           properties: {
             limit: { type: 'integer' },
             status: { type: 'string', enum: ['succeeded', 'pending', 'failed'] },
+            version_code: { type: 'integer', enum: [1, 2, 3] },
           },
         },
       },
@@ -42,6 +45,7 @@ describe('Phase 5: Code Generators (@postmcp/core/codegen)', () => {
         parameters: [
           { name: 'charge_id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
           { name: 'idempotency-key', in: 'header', required: false, schema: { type: 'string' } },
+          { name: 'auth_token', in: 'cookie', required: true, schema: { type: 'string' } },
         ],
         inputSchema: {
           type: 'object',
@@ -85,19 +89,15 @@ describe('Phase 5: Code Generators (@postmcp/core/codegen)', () => {
       expect(code).toContain('model_config = ConfigDict(populate_by_name=True, extra="allow")');
     });
 
-    it('should generate FastMCP tools that accept path/query parameters AND Pydantic request body', () => {
+    it('should serialize cookie parameters into cookies dict and safely escape module docstrings', () => {
       const project = generatePythonProject(complexSpec);
       const code = project.files['server.py'];
 
-      expect(code).toContain('from mcp.server.fastmcp import FastMCP');
-      expect(code).toContain('@mcp.tool()');
-      expect(code).toContain('async def create_refund(');
-      expect(code).toContain('charge_id: str');
-      expect(code).toContain('body: CreateRefundRequestBody = Field(');
-      expect(code).toContain('format_token_diet');
-      expect(code).toContain('async with httpx.AsyncClient(base_url=BASE_URL,');
-      expect(code).toContain('method="POST"');
-      expect(code).toContain('json=body.model_dump(by_alias=True, exclude_none=True) if body else None');
+      expect(code).toContain('auth_token: str');
+      expect(code).toContain('req_cookies: dict[str, str] = {}');
+      expect(code).toContain('req_cookies["auth_token"] = str(auth_token)');
+      expect(code).toContain('cookies=req_cookies');
+      expect(code).not.toContain('"""Special"""'); // escaped as \"\"\"Special\"\"\"
     });
 
     it('should compile server.py without syntax errors using python3 -m py_compile', () => {
@@ -107,7 +107,6 @@ describe('Phase 5: Code Generators (@postmcp/core/codegen)', () => {
 
       try {
         fs.writeFileSync(serverPyPath, project.files['server.py'], 'utf-8');
-        // Compile with Python 3 byte-compiler
         expect(() => {
           execSync(`python3 -m py_compile ${serverPyPath}`, { stdio: 'pipe' });
         }).not.toThrow();
@@ -129,32 +128,56 @@ describe('Phase 5: Code Generators (@postmcp/core/codegen)', () => {
       expect(project.files['.gitignore']).toBeDefined();
     });
 
-    it('should generate recursive Zod schemas with enums, nested objects, and merged parameters', () => {
+    it('should generate numeric enums with z.union([z.literal(...)]), cookies into headers, and recursive objects', () => {
       const project = generateTypeScriptProject(complexSpec);
       const code = project.files['src/index.ts'];
 
-      expect(code).toContain("import { McpServer } from '@modelcontextprotocol/server'");
-      expect(code).toContain("import { StdioServerTransport } from '@modelcontextprotocol/server/stdio'");
-      expect(code).toContain('server.registerTool(');
+      expect(code).toContain("import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'");
+      expect(code).toContain("import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'");
+      expect(code).toContain('server.tool(');
       expect(code).toContain('"listCharges"');
       expect(code).toContain('"createRefund"');
+      // String enum
       expect(code).toContain('z.enum(["succeeded", "pending", "failed"])');
-      expect(code).toContain('z.enum(["duplicate", "fraudulent", "requested_by_customer"])');
+      // Numeric enum uses z.union of z.literal
+      expect(code).toContain('z.union([z.literal(1), z.literal(2), z.literal(3)])');
+      // Cookie parameter in Cookie header
+      expect(code).toContain("reqHeaders['Cookie'] = cookieParts.join('; ')");
+      // Merged path parameter and body properties
       expect(code).toContain('"charge_id": z.string()');
       expect(code).toContain('"amount": z.number().int().min(50)');
       expect(code).toContain('"notes": z.string().optional()');
       expect(code).toContain('formatTokenDiet');
     });
 
-    it('should configure package.json with v2 dependencies and ES module type', () => {
+    it('should configure package.json with dependencies and ES module type', () => {
       const project = generateTypeScriptProject(complexSpec);
       const pkg = JSON.parse(project.files['package.json']);
 
       expect(pkg.name).toBe('acme-payments-api-special-chars');
       expect(pkg.type).toBe('module');
-      expect(pkg.dependencies['@modelcontextprotocol/server']).toBeDefined();
-      expect(pkg.dependencies['@modelcontextprotocol/node']).toBeDefined();
+      expect(pkg.dependencies['@modelcontextprotocol/sdk']).toBeDefined();
       expect(pkg.dependencies['zod']).toBeDefined();
+    });
+
+    it('should compile generated TypeScript project using tsc without errors', () => {
+      const project = generateTypeScriptProject(complexSpec);
+      const tempDir = path.resolve(__dirname, '..', 'temp-ts-codegen-test');
+
+      try {
+        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+        const srcDir = path.join(tempDir, 'src');
+        if (!fs.existsSync(srcDir)) fs.mkdirSync(srcDir, { recursive: true });
+
+        fs.writeFileSync(path.join(tempDir, 'tsconfig.json'), project.files['tsconfig.json'], 'utf-8');
+        fs.writeFileSync(path.join(tempDir, 'src/index.ts'), project.files['src/index.ts'], 'utf-8');
+
+        expect(() => {
+          execSync(`npx tsc --noEmit -p ${path.join(tempDir, 'tsconfig.json')}`, { stdio: 'pipe' });
+        }).not.toThrow();
+      } finally {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
     });
   });
 

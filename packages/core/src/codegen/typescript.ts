@@ -15,8 +15,23 @@ export function convertSchemaToZod(schema: any, depth: number = 0): string {
 
   // 1. Enum types
   if (schema.enum && Array.isArray(schema.enum) && schema.enum.length > 0) {
-    const literals = schema.enum.map((v: any) => JSON.stringify(v)).join(', ');
-    return `z.enum([${literals}])`;
+    const isAllStrings = schema.enum.every((v: any) => typeof v === 'string');
+    if (isAllStrings) {
+      const literals = schema.enum.map((v: any) => JSON.stringify(v)).join(', ');
+      let zod = `z.enum([${literals}])`;
+      if (schema.description) zod += `.describe(${JSON.stringify(schema.description)})`;
+      return zod;
+    }
+    // Numeric, boolean, or mixed enums require z.literal / z.union
+    if (schema.enum.length === 1) {
+      let zod = `z.literal(${JSON.stringify(schema.enum[0])})`;
+      if (schema.description) zod += `.describe(${JSON.stringify(schema.description)})`;
+      return zod;
+    }
+    const literals = schema.enum.map((v: any) => `z.literal(${JSON.stringify(v)})`).join(', ');
+    let zod = `z.union([${literals}])`;
+    if (schema.description) zod += `.describe(${JSON.stringify(schema.description)})`;
+    return zod;
   }
 
   // 2. Primitive types
@@ -120,8 +135,7 @@ export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProjec
         dev: 'tsx src/index.ts',
       },
       dependencies: {
-        '@modelcontextprotocol/server': '^1.0.0',
-        '@modelcontextprotocol/node': '^1.0.0',
+        '@modelcontextprotocol/sdk': '^1.6.1',
         axios: '^1.7.9',
         zod: '^3.24.2',
         dotenv: '^16.4.7',
@@ -166,6 +180,7 @@ export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProjec
     const pathParams: { name: string; schema: any; required: boolean }[] = [];
     const queryParams: { name: string; schema: any; required: boolean }[] = [];
     const headerParams: { name: string; schema: any; required: boolean }[] = [];
+    const cookieParams: { name: string; schema: any; required: boolean }[] = [];
     const bodyProps: { name: string; schema: any; required: boolean }[] = [];
 
     const schemaFields: string[] = [];
@@ -175,19 +190,21 @@ export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProjec
         const isReq = !!p.required;
         const zodCode = convertSchemaToZod(p.schema);
         const fieldZod = isReq ? zodCode : `${zodCode}.optional()`;
-        schemaFields.push(`      ${JSON.stringify(p.name)}: ${fieldZod},`);
+        schemaFields.push(`    ${JSON.stringify(p.name)}: ${fieldZod},`);
 
         if (p.in === 'path') {
           pathParams.push({ name: p.name, schema: p.schema, required: isReq });
         } else if (p.in === 'header') {
           headerParams.push({ name: p.name, schema: p.schema, required: isReq });
+        } else if (p.in === 'cookie') {
+          cookieParams.push({ name: p.name, schema: p.schema, required: isReq });
         } else {
           queryParams.push({ name: p.name, schema: p.schema, required: isReq });
         }
       }
     }
 
-    // Merge request body properties (without losing query/path params!)
+    // Merge request body properties (without losing query/path/cookie params!)
     if (op.inputSchema && op.inputSchema.properties) {
       const knownParamNames = new Set((op.parameters || []).map((p) => p.name));
       const requiredBodySet = new Set(Array.isArray(op.inputSchema.required) ? op.inputSchema.required : []);
@@ -197,7 +214,7 @@ export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProjec
           const isReq = requiredBodySet.has(propName);
           const zodCode = convertSchemaToZod(propSchema);
           const fieldZod = isReq ? zodCode : `${zodCode}.optional()`;
-          schemaFields.push(`      ${JSON.stringify(propName)}: ${fieldZod},`);
+          schemaFields.push(`    ${JSON.stringify(propName)}: ${fieldZod},`);
           bodyProps.push({ name: propName, schema: propSchema, required: isReq });
         }
       }
@@ -205,6 +222,7 @@ export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProjec
 
     // Generate tool execution logic
     const executionLines: string[] = [];
+    executionLines.push(`    try {`);
     executionLines.push(`      let url = ${JSON.stringify(op.path)};`);
 
     for (const p of pathParams) {
@@ -218,10 +236,17 @@ export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProjec
       }
     }
 
-    if (headerParams.length > 0) {
+    if (headerParams.length > 0 || cookieParams.length > 0) {
       executionLines.push('      const reqHeaders: Record<string, string> = {};');
       for (const p of headerParams) {
         executionLines.push(`      if (args[${JSON.stringify(p.name)}] !== undefined) reqHeaders[${JSON.stringify(p.name)}] = String(args[${JSON.stringify(p.name)}]);`);
+      }
+      if (cookieParams.length > 0) {
+        executionLines.push('      const cookieParts: string[] = [];');
+        for (const p of cookieParams) {
+          executionLines.push(`      if (args[${JSON.stringify(p.name)}] !== undefined) cookieParts.push(\`\${${JSON.stringify(p.name)}}=\${encodeURIComponent(String(args[${JSON.stringify(p.name)}]))}\`);`);
+        }
+        executionLines.push("      if (cookieParts.length > 0) reqHeaders['Cookie'] = cookieParts.join('; ');");
       }
     }
 
@@ -234,20 +259,17 @@ export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProjec
 
     const queryArg = queryParams.length > 0 ? 'params: Object.keys(query).length > 0 ? query : undefined,' : '';
     const bodyArg = bodyProps.length > 0 ? 'data: Object.keys(bodyData).length > 0 ? bodyData : undefined,' : '';
-    const headerArg = headerParams.length > 0 ? 'headers: reqHeaders,' : '';
+    const headerArg = (headerParams.length > 0 || cookieParams.length > 0) ? 'headers: reqHeaders,' : '';
 
     toolRegistrations.push(`
 // Tool: ${JSON.stringify(toolId)}
-server.registerTool(
+server.tool(
   ${JSON.stringify(toolId)},
+  ${JSON.stringify(description)},
   {
-    description: ${JSON.stringify(description)},
-    inputSchema: z.object({
 ${schemaFields.join('\n')}
-    }),
   },
-  async (args: any, ctx: any) => {
-    try {
+  async (args: any) => {
 ${executionLines.join('\n')}
 
       const res = await httpClient.request({
@@ -274,12 +296,12 @@ ${executionLines.join('\n')}
   }
 
   files['src/index.ts'] = `/**
- * ${spec.title} - Standalone TypeScript MCP Server (MCP SDK v2)
+ * ${spec.title} - Standalone TypeScript MCP Server
  * Generated automatically by PostMCP (The Postman for MCP)
  */
 
-import { McpServer } from '@modelcontextprotocol/server';
-import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import axios from 'axios';
 import { z } from 'zod';
 import dotenv from 'dotenv';
@@ -335,7 +357,7 @@ main().catch((err) => {
 `;
 
   // 4. README.md
-  files['README.md'] = `# ${spec.title} MCP Server (TypeScript MCP SDK v2)
+  files['README.md'] = `# ${spec.title} MCP Server (TypeScript MCP SDK)
 
 Standalone Model Context Protocol (MCP) server generated by **PostMCP** for **${spec.title}**.
 

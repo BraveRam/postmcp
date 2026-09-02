@@ -52,15 +52,14 @@ describe('Standalone MCP Server Code Generators', () => {
     expect(project.files['README.md']).toBeDefined();
 
     const packageJson = JSON.parse(project.files['package.json']);
-    expect(packageJson.dependencies['@modelcontextprotocol/server']).toBeDefined();
-    expect(packageJson.dependencies['@modelcontextprotocol/node']).toBeDefined();
+    expect(packageJson.dependencies['@modelcontextprotocol/sdk']).toBeDefined();
     expect(packageJson.dependencies['axios']).toBeDefined();
 
     const indexTs = project.files['src/index.ts'];
     expect(indexTs).toContain('"createRefund"');
     expect(indexTs).toContain('"listCharges"');
     expect(indexTs).toContain('StdioServerTransport');
-    expect(indexTs).toContain('server.registerTool');
+    expect(indexTs).toContain('server.tool');
   });
 
   it('should generate complete Python FastMCP server files', () => {

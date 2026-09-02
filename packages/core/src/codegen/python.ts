@@ -44,7 +44,6 @@ interface PydanticModelDefinition {
 
 export class PythonSchemaConverter {
   private models: Map<string, PydanticModelDefinition> = new Map();
-  private modelCounter: number = 0;
 
   public convert(schema: any, typeNameHint: string = 'Model'): string {
     if (!schema) return 'Any';
@@ -167,6 +166,7 @@ export function generatePythonProject(spec: NormalizedSpec): GeneratedProject {
     const pathParams: { originalName: string; pyName: string; type: string; required: boolean; desc?: string }[] = [];
     const queryParams: { originalName: string; pyName: string; type: string; required: boolean; desc?: string }[] = [];
     const headerParams: { originalName: string; pyName: string; type: string; required: boolean; desc?: string }[] = [];
+    const cookieParams: { originalName: string; pyName: string; type: string; required: boolean; desc?: string }[] = [];
 
     if (op.parameters) {
       for (const p of op.parameters) {
@@ -184,6 +184,8 @@ export function generatePythonProject(spec: NormalizedSpec): GeneratedProject {
           pathParams.push(item);
         } else if (p.in === 'header') {
           headerParams.push(item);
+        } else if (p.in === 'cookie') {
+          cookieParams.push(item);
         } else {
           queryParams.push(item);
         }
@@ -195,7 +197,7 @@ export function generatePythonProject(spec: NormalizedSpec): GeneratedProject {
     let isBodyRequired = false;
 
     if (op.inputSchema && op.inputSchema.properties && Object.keys(op.inputSchema.properties).length > 0) {
-      // Find properties that are not already in path/query/header parameters
+      // Find properties that are not already in path/query/header/cookie parameters
       const nonParamProperties: Record<string, any> = {};
       const knownParamNames = new Set((op.parameters || []).map((p) => p.name));
 
@@ -238,6 +240,12 @@ export function generatePythonProject(spec: NormalizedSpec): GeneratedProject {
       signatureArgs.push(`${p.pyName}: ${p.type} = ${desc}`);
     }
 
+    // Required cookies
+    for (const p of cookieParams.filter((c) => c.required)) {
+      const desc = p.desc ? `Field(description=${JSON.stringify(p.desc)})` : 'Field(...)';
+      signatureArgs.push(`${p.pyName}: ${p.type} = ${desc}`);
+    }
+
     // Body model (if required)
     if (bodyModelName && isBodyRequired) {
       signatureArgs.push(`body: ${bodyModelName} = Field(..., description="Request body payload")`);
@@ -251,6 +259,12 @@ export function generatePythonProject(spec: NormalizedSpec): GeneratedProject {
 
     // Optional headers
     for (const p of headerParams.filter((h) => !h.required)) {
+      const desc = p.desc ? `Field(default=None, description=${JSON.stringify(p.desc)})` : 'Field(default=None)';
+      signatureArgs.push(`${p.pyName}: Optional[${p.type}] = ${desc}`);
+    }
+
+    // Optional cookies
+    for (const p of cookieParams.filter((c) => !c.required)) {
       const desc = p.desc ? `Field(default=None, description=${JSON.stringify(p.desc)})` : 'Field(default=None)';
       signatureArgs.push(`${p.pyName}: Optional[${p.type}] = ${desc}`);
     }
@@ -284,8 +298,17 @@ export function generatePythonProject(spec: NormalizedSpec): GeneratedProject {
       }
     }
 
+    if (cookieParams.length > 0) {
+      executionLines.push('    req_cookies: dict[str, str] = {}');
+      for (const p of cookieParams) {
+        executionLines.push(`    if ${p.pyName} is not None:`);
+        executionLines.push(`        req_cookies[${JSON.stringify(p.originalName)}] = str(${p.pyName})`);
+      }
+    }
+
     const headersArg = headerParams.length > 0 ? 'headers=req_headers' : 'headers=headers';
     const paramsArg = queryParams.length > 0 ? 'params=params if params else None' : 'params=None';
+    const cookiesArg = cookieParams.length > 0 ? 'cookies=req_cookies if req_cookies else None' : 'cookies=None';
     const bodyArg = bodyModelName
       ? 'json=body.model_dump(by_alias=True, exclude_none=True) if body else None'
       : 'json=None';
@@ -299,7 +322,7 @@ async def ${fnName}(
     ${docstring}
     """
 ${executionLines.join('\n')}
-    async with httpx.AsyncClient(base_url=BASE_URL, ${headersArg}, timeout=30.0) as client:
+    async with httpx.AsyncClient(base_url=BASE_URL, ${headersArg}, ${cookiesArg}, timeout=30.0) as client:
         res = await client.request(
             method=${JSON.stringify(op.method.toUpperCase())},
             url=url,
@@ -341,9 +364,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 `;
 
+  const safeTitle = (spec.title || 'MCP Server').replace(/"""/g, '\\"\\"\\"');
+  const safeDescription = (spec.description || '').replace(/"""/g, '\\"\\"\\"');
+
   // 3. server.py
   files['server.py'] = `"""
-${spec.title} - FastMCP + Pydantic Server
+${safeTitle} - FastMCP + Pydantic Server
+${safeDescription}
 Generated automatically by PostMCP (The Postman for MCP)
 """
 
