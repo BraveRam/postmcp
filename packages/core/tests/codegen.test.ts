@@ -12,6 +12,13 @@ describe('Phase 5: Code Generators (@postmcp/core/codegen)', () => {
     version: '2.1.0',
     description: 'API with multi-line """quotes""", `backticks`, and complex schemas.',
     servers: [{ url: 'https://api.acmepay.com/v1' }],
+    securitySchemes: {
+      apiKeyHeader: {
+        type: 'apiKey',
+        in: 'header',
+        name: 'X-API-Key',
+      },
+    },
     operations: [
       {
         id: 'listCharges',
@@ -63,6 +70,40 @@ describe('Phase 5: Code Generators (@postmcp/core/codegen)', () => {
           },
         },
       },
+      {
+        id: 'uploadRawText',
+        summary: 'Upload Raw Text',
+        description: 'Uploads raw string payload without wrapper object',
+        method: 'post',
+        path: '/upload/text',
+        riskTier: 'MUTATION',
+        inputSchema: {
+          type: 'object',
+          required: ['requestBody'],
+          properties: {
+            requestBody: { type: 'string', description: 'Raw text content' },
+          },
+        },
+      },
+      {
+        id: 'batchDeleteItems',
+        summary: 'Batch Delete Items',
+        description: 'Accepts an array of item IDs',
+        method: 'delete',
+        path: '/items/batch',
+        riskTier: 'MUTATION',
+        inputSchema: {
+          type: 'object',
+          required: ['requestBody'],
+          properties: {
+            requestBody: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Array of item IDs to delete',
+            },
+          },
+        },
+      },
     ],
   };
 
@@ -89,6 +130,16 @@ describe('Phase 5: Code Generators (@postmcp/core/codegen)', () => {
       expect(code).toContain('model_config = ConfigDict(populate_by_name=True, extra="allow")');
     });
 
+    it('should handle primitive and array request bodies as direct payloads', () => {
+      const project = generatePythonProject(complexSpec);
+      const code = project.files['server.py'];
+
+      expect(code).toContain('async def upload_raw_text(');
+      expect(code).toContain('body: str = Field(');
+      expect(code).toContain('async def batch_delete_items(');
+      expect(code).toContain('body: list[str] = Field(');
+    });
+
     it('should serialize cookie parameters into cookies dict and safely escape module docstrings', () => {
       const project = generatePythonProject(complexSpec);
       const code = project.files['server.py'];
@@ -97,6 +148,8 @@ describe('Phase 5: Code Generators (@postmcp/core/codegen)', () => {
       expect(code).toContain('req_cookies: dict[str, str] = {}');
       expect(code).toContain('req_cookies["auth_token"] = str(auth_token)');
       expect(code).toContain('cookies=req_cookies');
+      expect(code).toContain('DRY_RUN');
+      expect(code).toContain('headers["X-API-Key"] = API_KEY');
       expect(code).not.toContain('"""Special"""'); // escaped as \"\"\"Special\"\"\"
     });
 
@@ -116,7 +169,7 @@ describe('Phase 5: Code Generators (@postmcp/core/codegen)', () => {
     });
   });
 
-  describe('TypeScript MCP SDK v2 Generator', () => {
+  describe('TypeScript MCP SDK Generator', () => {
     it('should generate all required TypeScript project files', () => {
       const project = generateTypeScriptProject(complexSpec);
 
@@ -126,6 +179,17 @@ describe('Phase 5: Code Generators (@postmcp/core/codegen)', () => {
       expect(project.files['README.md']).toBeDefined();
       expect(project.files['.env.example']).toBeDefined();
       expect(project.files['.gitignore']).toBeDefined();
+    });
+
+    it('should handle primitive and array request bodies as direct payloads without object wrapping', () => {
+      const project = generateTypeScriptProject(complexSpec);
+      const code = project.files['src/index.ts'];
+
+      expect(code).toContain('"uploadRawText"');
+      expect(code).toContain('"requestBody": z.string()');
+      expect(code).toContain('const bodyData = args["requestBody"]');
+      expect(code).toContain('"batchDeleteItems"');
+      expect(code).toContain('"requestBody": z.array(z.string())');
     });
 
     it('should generate numeric enums with z.union([z.literal(...)]), cookies into headers, and recursive objects', () => {
@@ -148,6 +212,8 @@ describe('Phase 5: Code Generators (@postmcp/core/codegen)', () => {
       expect(code).toContain('"amount": z.number().int().min(50)');
       expect(code).toContain('"notes": z.string().optional()');
       expect(code).toContain('formatTokenDiet');
+      expect(code).toContain('"X-API-Key": API_KEY');
+      expect(code).toContain('DRY_RUN');
     });
 
     it('should configure package.json with dependencies and ES module type', () => {

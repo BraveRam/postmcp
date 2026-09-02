@@ -182,6 +182,8 @@ export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProjec
     const headerParams: { name: string; schema: any; required: boolean }[] = [];
     const cookieParams: { name: string; schema: any; required: boolean }[] = [];
     const bodyProps: { name: string; schema: any; required: boolean }[] = [];
+    let isDirectBody = false;
+    let directBodyPropName: string | null = null;
 
     const schemaFields: string[] = [];
 
@@ -204,13 +206,27 @@ export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProjec
       }
     }
 
-    // Merge request body properties (without losing query/path/cookie params!)
+    // Merge request body properties
     if (op.inputSchema && op.inputSchema.properties) {
       const knownParamNames = new Set((op.parameters || []).map((p) => p.name));
       const requiredBodySet = new Set(Array.isArray(op.inputSchema.required) ? op.inputSchema.required : []);
+      const nonParamEntries = Object.entries<any>(op.inputSchema.properties).filter(([k]) => !knownParamNames.has(k));
 
-      for (const [propName, propSchema] of Object.entries<any>(op.inputSchema.properties)) {
-        if (!knownParamNames.has(propName)) {
+      // Check if this is a direct single primitive/array body property named 'requestBody' or 'body'
+      if (
+        nonParamEntries.length === 1 &&
+        (nonParamEntries[0][0] === 'requestBody' || nonParamEntries[0][0] === 'body') &&
+        (nonParamEntries[0][1].type !== 'object' || !nonParamEntries[0][1].properties)
+      ) {
+        const [propName, propSchema] = nonParamEntries[0];
+        const isReq = requiredBodySet.has(propName);
+        const zodCode = convertSchemaToZod(propSchema);
+        const fieldZod = isReq ? zodCode : `${zodCode}.optional()`;
+        schemaFields.push(`    ${JSON.stringify(propName)}: ${fieldZod},`);
+        isDirectBody = true;
+        directBodyPropName = propName;
+      } else {
+        for (const [propName, propSchema] of nonParamEntries) {
           const isReq = requiredBodySet.has(propName);
           const zodCode = convertSchemaToZod(propSchema);
           const fieldZod = isReq ? zodCode : `${zodCode}.optional()`;
@@ -223,6 +239,10 @@ export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProjec
     // Generate tool execution logic
     const executionLines: string[] = [];
     executionLines.push(`    try {`);
+    executionLines.push('      if (DRY_RUN) {');
+    executionLines.push(`        return { content: [{ type: 'text', text: \`[DRY-RUN] Simulating \${${JSON.stringify(op.method.toUpperCase())}} \${${JSON.stringify(op.path)}} (\${${JSON.stringify(op.riskTier || 'READ_ONLY')}})\` }] };`);
+    executionLines.push('      }');
+
     executionLines.push(`      let url = ${JSON.stringify(op.path)};`);
 
     for (const p of pathParams) {
@@ -250,7 +270,9 @@ export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProjec
       }
     }
 
-    if (bodyProps.length > 0) {
+    if (isDirectBody && directBodyPropName) {
+      executionLines.push(`      const bodyData = args[${JSON.stringify(directBodyPropName)}];`);
+    } else if (bodyProps.length > 0) {
       executionLines.push('      const bodyData: Record<string, any> = {};');
       for (const p of bodyProps) {
         executionLines.push(`      if (args[${JSON.stringify(p.name)}] !== undefined) bodyData[${JSON.stringify(p.name)}] = args[${JSON.stringify(p.name)}];`);
@@ -258,7 +280,11 @@ export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProjec
     }
 
     const queryArg = queryParams.length > 0 ? 'params: Object.keys(query).length > 0 ? query : undefined,' : '';
-    const bodyArg = bodyProps.length > 0 ? 'data: Object.keys(bodyData).length > 0 ? bodyData : undefined,' : '';
+    const bodyArg = (isDirectBody && directBodyPropName)
+      ? 'data: bodyData !== undefined ? bodyData : undefined,'
+      : bodyProps.length > 0
+      ? 'data: Object.keys(bodyData).length > 0 ? bodyData : undefined,'
+      : '';
     const headerArg = (headerParams.length > 0 || cookieParams.length > 0) ? 'headers: reqHeaders,' : '';
 
     toolRegistrations.push(`
@@ -295,6 +321,23 @@ ${executionLines.join('\n')}
 );`);
   }
 
+  // Detect security schemes (Bearer, ApiKey header, Basic)
+  const secSchemes = spec.securitySchemes || {};
+  const primaryScheme = Object.values(secSchemes)[0] as any;
+  let authHeaderCode = '';
+  if (primaryScheme) {
+    if (primaryScheme.type === 'http' && primaryScheme.scheme === 'bearer') {
+      authHeaderCode = `...(API_KEY ? { 'Authorization': \`Bearer \${API_KEY}\` } : {}),`;
+    } else if (primaryScheme.type === 'apiKey' && primaryScheme.in === 'header') {
+      authHeaderCode = `...(API_KEY ? { ${JSON.stringify(primaryScheme.name)}: API_KEY } : {}),`;
+    } else if (primaryScheme.type === 'http' && primaryScheme.scheme === 'basic') {
+      authHeaderCode = `...(API_KEY ? { 'Authorization': \`Basic \${Buffer.from(API_KEY).toString('base64')}\` } : {}),`;
+    }
+  }
+  if (!authHeaderCode) {
+    authHeaderCode = `...(API_KEY ? { 'Authorization': \`Bearer \${API_KEY}\` } : {}),`;
+  }
+
   files['src/index.ts'] = `/**
  * ${spec.title} - Standalone TypeScript MCP Server
  * Generated automatically by PostMCP (The Postman for MCP)
@@ -310,6 +353,7 @@ dotenv.config();
 
 const BASE_URL = (process.env.BASE_URL || ${JSON.stringify(baseUrl)}).replace(/\\/$/, '');
 const API_KEY = process.env.API_KEY || process.env.BEARER_TOKEN || '';
+const DRY_RUN = process.env.DRY_RUN === 'true';
 
 const httpClient = axios.create({
   baseURL: BASE_URL,
@@ -317,7 +361,7 @@ const httpClient = axios.create({
   headers: {
     'User-Agent': 'PostMCP-TypeScript/1.0',
     'Accept': 'application/json',
-    ...(API_KEY ? { 'Authorization': \`Bearer \${API_KEY}\` } : {}),
+    ${authHeaderCode}
   },
 });
 
@@ -396,6 +440,7 @@ npx @modelcontextprotocol/inspector node dist/index.js
   // 5. .env.example
   files['.env.example'] = `BASE_URL=${baseUrl}
 API_KEY=your_api_key_here
+DRY_RUN=false
 `;
 
   // 6. .gitignore

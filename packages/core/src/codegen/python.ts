@@ -192,12 +192,12 @@ export function generatePythonProject(spec: NormalizedSpec): GeneratedProject {
       }
     }
 
-    // 2. Collect request body schema
-    let bodyModelName: string | null = null;
+    // 2. Collect request body schema (primitive, array, or object)
+    let bodyType: string | null = null;
+    let isBodyDirect = false; // true if primitive or array body (not wrapped in object)
     let isBodyRequired = false;
 
     if (op.inputSchema && op.inputSchema.properties && Object.keys(op.inputSchema.properties).length > 0) {
-      // Find properties that are not already in path/query/header/cookie parameters
       const nonParamProperties: Record<string, any> = {};
       const knownParamNames = new Set((op.parameters || []).map((p) => p.name));
 
@@ -207,14 +207,27 @@ export function generatePythonProject(spec: NormalizedSpec): GeneratedProject {
         }
       }
 
-      if (Object.keys(nonParamProperties).length > 0) {
+      const nonParamKeys = Object.keys(nonParamProperties);
+
+      // Check if this is a direct single primitive/array body property named 'requestBody' or 'body'
+      if (
+        nonParamKeys.length === 1 &&
+        (nonParamKeys[0] === 'requestBody' || nonParamKeys[0] === 'body') &&
+        (nonParamProperties[nonParamKeys[0]].type !== 'object' || !nonParamProperties[nonParamKeys[0]].properties)
+      ) {
+        const rawBodySchema = nonParamProperties[nonParamKeys[0]];
+        bodyType = converter.convert(rawBodySchema, `${opTitle}Body`);
+        isBodyDirect = true;
+        isBodyRequired = (op.inputSchema.required || []).includes(nonParamKeys[0]);
+      } else if (nonParamKeys.length > 0) {
         const bodySchema = {
           type: 'object',
           properties: nonParamProperties,
           required: (op.inputSchema.required || []).filter((r: string) => !knownParamNames.has(r)),
           description: op.inputSchema.description || `Request body for ${op.id}`,
         };
-        bodyModelName = converter.generatePydanticModel(bodySchema, `${opTitle}RequestBody`);
+        bodyType = converter.generatePydanticModel(bodySchema, `${opTitle}RequestBody`);
+        isBodyDirect = false;
         isBodyRequired = (bodySchema.required && bodySchema.required.length > 0) || false;
       }
     }
@@ -246,9 +259,9 @@ export function generatePythonProject(spec: NormalizedSpec): GeneratedProject {
       signatureArgs.push(`${p.pyName}: ${p.type} = ${desc}`);
     }
 
-    // Body model (if required)
-    if (bodyModelName && isBodyRequired) {
-      signatureArgs.push(`body: ${bodyModelName} = Field(..., description="Request body payload")`);
+    // Body (if required)
+    if (bodyType && isBodyRequired) {
+      signatureArgs.push(`body: ${bodyType} = Field(..., description="Request body payload")`);
     }
 
     // Optional query params
@@ -269,13 +282,18 @@ export function generatePythonProject(spec: NormalizedSpec): GeneratedProject {
       signatureArgs.push(`${p.pyName}: Optional[${p.type}] = ${desc}`);
     }
 
-    // Optional body model
-    if (bodyModelName && !isBodyRequired) {
-      signatureArgs.push(`body: Optional[${bodyModelName}] = Field(default=None, description="Optional request body payload")`);
+    // Optional body
+    if (bodyType && !isBodyRequired) {
+      signatureArgs.push(`body: Optional[${bodyType}] = Field(default=None, description="Optional request body payload")`);
     }
 
     // 4. Build execution code
     const executionLines: string[] = [];
+
+    // Dry run check
+    executionLines.push('    if DRY_RUN:');
+    executionLines.push(`        return f"[DRY-RUN] Simulating ${op.method.toUpperCase()} ${op.path} ({${JSON.stringify(op.riskTier || 'READ_ONLY')}})"`);
+
     executionLines.push(`    url = ${JSON.stringify(op.path)}`);
 
     for (const p of pathParams) {
@@ -309,9 +327,17 @@ export function generatePythonProject(spec: NormalizedSpec): GeneratedProject {
     const headersArg = headerParams.length > 0 ? 'headers=req_headers' : 'headers=headers';
     const paramsArg = queryParams.length > 0 ? 'params=params if params else None' : 'params=None';
     const cookiesArg = cookieParams.length > 0 ? 'cookies=req_cookies if req_cookies else None' : 'cookies=None';
-    const bodyArg = bodyModelName
-      ? 'json=body.model_dump(by_alias=True, exclude_none=True) if body else None'
-      : 'json=None';
+
+    let bodyArg = 'json=None';
+    if (bodyType) {
+      if (isBodyDirect) {
+        // Direct primitive or array payload
+        bodyArg = 'json=body if (isinstance(body, (dict, list)) or isinstance(body, (int, float, bool))) else None, content=str(body) if isinstance(body, str) else None';
+      } else {
+        // Pydantic model object
+        bodyArg = 'json=body.model_dump(by_alias=True, exclude_none=True) if body else None';
+      }
+    }
 
     const toolFn = `
 @mcp.tool()
@@ -367,6 +393,23 @@ build-backend = "hatchling.build"
   const safeTitle = (spec.title || 'MCP Server').replace(/"""/g, '\\"\\"\\"');
   const safeDescription = (spec.description || '').replace(/"""/g, '\\"\\"\\"');
 
+  // Detect security schemes (Bearer, ApiKey header, Basic)
+  const secSchemes = spec.securitySchemes || {};
+  const primaryScheme = Object.values(secSchemes)[0] as any;
+  let authHeaderCode = '';
+  if (primaryScheme) {
+    if (primaryScheme.type === 'http' && primaryScheme.scheme === 'bearer') {
+      authHeaderCode = `if API_KEY:\n    headers["Authorization"] = f"Bearer {API_KEY}"`;
+    } else if (primaryScheme.type === 'apiKey' && primaryScheme.in === 'header') {
+      authHeaderCode = `if API_KEY:\n    headers[${JSON.stringify(primaryScheme.name)}] = API_KEY`;
+    } else if (primaryScheme.type === 'http' && primaryScheme.scheme === 'basic') {
+      authHeaderCode = `import base64\nif API_KEY:\n    headers["Authorization"] = f"Basic {base64.b64encode(API_KEY.encode()).decode()}"`;
+    }
+  }
+  if (!authHeaderCode) {
+    authHeaderCode = `if API_KEY:\n    headers["Authorization"] = f"Bearer {API_KEY}"`;
+  }
+
   // 3. server.py
   files['server.py'] = `"""
 ${safeTitle} - FastMCP + Pydantic Server
@@ -386,6 +429,7 @@ load_dotenv()
 
 BASE_URL = os.getenv("BASE_URL", ${JSON.stringify(baseUrl)}).rstrip("/")
 API_KEY = os.getenv("API_KEY", os.getenv("BEARER_TOKEN", ""))
+DRY_RUN = os.getenv("DRY_RUN", "false").lower() in ("true", "1")
 
 mcp = FastMCP(${JSON.stringify(spec.title)})
 
@@ -393,8 +437,7 @@ headers: dict[str, str] = {
     "User-Agent": "PostMCP-FastMCP/1.0",
     "Accept": "application/json",
 }
-if API_KEY:
-    headers["Authorization"] = f"Bearer {API_KEY}"
+${authHeaderCode}
 
 def format_token_diet(data: Any) -> str:
     """Format JSON responses efficiently for LLM context."""
@@ -469,6 +512,7 @@ uv run mcp install server.py
   // 5. .env.example
   files['.env.example'] = `BASE_URL=${baseUrl}
 API_KEY=your_api_key_here
+DRY_RUN=false
 `;
 
   // 6. .gitignore
