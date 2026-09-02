@@ -1,0 +1,43 @@
+{
+  "name": "postmcp",
+  "version": "0.1.0",
+  "description": "The Postman for MCP. Turn any OpenAPI spec into a context-optimized MCP server in seconds.",
+  "bin": {
+    "postmcp": "./dist/bin.js"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@postmcp/core": "workspace:*",
+    "axios": "^1.20.0",
+    "cli-table3": "^0.6.5",
+    "commander": "^13.1.0",
+    "dotenv": "^16.4.7",
+    "open": "^10.1.0",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
+  }
+}
