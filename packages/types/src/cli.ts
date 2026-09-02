@@ -1,4 +1,5 @@
 import type { AuthConfig } from './http.js';
+import type { MacroDefinition } from './parser.js';
 
 export interface PostMcpCliConfig {
   spec?: string;
@@ -13,6 +14,9 @@ export interface PostMcpCliConfig {
     maxTokens?: number;
     convertToMarkdownTable?: boolean;
   };
+  fieldMasks?: Record<string, string[]>;
+  macros?: MacroDefinition[];
+  enabledOperations?: Record<string, boolean>;
 }
 
 export interface GeneratedProject {

@@ -40,9 +40,19 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
     return;
   }
 
-  // If preset defines additional composite macros, wire them into parsed spec
+  // If preset or config defines additional composite macros, wire them into parsed spec
   if (preset && preset.macros && preset.macros.length > 0) {
     parsedSpec.macros = [...(parsedSpec.macros || []), ...preset.macros];
+  }
+  if (fileConfig.macros && fileConfig.macros.length > 0) {
+    parsedSpec.macros = [...(parsedSpec.macros || []), ...fileConfig.macros];
+  }
+
+  // If config defines enabledOperations, filter out disabled operations (Finding 5)
+  if (fileConfig.enabledOperations && Object.keys(fileConfig.enabledOperations).length > 0) {
+    parsedSpec.operations = parsedSpec.operations.filter(
+      (op) => fileConfig.enabledOperations![op.id] !== false
+    );
   }
 
   // 3. Build Auth Configuration with preset-specific auth dispatching (Finding 1)
@@ -80,12 +90,15 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
   const isTokenDiet = options.tokenDiet !== undefined ? options.tokenDiet : fileConfig.tokenDiet?.enabled !== false;
   const maxTokens = options.maxTokens ? parseInt(options.maxTokens, 10) : fileConfig.tokenDiet?.maxTokens || 2500;
 
-  // 4. Build path-specific field masks from preset (Finding 2)
+  // 4. Build path-specific field masks from preset & file config (Finding 2 & 5)
   const pathFieldMasks: Record<string, string[]> = {};
   if (preset?.fieldMasks) {
     for (const fm of preset.fieldMasks) {
       pathFieldMasks[fm.path] = fm.fields;
     }
+  }
+  if (fileConfig.fieldMasks) {
+    Object.assign(pathFieldMasks, fileConfig.fieldMasks);
   }
 
   const serverOptions = {

@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as os from 'node:os';
 import { parseHeaderFlags, parseApiKeyFlag, loadConfigFile } from '../src/config/loader.js';
 
 describe('CLI Configuration and Flag Parser', () => {
@@ -26,8 +29,36 @@ describe('CLI Configuration and Flag Parser', () => {
     expect(cookieKey).toEqual({ name: 'session_id', value: 'sess789', in: 'cookie' });
   });
 
-  it('should load configuration files safely', () => {
-    const config = loadConfigFile('non_existent_config.json');
-    expect(config).toEqual({});
+  it('should load configuration files safely and parse fieldMasks, macros, enabledOperations', () => {
+    const tempConfigPath = path.join(os.tmpdir(), `postmcp-test-${Date.now()}.json`);
+    fs.writeFileSync(
+      tempConfigPath,
+      JSON.stringify({
+        spec: '@stripe',
+        fieldMasks: {
+          '/v1/charges': ['id', 'amount', 'status'],
+        },
+        macros: [
+          {
+            name: 'refundAndNotify',
+            description: 'Refund charge and send receipt',
+            parameters: { type: 'object', properties: {} },
+            steps: [{ id: 'step_1', action: 'POST /v1/refunds' }],
+          },
+        ],
+        enabledOperations: {
+          listCharges: true,
+          deleteAccount: false,
+        },
+      })
+    );
+
+    const config = loadConfigFile(tempConfigPath);
+    expect(config.spec).toBe('@stripe');
+    expect(config.fieldMasks?.['/v1/charges']).toEqual(['id', 'amount', 'status']);
+    expect(config.macros?.length).toBe(1);
+    expect(config.enabledOperations?.['deleteAccount']).toBe(false);
+
+    fs.unlinkSync(tempConfigPath);
   });
 });

@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+'use client';
+
+import React, { useState, useRef } from 'react';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
-import { X, Upload, Globe, FileCode } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/Dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
+import { Upload, Globe, FileCode, FileUp, CheckCircle } from 'lucide-react';
 
 interface SpecIngestModalProps {
   isOpen: boolean;
@@ -10,13 +14,43 @@ interface SpecIngestModalProps {
 }
 
 export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestModalProps) {
-  const [tab, setTab] = useState<'url' | 'paste'>('url');
+  const [activeTab, setActiveTab] = useState<'file' | 'url' | 'paste'>('file');
   const [url, setUrl] = useState('');
   const [rawSpec, setRawSpec] = useState('');
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const [fileContent, setFileContent] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!isOpen) return null;
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  };
+
+  const processFile = (file: File) => {
+    setSelectedFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      setFileContent(text);
+      setError(null);
+    };
+    reader.onerror = () => setError('Failed to read local file.');
+    reader.readAsText(file);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,11 +58,14 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
     setIsLoading(true);
 
     try {
-      if (tab === 'url') {
+      if (activeTab === 'file') {
+        if (!fileContent) throw new Error('Please select or drop an OpenAPI file (.json, .yaml, .yml).');
+        await onIngestSpec({ spec: fileContent });
+      } else if (activeTab === 'url') {
         if (!url.trim()) throw new Error('Please enter a valid OpenAPI URL.');
         await onIngestSpec({ url: url.trim() });
       } else {
-        if (!rawSpec.trim()) throw new Error('Please paste your OpenAPI specification.');
+        if (!rawSpec.trim()) throw new Error('Please paste your OpenAPI definition.');
         await onIngestSpec({ spec: rawSpec.trim() });
       }
       onClose();
@@ -40,90 +77,121 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-[#0b101b] border border-slate-800 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden">
-        {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-[#0e1422]">
-          <div className="flex items-center gap-2">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5 text-blue-400" />
-            <h2 className="text-lg font-semibold text-white">Import OpenAPI Specification</h2>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-200">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+            Import OpenAPI Specification
+          </DialogTitle>
+          <DialogDescription>
+            Ingest local files, remote URLs, or pasted schemas into the Studio workbench.
+          </DialogDescription>
+        </DialogHeader>
 
-        {/* Tabs */}
-        <div className="flex border-b border-slate-800 bg-[#090d16] px-6 pt-3 gap-4">
-          <button
-            onClick={() => setTab('url')}
-            className={`pb-2 text-sm font-medium border-b-2 flex items-center gap-1.5 transition-colors ${
-              tab === 'url'
-                ? 'border-blue-500 text-blue-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Globe className="h-4 w-4" />
-            Remote URL
-          </button>
-          <button
-            onClick={() => setTab('paste')}
-            className={`pb-2 text-sm font-medium border-b-2 flex items-center gap-1.5 transition-colors ${
-              tab === 'paste'
-                ? 'border-blue-500 text-blue-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <FileCode className="h-4 w-4" />
-            Paste JSON / YAML
-          </button>
-        </div>
-
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg text-xs text-rose-400 font-mono">
               {error}
             </div>
           )}
 
-          {tab === 'url' ? (
-            <div className="space-y-2">
+          <Tabs value={activeTab} onValueChange={(val: any) => setActiveTab(val)}>
+            <TabsList className="grid grid-cols-3 w-full">
+              <TabsTrigger value="file" className="flex items-center gap-1.5">
+                <FileUp className="h-3.5 w-3.5" />
+                Local File / Drag & Drop
+              </TabsTrigger>
+              <TabsTrigger value="url" className="flex items-center gap-1.5">
+                <Globe className="h-3.5 w-3.5" />
+                Remote URL
+              </TabsTrigger>
+              <TabsTrigger value="paste" className="flex items-center gap-1.5">
+                <FileCode className="h-3.5 w-3.5" />
+                Paste Spec
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="file" className="pt-3">
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${
+                  isDragging
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : selectedFileName
+                    ? 'border-emerald-500/50 bg-emerald-500/5'
+                    : 'border-slate-800 hover:border-slate-700 bg-[#0d131f]'
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json,.yaml,.yml"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                {selectedFileName ? (
+                  <>
+                    <CheckCircle className="h-8 w-8 text-emerald-400" />
+                    <span className="text-xs font-mono font-semibold text-emerald-300">
+                      {selectedFileName}
+                    </span>
+                    <span className="text-[11px] text-slate-500">Click to choose another file</span>
+                  </>
+                ) : (
+                  <>
+                    <FileUp className="h-8 w-8 text-slate-500" />
+                    <span className="text-xs font-semibold text-slate-200">
+                      Drag & drop your OpenAPI JSON or YAML file here
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      Supports OpenAPI 3.0.x, 3.1.x, Swagger 2.0 (.json, .yaml, .yml)
+                    </span>
+                  </>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="url" className="pt-3 space-y-2">
               <label className="text-xs font-semibold text-slate-300">OpenAPI Spec URL</label>
               <Input
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://api.example.com/openapi.json or .yaml"
-                autoFocus
+                placeholder="https://api.example.com/openapi.json"
               />
               <p className="text-[11px] text-slate-500">
-                Supports OpenAPI 3.0.x, 3.1.x, Swagger 2.0 via HTTPS.
+                HTTPS URL pointing to OpenAPI 3.0 / 3.1 specification.
               </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-300">Paste OpenAPI Document</label>
+            </TabsContent>
+
+            <TabsContent value="paste" className="pt-3 space-y-2">
+              <label className="text-xs font-semibold text-slate-300">Raw OpenAPI JSON / YAML</label>
               <textarea
                 value={rawSpec}
                 onChange={(e) => setRawSpec(e.target.value)}
-                placeholder="Paste JSON or YAML OpenAPI definition here..."
-                rows={10}
+                placeholder="Paste JSON or YAML OpenAPI definition..."
+                rows={8}
                 className="w-full rounded-lg border border-slate-800 bg-[#0d131f] p-3 text-xs font-mono text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                autoFocus
               />
-            </div>
-          )}
+            </TabsContent>
+          </Tabs>
 
-          <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-800/80">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel
             </Button>
             <Button type="submit" variant="default" disabled={isLoading}>
-              {isLoading ? 'Ingesting...' : 'Import & Analyze'}
+              {isLoading ? 'Ingesting...' : 'Ingest Specification'}
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
