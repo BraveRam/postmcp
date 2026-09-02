@@ -149,6 +149,9 @@ importers:
       '@ai-sdk/react':
         specifier: ^4.0.93
         version: 4.0.93(react@19.2.8)(zod@4.5.4)
+      '@fontsource/roboto':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@postmcp/core':
         specifier: workspace:*
         version: link:../core
@@ -778,6 +781,9 @@ packages:
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
+
+  '@fontsource/roboto@5.3.0':
+    resolution: {integrity: sha512-BapRJOWYP+LZ21zp+wBQjfpPYKRoxc4LspJ/RLuI+HSMBD5u/X4O+ESDrSvEqDSy0rAl7GwBJ+09mdc16cVQ1Q==}
 
   '@hono/node-server@1.19.17':
     resolution: {integrity: sha512-dSneS5qhiauZWGDCeK4o695Xd9nUNjviSZCMQrj10eetr8Uln1ucn6bbphOM6UynAMMtNIzZNSpL9vnASJwrPQ==}
@@ -4328,6 +4334,8 @@ snapshots:
       react-dom: 19.2.8(react@19.2.8)
 
   '@floating-ui/utils@0.2.12': {}
+
+  '@fontsource/roboto@5.3.0': {}
 
   '@hono/node-server@1.19.17(hono@4.13.5)':
     dependencies:

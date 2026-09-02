@@ -26,6 +26,7 @@
     "@ai-sdk/google": "^4.0.62",
     "@ai-sdk/openai": "^4.0.56",
     "@ai-sdk/react": "^4.0.93",
+    "@fontsource/roboto": "^5.3.0",
     "@postmcp/core": "workspace:*",
     "@postmcp/presets": "workspace:*",
     "@postmcp/types": "workspace:*",
