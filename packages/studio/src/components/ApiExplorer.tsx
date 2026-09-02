@@ -84,7 +84,7 @@ export function ApiExplorer({
               ) : (
                 <Square className="h-3.5 w-3.5 text-zinc-600" />
               )}
-              <span className="font-mono text-zinc-300">
+              <span className="font-sans text-zinc-300">
                 {enabledCount}/{operations.length} Active
               </span>
             </button>
@@ -93,7 +93,7 @@ export function ApiExplorer({
           <select
             value={methodFilter}
             onChange={(e) => setMethodFilter(e.target.value)}
-            className="bg-zinc-900 border border-zinc-800 rounded px-2 py-0.5 text-[11px] text-zinc-200 focus:outline-none focus:border-zinc-500 cursor-pointer font-mono"
+            className="bg-zinc-900 border border-zinc-800 rounded px-2 py-0.5 text-[11px] text-zinc-200 focus:outline-none focus:border-zinc-500 cursor-pointer font-sans"
           >
             <option value="all">All Methods</option>
             <option value="get">GET</option>
@@ -108,7 +108,7 @@ export function ApiExplorer({
       {/* Operations List */}
       <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
         {filteredOps.length === 0 ? (
-          <div className="py-12 text-center text-xs text-zinc-600 font-mono">No matching operations</div>
+          <div className="py-12 text-center text-xs text-zinc-600 font-sans">No matching operations</div>
         ) : (
           filteredOps.map((op) => {
             const isSelected = op.id === selectedOperationId;
@@ -149,12 +149,12 @@ export function ApiExplorer({
                     <Badge variant={op.method.toLowerCase() as any} className="text-[9px] px-1 py-0 font-bold uppercase">
                       {op.method}
                     </Badge>
-                    <span className="font-mono text-xs font-medium text-zinc-200 truncate">
+                    <span className="font-sans text-xs font-medium text-zinc-200 truncate">
                       {op.id}
                     </span>
                   </div>
 
-                  <p className="text-[11px] text-zinc-500 truncate font-mono">
+                  <p className="text-[11px] text-zinc-500 truncate font-sans">
                     {op.path}
                   </p>
                 </div>
@@ -162,7 +162,7 @@ export function ApiExplorer({
                 {/* Risk Tier indicator */}
                 {op.riskTier !== 'READ_ONLY' && (
                   <span
-                    className="text-[9px] font-mono px-1 py-0 rounded border border-zinc-800 text-zinc-400 bg-zinc-950 mt-0.5 shrink-0"
+                    className="text-[9px] font-sans px-1 py-0 rounded border border-zinc-800 text-zinc-400 bg-zinc-950 mt-0.5 shrink-0"
                     title={`Risk Tier: ${op.riskTier}`}
                   >
                     {op.riskTier === 'CRITICAL' ? 'CRIT' : 'MUT'}

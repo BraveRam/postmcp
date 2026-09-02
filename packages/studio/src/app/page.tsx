@@ -169,12 +169,12 @@ export default function StudioPage() {
 
       {/* Main Workspace Layout */}
       {isLoading ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-zinc-400 gap-3 font-mono p-4 text-center">
+        <div className="flex-1 flex flex-col items-center justify-center text-zinc-400 gap-3 font-sans p-4 text-center">
           <Loader2 className="h-6 w-6 animate-spin text-white" />
           <span className="text-xs">Analyzing OpenAPI schema & generating MCP tools...</span>
         </div>
       ) : !spec ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-zinc-400 gap-4 font-mono p-4 text-center">
+        <div className="flex-1 flex flex-col items-center justify-center text-zinc-400 gap-4 font-sans p-4 text-center">
           <p className="text-xs">No specification loaded.</p>
           <Button
             onClick={() => setIsPresetsOpen(true)}
@@ -228,7 +228,7 @@ export default function StudioPage() {
               <div className="flex items-center gap-3 sm:gap-6 min-w-max">
                 <button
                   onClick={() => setActiveTab('detail')}
-                  className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer font-mono whitespace-nowrap ${
+                  className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer font-sans whitespace-nowrap ${
                     activeTab === 'detail'
                       ? 'border-white text-white'
                       : 'border-transparent text-zinc-500 hover:text-zinc-300'
@@ -240,7 +240,7 @@ export default function StudioPage() {
 
                 <button
                   onClick={() => setActiveTab('tokendiet')}
-                  className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer font-mono whitespace-nowrap ${
+                  className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer font-sans whitespace-nowrap ${
                     activeTab === 'tokendiet'
                       ? 'border-white text-white'
                       : 'border-transparent text-zinc-500 hover:text-zinc-300'
@@ -252,7 +252,7 @@ export default function StudioPage() {
 
                 <button
                   onClick={() => setActiveTab('macros')}
-                  className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer font-mono whitespace-nowrap ${
+                  className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer font-sans whitespace-nowrap ${
                     activeTab === 'macros'
                       ? 'border-white text-white'
                       : 'border-transparent text-zinc-500 hover:text-zinc-300'
@@ -264,7 +264,7 @@ export default function StudioPage() {
 
                 <button
                   onClick={() => setActiveTab('sandbox')}
-                  className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer font-mono whitespace-nowrap ${
+                  className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer font-sans whitespace-nowrap ${
                     activeTab === 'sandbox'
                       ? 'border-white text-white'
                       : 'border-transparent text-zinc-500 hover:text-zinc-300'
@@ -276,7 +276,7 @@ export default function StudioPage() {
               </div>
 
               {selectedOperation && (
-                <div className="hidden lg:flex items-center gap-1.5 text-xs font-mono text-zinc-500 truncate max-w-xs ml-4">
+                <div className="hidden lg:flex items-center gap-1.5 text-xs font-sans text-zinc-500 truncate max-w-xs ml-4">
                   <span className="text-zinc-400 font-semibold">{selectedOperation.method.toUpperCase()}</span>
                   <span className="truncate">{selectedOperation.path}</span>
                 </div>

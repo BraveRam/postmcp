@@ -91,7 +91,7 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="p-3 bg-zinc-900 border border-zinc-700 rounded text-xs text-zinc-200 font-mono">
+            <div className="p-3 bg-zinc-900 border border-zinc-700 rounded text-xs text-zinc-200 font-sans">
               {error}
             </div>
           )}
@@ -139,7 +139,7 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
                 {selectedFileName ? (
                   <>
                     <CheckCircle2 className="h-8 w-8 text-white" />
-                    <span className="text-xs font-mono font-semibold text-white">
+                    <span className="text-xs font-sans font-semibold text-white">
                       {selectedFileName}
                     </span>
                     <span className="text-[11px] text-zinc-500">Click to choose another file</span>
@@ -150,7 +150,7 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
                     <span className="text-xs font-semibold text-zinc-200">
                       Drag & drop your OpenAPI JSON or YAML file here
                     </span>
-                    <span className="text-[11px] text-zinc-500 font-mono">
+                    <span className="text-[11px] text-zinc-500 font-sans">
                       Supports OpenAPI 3.0.x, 3.1.x, Swagger 2.0 (.json, .yaml, .yml)
                     </span>
                   </>
@@ -166,7 +166,7 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
                 placeholder="https://api.example.com/openapi.json"
                 className="bg-black"
               />
-              <p className="text-[11px] text-zinc-500 font-mono">
+              <p className="text-[11px] text-zinc-500 font-sans">
                 HTTPS URL pointing to OpenAPI 3.0 / 3.1 specification.
               </p>
             </TabsContent>
@@ -178,7 +178,7 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
                 onChange={(e) => setRawSpec(e.target.value)}
                 placeholder="Paste JSON or YAML OpenAPI definition..."
                 rows={8}
-                className="w-full rounded-md border border-zinc-800 bg-black p-3 text-xs font-mono text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-400"
+                className="w-full rounded-md border border-zinc-800 bg-black p-3 text-xs font-sans text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-400"
               />
             </TabsContent>
           </Tabs>

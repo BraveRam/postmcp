@@ -59,7 +59,7 @@ export function ConversationEmptyState({
   return (
     <div
       className={cn(
-        'h-full min-h-[260px] flex flex-col items-center justify-center text-center p-6 space-y-3 font-mono',
+        'h-full min-h-[260px] flex flex-col items-center justify-center text-center p-6 space-y-3 font-sans',
         className
       )}
       {...props}
@@ -67,9 +67,9 @@ export function ConversationEmptyState({
       <div className="h-14 w-14 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white">
         {icon}
       </div>
-      <div className="space-y-1 max-w-sm">
-        <h3 className="text-sm font-semibold text-white">{title}</h3>
-        <p className="text-xs text-zinc-400 leading-relaxed">{description}</p>
+      <div className="space-y-1 max-w-sm font-sans">
+        <h3 className="text-sm font-semibold text-white font-sans">{title}</h3>
+        <p className="text-xs text-zinc-400 leading-relaxed font-sans">{description}</p>
       </div>
       {children}
     </div>

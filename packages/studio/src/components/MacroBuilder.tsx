@@ -141,7 +141,7 @@ export function MacroBuilder({
                   className="p-3 bg-black border border-zinc-800 rounded-md space-y-2 relative"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-mono text-zinc-400 font-semibold">
+                    <span className="text-[11px] font-sans text-zinc-400 font-semibold">
                       Step {idx + 1}
                     </span>
                     {steps.length > 1 && (
@@ -203,7 +203,7 @@ export function MacroBuilder({
       <div className="space-y-3">
         {macros.length === 0 ? (
           <Card>
-            <CardContent className="py-12 text-center text-xs text-zinc-500 font-mono">
+            <CardContent className="py-12 text-center text-xs text-zinc-500 font-sans">
               No composite macros defined yet. Click "New Macro" to build your first multi-step workflow.
             </CardContent>
           </Card>
@@ -213,7 +213,7 @@ export function MacroBuilder({
               <CardHeader className="flex flex-row items-start justify-between pb-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <CardTitle className="text-sm font-mono">{macro.name}</CardTitle>
+                    <CardTitle className="text-sm font-sans">{macro.name}</CardTitle>
                     <Badge variant="secondary" className="text-[10px]">
                       {macro.steps.length} Steps
                     </Badge>
@@ -232,7 +232,7 @@ export function MacroBuilder({
               </CardHeader>
 
               <CardContent className="space-y-2 pt-0">
-                <div className="p-3 bg-black border border-zinc-800 rounded-md font-mono text-xs text-zinc-300 space-y-1.5">
+                <div className="p-3 bg-black border border-zinc-800 rounded-md font-sans text-xs text-zinc-300 space-y-1.5">
                   {macro.steps.map((step, idx) => (
                     <div key={idx} className="flex items-center gap-2">
                       <span className="text-zinc-600">{idx + 1}.</span>

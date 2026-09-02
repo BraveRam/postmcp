@@ -59,7 +59,7 @@ export function PresetSelectorModal({
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-2.5 py-1 rounded transition-colors whitespace-nowrap text-xs font-mono cursor-pointer ${
+              className={`px-2.5 py-1 rounded transition-colors whitespace-nowrap text-xs font-sans cursor-pointer ${
                 selectedCategory === cat
                   ? 'bg-white text-black font-semibold shadow-xs'
                   : 'bg-black text-zinc-400 hover:bg-zinc-900 hover:text-white border border-zinc-800'
@@ -81,9 +81,9 @@ export function PresetSelectorModal({
 
           <ScrollArea className="h-[400px] p-3">
             {isLoading ? (
-              <div className="py-16 text-center text-xs text-zinc-500 font-mono">Loading presets...</div>
+              <div className="py-16 text-center text-xs text-zinc-500 font-sans">Loading presets...</div>
             ) : presets.length === 0 ? (
-              <div className="py-16 text-center text-xs text-zinc-500 font-mono">No matching presets found</div>
+              <div className="py-16 text-center text-xs text-zinc-500 font-sans">No matching presets found</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                 {presets.map((preset) => (
@@ -97,9 +97,9 @@ export function PresetSelectorModal({
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2 mb-1">
-                        <h3 className="font-semibold text-zinc-100 group-hover:text-white transition-colors text-xs flex items-center gap-1.5 font-mono">
+                        <h3 className="font-semibold text-zinc-100 group-hover:text-white transition-colors text-xs flex items-center gap-1.5 font-sans">
                           {preset.name}
-                          <Badge variant="outline" className="text-[10px] font-mono">
+                          <Badge variant="outline" className="text-[10px] font-sans">
                             @{preset.id}
                           </Badge>
                         </h3>
@@ -122,7 +122,7 @@ export function PresetSelectorModal({
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1 text-[11px] text-zinc-300 font-mono group-hover:text-white">
+                      <div className="flex items-center gap-1 text-[11px] text-zinc-300 font-sans group-hover:text-white">
                         <span>Load</span>
                         <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
                       </div>

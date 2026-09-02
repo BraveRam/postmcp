@@ -43,8 +43,8 @@ export function Header({
           <div className="h-6 w-6 rounded bg-white flex items-center justify-center text-black shadow-xs">
             <Zap className="h-3.5 w-3.5 fill-black text-black" />
           </div>
-          <span className="text-white font-mono font-semibold hidden xs:inline">PostMCP</span>
-          <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-0.5 hidden sm:inline">
+          <span className="text-white font-sans font-semibold hidden xs:inline">PostMCP</span>
+          <span className="text-[10px] font-sans uppercase tracking-wider text-zinc-400 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-0.5 hidden sm:inline">
             Studio
           </span>
         </div>
@@ -64,7 +64,7 @@ export function Header({
                 @{presetId}
               </Badge>
             )}
-            <span className="text-xs text-zinc-500 font-mono hidden lg:inline shrink-0">
+            <span className="text-xs text-zinc-500 font-sans hidden lg:inline shrink-0">
               ({spec.operations.length} tools)
             </span>
           </div>

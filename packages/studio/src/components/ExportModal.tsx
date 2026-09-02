@@ -117,7 +117,7 @@ export function ExportModal({
             <div className="pt-3 space-y-3">
               {/* Optional Secret Injection */}
               <div className="p-3 bg-black border border-zinc-800 rounded-md space-y-2">
-                <span className="text-xs font-semibold text-zinc-300 font-mono">
+                <span className="text-xs font-semibold text-zinc-300 font-sans">
                   Optional: Inject Authentication Credential / Env Var
                 </span>
                 <div className="grid grid-cols-2 gap-2 text-xs">
@@ -139,7 +139,7 @@ export function ExportModal({
 
               {/* Code Snippet Box */}
               <div className="relative">
-                <pre className="p-4 bg-black border border-zinc-800 rounded-md text-xs font-mono text-zinc-200 overflow-x-auto max-h-56 whitespace-pre">
+                <pre className="p-4 bg-black border border-zinc-800 rounded-md text-xs font-sans text-zinc-200 overflow-x-auto max-h-56 whitespace-pre">
                   {currentSnippet || 'Generating configuration snippet...'}
                 </pre>
 
@@ -150,12 +150,12 @@ export function ExportModal({
                   {copied ? (
                     <>
                       <Check className="h-3.5 w-3.5 text-white" />
-                      <span className="text-white font-mono">Copied</span>
+                      <span className="text-white font-sans">Copied</span>
                     </>
                   ) : (
                     <>
                       <Copy className="h-3.5 w-3.5" />
-                      <span className="font-mono">Copy</span>
+                      <span className="font-sans">Copy</span>
                     </>
                   )}
                 </button>
@@ -163,7 +163,7 @@ export function ExportModal({
 
               {/* Persistence Alert */}
               {persistSuccess && (
-                <div className="p-2.5 bg-zinc-900 border border-zinc-700 rounded text-xs text-zinc-200 flex items-center gap-2 font-mono">
+                <div className="p-2.5 bg-zinc-900 border border-zinc-700 rounded text-xs text-zinc-200 flex items-center gap-2 font-sans">
                   <CheckCircle2 className="h-4 w-4 text-white shrink-0" />
                   <span>{persistSuccess}</span>
                 </div>

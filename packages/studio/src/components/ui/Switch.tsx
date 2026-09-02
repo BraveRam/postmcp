@@ -11,7 +11,7 @@ export interface SwitchProps {
 
 export function Switch({ checked, onChange, disabled, className, label }: SwitchProps) {
   return (
-    <label className={cn('inline-flex items-center gap-2 cursor-pointer select-none', disabled && 'opacity-40 cursor-not-allowed', className)}>
+    <label className={cn('inline-flex items-center gap-2 cursor-pointer select-none font-sans', disabled && 'opacity-40 cursor-not-allowed', className)}>
       <button
         type="button"
         role="switch"
@@ -30,7 +30,7 @@ export function Switch({ checked, onChange, disabled, className, label }: Switch
           )}
         />
       </button>
-      {label && <span className="text-xs font-medium text-zinc-300">{label}</span>}
+      {label && <span className="text-xs font-sans font-medium text-zinc-300">{label}</span>}
     </label>
   );
 }

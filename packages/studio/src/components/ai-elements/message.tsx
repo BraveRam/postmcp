@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/Button';
 
 export interface MessageProps extends React.HTMLAttributes<HTMLDivElement> {
   from?: 'user' | 'assistant' | 'system';
-  avatar?: React.ReactNode;
 }
 
 export function Message({
@@ -20,7 +19,7 @@ export function Message({
   return (
     <div
       className={cn(
-        'group flex w-full font-mono text-xs animate-in fade-in-50 duration-200',
+        'group flex w-full font-sans text-xs animate-in fade-in-50 duration-200',
         isUser ? 'justify-end' : 'justify-start',
         className
       )}
@@ -28,7 +27,7 @@ export function Message({
     >
       <div
         className={cn(
-          'w-full max-w-[92%] sm:max-w-[85%] space-y-2',
+          'w-full max-w-[92%] sm:max-w-[85%] space-y-2 font-sans',
           isUser ? 'items-end' : 'items-start'
         )}
       >
@@ -51,7 +50,7 @@ export function MessageContent({
   return (
     <div
       className={cn(
-        'rounded-lg p-3 sm:p-4 text-xs font-mono leading-relaxed transition-all',
+        'rounded-lg p-3 sm:p-4 text-xs font-sans leading-relaxed transition-all',
         from === 'user'
           ? 'bg-zinc-900 border border-zinc-700 text-white ml-auto'
           : 'bg-zinc-950 border border-zinc-800 text-zinc-200 mr-auto',
@@ -74,7 +73,7 @@ export function MessageResponse({
   ...props
 }: MessageResponseProps) {
   return (
-    <div className={cn('whitespace-pre-wrap font-mono text-xs leading-relaxed', className)} {...props}>
+    <div className={cn('whitespace-pre-wrap font-sans text-xs leading-relaxed', className)} {...props}>
       {children}
     </div>
   );
@@ -86,7 +85,7 @@ export function MessageActions({ className, children, ...props }: MessageActions
   return (
     <div
       className={cn(
-        'flex items-center gap-1.5 pt-1 text-zinc-500 opacity-80 group-hover:opacity-100 transition-opacity',
+        'flex items-center gap-1.5 pt-1 text-zinc-500 opacity-80 group-hover:opacity-100 transition-opacity font-sans',
         className
       )}
       {...props}
@@ -112,12 +111,12 @@ export function MessageAction({
     <Button
       variant="ghost"
       size="sm"
-      className={cn('h-6 px-2 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 font-mono', className)}
+      className={cn('h-6 px-2 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 font-sans', className)}
       title={tooltip || label}
       {...props}
     >
       {children}
-      {label && <span className="ml-1 text-[11px] font-mono">{label}</span>}
+      {label && <span className="ml-1 text-[11px] font-sans">{label}</span>}
     </Button>
   );
 }

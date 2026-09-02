@@ -18,7 +18,7 @@ export function EndpointDetail({ operation }: EndpointDetailProps) {
             <Badge variant={operation.method.toLowerCase() as any} className="text-xs px-2 py-0.5 uppercase">
               {operation.method}
             </Badge>
-            <span className="font-mono text-sm font-semibold text-white">{operation.path}</span>
+            <span className="font-sans text-sm font-semibold text-white">{operation.path}</span>
           </div>
           <CardTitle className="text-lg">{operation.summary || operation.id}</CardTitle>
           {operation.description && (
@@ -27,12 +27,12 @@ export function EndpointDetail({ operation }: EndpointDetailProps) {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-center gap-2 text-xs pt-2 border-t border-zinc-800/80">
-            <span className="text-zinc-500 font-mono text-[11px]">Tool ID:</span>
-            <Badge variant="secondary" className="font-mono text-[11px]">
+            <span className="text-zinc-500 font-sans text-[11px]">Tool ID:</span>
+            <Badge variant="secondary" className="font-sans text-[11px]">
               {operation.id}
             </Badge>
 
-            <span className="text-zinc-500 font-mono text-[11px] ml-3">Risk Tier:</span>
+            <span className="text-zinc-500 font-sans text-[11px] ml-3">Risk Tier:</span>
             <Badge
               variant={
                 operation.riskTier === 'READ_ONLY'
@@ -48,7 +48,7 @@ export function EndpointDetail({ operation }: EndpointDetailProps) {
 
             {operation.tags.length > 0 && (
               <>
-                <span className="text-zinc-500 font-mono text-[11px] ml-3">Tags:</span>
+                <span className="text-zinc-500 font-sans text-[11px] ml-3">Tags:</span>
                 {operation.tags.map((t) => (
                   <Badge key={t} variant="outline" className="text-[10px]">
                     {t}
@@ -73,7 +73,7 @@ export function EndpointDetail({ operation }: EndpointDetailProps) {
         </CardHeader>
         <CardContent>
           {operation.parameters.length === 0 ? (
-            <div className="text-xs text-zinc-500 font-mono italic p-4 bg-zinc-950 rounded border border-zinc-800 text-center">
+            <div className="text-xs text-zinc-500 font-sans italic p-4 bg-zinc-950 rounded border border-zinc-800 text-center">
               No parameters required for this endpoint.
             </div>
           ) : (
@@ -81,7 +81,7 @@ export function EndpointDetail({ operation }: EndpointDetailProps) {
               {operation.parameters.map((param) => (
                 <div key={`${param.in}-${param.name}`} className="p-3 text-xs">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 font-mono">
+                    <div className="flex items-center gap-2 font-sans">
                       <span className="font-semibold text-white">{param.name}</span>
                       <span className="text-[10px] text-zinc-400 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-0.5">
                         {param.in}
@@ -119,7 +119,7 @@ export function EndpointDetail({ operation }: EndpointDetailProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <pre className="p-4 bg-black border border-zinc-800 rounded-md font-mono text-xs text-zinc-300 overflow-x-auto max-h-72">
+            <pre className="p-4 bg-black border border-zinc-800 rounded-md font-sans text-xs text-zinc-300 overflow-x-auto max-h-72">
               {JSON.stringify(operation.inputSchema, null, 2)}
             </pre>
           </CardContent>

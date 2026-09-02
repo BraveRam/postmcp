@@ -167,12 +167,12 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] max-w-5xl space-y-3 sm:space-y-4 font-mono">
+    <div className="flex flex-col h-[calc(100vh-140px)] max-w-5xl space-y-3 sm:space-y-4 font-sans">
       {/* Top Configuration Bar */}
       <Card className="p-3 bg-zinc-950 border-zinc-800">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs font-sans">
           <div className="flex items-center gap-2 sm:gap-3">
-            <span className="font-semibold text-white flex items-center gap-1.5 font-mono shrink-0">
+            <span className="font-semibold text-white flex items-center gap-1.5 font-sans shrink-0">
               <Globe className="h-4 w-4 text-zinc-300" />
               AI Gateway:
             </span>
@@ -180,14 +180,14 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
           </div>
 
           <div className="flex items-center justify-between sm:justify-end gap-3 pt-1 sm:pt-0 border-t sm:border-t-0 border-zinc-800">
-            <span className="font-mono text-zinc-400 text-xs">Dry-Run Simulation:</span>
+            <span className="font-sans text-zinc-400 text-xs">Dry-Run Simulation:</span>
             <Switch checked={dryRun} onChange={setDryRun} />
           </div>
         </div>
       </Card>
 
       {/* AI Elements: Conversation Container */}
-      <Card className="flex-1 flex flex-col overflow-hidden bg-black border-zinc-800 relative">
+      <Card className="flex-1 flex flex-col overflow-hidden bg-black border-zinc-800 relative font-sans">
         <Conversation>
           <ConversationContent ref={conversationContentRef} className="p-3 sm:p-5 space-y-4">
             {messages.length === 0 ? (
@@ -232,7 +232,7 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
             {isLoading && (
               <Message from="assistant">
                 <MessageContent from="assistant">
-                  <div className="flex items-center gap-2 font-mono text-zinc-400">
+                  <div className="flex items-center gap-2 font-sans text-zinc-400">
                     <Sparkles className="h-3.5 w-3.5 animate-pulse text-white" />
                     <span>Executing via {model}...</span>
                   </div>
