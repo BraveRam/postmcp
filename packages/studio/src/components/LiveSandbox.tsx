@@ -8,17 +8,45 @@ import { Badge } from './ui/Badge';
 import { Switch } from './ui/Switch';
 import { Card } from './ui/Card';
 import {
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+} from '@/components/ai-elements/conversation';
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+  MessageActions,
+  MessageAction,
+} from '@/components/ai-elements/message';
+import {
+  PromptInput,
+  PromptInputBody,
+  PromptInputTextarea,
+  PromptInputFooter,
+  PromptInputTools,
+  PromptInputButton,
+  PromptInputSubmit,
+  type PromptInputMessage,
+} from '@/components/ai-elements/prompt-input';
+import {
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolInput,
+  ToolOutput,
+} from '@/components/ai-elements/tool';
+import {
   Bot,
   User,
-  Send,
-  Terminal,
-  KeyRound,
-  Loader2,
-  Square,
-  Sparkles,
-  TrendingDown,
+  Copy,
+  Check,
+  RefreshCw,
   Globe,
   Settings2,
+  Sparkles,
+  Zap,
 } from 'lucide-react';
 
 interface LiveSandboxProps {
@@ -41,11 +69,15 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
   const [targetApiKey, setTargetApiKey] = useState('');
   const [dryRun, setDryRun] = useState<boolean>(true);
   const [showGatewayDrawer, setShowGatewayDrawer] = useState(false);
-  const [input, setInput] = useState(
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [toolCardOpen, setToolCardOpen] = useState<Record<string, boolean>>({});
+
+  const [inputPrompt, setInputPrompt] = useState(
     selectedOperation
       ? `Execute ${selectedOperation.id} with valid parameters`
       : 'List all resources and summarize status'
   );
+
   const [messages, setMessages] = useState<SandboxMessage[]>([
     {
       id: 'welcome',
@@ -53,12 +85,22 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
       content: `Hello! The **${spec.title}** MCP server is connected via **Vercel AI Gateway** with **${spec.operations.length} context-optimized tools** and **Dry-Run Protection Active**. Ask me anything to test live tool dispatching and Token Diet output.`,
     },
   ]);
+
   const [isLoading, setIsLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const conversationContentRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    if (conversationContentRef.current) {
+      conversationContentRef.current.scrollTo({
+        top: conversationContentRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollToBottom();
   }, [messages, isLoading]);
 
   const handleStop = () => {
@@ -68,11 +110,23 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
     }
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleCopy = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
-    const userText = input.trim();
-    setInput('');
+  const toggleToolCard = (id: string) => {
+    setToolCardOpen((prev) => ({
+      ...prev,
+      [id]: prev[id] === undefined ? false : !prev[id],
+    }));
+  };
+
+  const handleSubmit = async (message: PromptInputMessage) => {
+    if (!message.text.trim() || isLoading) return;
+
+    const userText = message.text.trim();
     const userMessage: SandboxMessage = {
       id: `msg_${Date.now()}`,
       role: 'user',
@@ -81,6 +135,7 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
 
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
+    setInputPrompt('');
     setIsLoading(true);
 
     const controller = new AbortController();
@@ -227,105 +282,114 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
         )}
       </Card>
 
-      {/* AI Elements: Message Scroller & Bubbles */}
-      <Card className="flex-1 flex flex-col overflow-hidden bg-black border-zinc-800">
-        <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-4">
-          {messages.map((m) => (
-            <div
-              key={m.id}
-              className={`flex gap-2.5 sm:gap-3.5 text-xs ${
-                m.role === 'user' ? 'justify-end' : 'justify-start'
-              }`}
-            >
-              {m.role === 'assistant' && (
-                <div className="h-7 w-7 rounded bg-white text-black flex items-center justify-center shrink-0 font-bold shadow-xs">
-                  <Bot className="h-4 w-4" />
-                </div>
-              )}
+      {/* AI Elements: Conversation Container */}
+      <Card className="flex-1 flex flex-col overflow-hidden bg-black border-zinc-800 relative">
+        <Conversation>
+          <ConversationContent className="p-3 sm:p-5 space-y-4">
+            {messages.length === 0 ? (
+              <ConversationEmptyState
+                title="PostMCP Live Sandbox"
+                description="Test live MCP tools synthesized from OpenAPI schemas via Vercel AI Gateway."
+              />
+            ) : (
+              messages.map((m) => (
+                <Message key={m.id} from={m.role}>
+                  <MessageContent from={m.role}>
+                    <MessageResponse>{m.content}</MessageResponse>
 
-              <div
-                className={`max-w-[88%] sm:max-w-[80%] rounded-lg p-3.5 space-y-2.5 leading-relaxed ${
-                  m.role === 'user'
-                    ? 'bg-zinc-900 border border-zinc-700 text-white shadow-xs'
-                    : 'bg-zinc-950 border border-zinc-800 text-zinc-200'
-                }`}
-              >
-                <div className="whitespace-pre-wrap">{m.content}</div>
+                    {/* AI Elements: Tool Component for MCP Tool Calls */}
+                    {m.toolCall && (
+                      <div className="mt-3">
+                        <Tool status="complete">
+                          <ToolHeader
+                            name={m.toolCall.name}
+                            status="complete"
+                            badge="MCP Tool Call"
+                            isOpen={toolCardOpen[m.id] !== false}
+                            onToggle={() => toggleToolCard(m.id)}
+                          />
+                          <ToolContent isOpen={toolCardOpen[m.id] !== false}>
+                            <ToolInput input={m.toolCall.args} />
+                            {m.result && (
+                              <ToolOutput
+                                output={m.result.text}
+                                savings={m.result.savings}
+                              />
+                            )}
+                          </ToolContent>
+                        </Tool>
+                      </div>
+                    )}
 
-                {/* AI Elements: Tool Invocation Card */}
-                {m.toolCall && (
-                  <div className="p-3 bg-black border border-zinc-800 rounded-md font-mono text-[11px] space-y-1.5 mt-2">
-                    <div className="flex items-center justify-between text-zinc-400 border-b border-zinc-800 pb-1.5">
-                      <span className="text-white font-semibold flex items-center gap-1.5 truncate">
-                        <Terminal className="h-3.5 w-3.5 text-white shrink-0" />
-                        <span className="truncate">Tool Invocation: {m.toolCall.name}</span>
-                      </span>
-                      <Badge variant="secondary" className="text-[9px] py-0 shrink-0 ml-1">
-                        MCP Tool Call
-                      </Badge>
-                    </div>
-                    <pre className="text-zinc-300 overflow-x-auto pt-1">
-                      {JSON.stringify(m.toolCall.args, null, 2)}
-                    </pre>
+                    {/* AI Elements: Message Actions */}
+                    {m.role === 'assistant' && (
+                      <MessageActions>
+                        <MessageAction
+                          onClick={() => handleCopy(m.id, m.content)}
+                          label={copiedId === m.id ? 'Copied' : 'Copy'}
+                        >
+                          {copiedId === m.id ? (
+                            <Check className="h-3 w-3 text-white" />
+                          ) : (
+                            <Copy className="h-3 w-3 text-zinc-400" />
+                          )}
+                        </MessageAction>
+                      </MessageActions>
+                    )}
+                  </MessageContent>
+                </Message>
+              ))
+            )}
+
+            {isLoading && (
+              <Message from="assistant">
+                <MessageContent from="assistant">
+                  <div className="flex items-center gap-2 font-mono text-zinc-400">
+                    <Sparkles className="h-3.5 w-3.5 animate-pulse text-white" />
+                    <span>Executing via Vercel AI Gateway...</span>
                   </div>
-                )}
+                </MessageContent>
+              </Message>
+            )}
+          </ConversationContent>
 
-                {/* AI Elements: Token Diet Tool Result */}
-                {m.result && (
-                  <div className="p-3 bg-black border border-zinc-800 rounded-md font-mono text-[11px] space-y-1.5">
-                    <div className="flex items-center justify-between text-zinc-400 border-b border-zinc-800 pb-1.5">
-                      <span className="text-white font-semibold">Response Payload</span>
-                      {m.result.savings !== undefined && (
-                        <span className="text-zinc-300 text-[10px] bg-zinc-900 border border-zinc-700 px-1.5 py-0.5 rounded flex items-center gap-1">
-                          <TrendingDown className="h-3 w-3" />
-                          Token Diet Savings: ~{m.result.savings}%
-                        </span>
-                      )}
-                    </div>
-                    <pre className="text-zinc-300 overflow-x-auto whitespace-pre pt-1 max-h-48">
-                      {m.result.text}
-                    </pre>
-                  </div>
-                )}
-              </div>
+          <ConversationScrollButton onClick={scrollToBottom} />
+        </Conversation>
 
-              {m.role === 'user' && (
-                <div className="h-7 w-7 rounded bg-zinc-800 text-white flex items-center justify-center shrink-0 border border-zinc-700">
-                  <User className="h-4 w-4" />
-                </div>
-              )}
-            </div>
-          ))}
-
-          {isLoading && (
-            <div className="flex items-center gap-2.5 text-xs text-zinc-400 font-mono pl-1">
-              <Loader2 className="h-4 w-4 animate-spin text-white shrink-0" />
-              <span className="truncate">Routing request via Vercel AI Gateway & executing tools...</span>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* AI Elements: Chat Input Bar */}
-        <div className="p-2.5 sm:p-3 border-t border-zinc-800 bg-zinc-950 flex gap-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-            placeholder="Ask the AI agent to invoke OpenAPI endpoints through Vercel AI Gateway..."
-            className="flex-1 bg-black text-xs font-mono"
-            disabled={isLoading}
-          />
-          {isLoading ? (
-            <Button onClick={handleStop} variant="outline" size="icon" className="shrink-0 text-white border-zinc-700">
-              <Square className="h-3.5 w-3.5 fill-white" />
-            </Button>
-          ) : (
-            <Button onClick={handleSend} disabled={!input.trim()} size="icon" className="shrink-0">
-              <Send className="h-3.5 w-3.5" />
-            </Button>
-          )}
+        {/* AI Elements: PromptInput Component */}
+        <div className="p-3 border-t border-zinc-800 bg-zinc-950">
+          <PromptInput onSubmit={handleSubmit}>
+            <PromptInputBody>
+              <PromptInputTextarea
+                value={inputPrompt}
+                onChange={(e) => setInputPrompt(e.target.value)}
+                placeholder="Ask the AI agent to invoke OpenAPI endpoints through Vercel AI Gateway..."
+                disabled={isLoading}
+              />
+            </PromptInputBody>
+            <PromptInputFooter>
+              <PromptInputTools>
+                <PromptInputButton
+                  onClick={() =>
+                    setInputPrompt(
+                      selectedOperation
+                        ? `Execute ${selectedOperation.id} with parameters`
+                        : 'List all resources and status'
+                    )
+                  }
+                  tooltip="Fill active operation prompt template"
+                >
+                  <Zap className="h-3.5 w-3.5 mr-1" />
+                  <span>Preset Prompt</span>
+                </PromptInputButton>
+              </PromptInputTools>
+              <PromptInputSubmit
+                status={isLoading ? 'streaming' : 'ready'}
+                onStop={handleStop}
+                disabled={!inputPrompt.trim() && !isLoading}
+              />
+            </PromptInputFooter>
+          </PromptInput>
         </div>
       </Card>
     </div>
