@@ -12,7 +12,7 @@ import {
   TOOL_SEARCH_INPUT_SCHEMA,
 } from '../jit/meta-tool.js';
 import { applyTokenDiet, TokenDietOptions } from '../tokendiet/index.js';
-import { getToolAnnotations } from '../safety/classifier.js';
+import { getToolAnnotations, getMacroAnnotations } from '../safety/classifier.js';
 import { simulateExecution } from '../safety/dryrun.js';
 import { executeMacro } from '../macro/executor.js';
 import { isImageContentType, formatImageContent } from '../media/image.js';
@@ -52,6 +52,7 @@ export class PostMcpServer {
     this.httpClient = new ResilientHttpClient({
       baseUrl: resolvedBaseUrl,
       auth: options.auth,
+      specSecuritySchemes: this.spec.securitySchemes,
     });
 
     this.server = new Server(
@@ -107,10 +108,12 @@ export class PostMcpServer {
       // Add macros
       if (this.spec.macros) {
         for (const macro of this.spec.macros) {
+          const annotations = getMacroAnnotations(macro);
           tools.push({
             name: `macro_${macro.name}`,
             description: `[COMPOSITE WORKFLOW] ${macro.description}`,
             inputSchema: macro.parameters as any,
+            annotations: annotations as any,
           });
         }
       }
@@ -246,15 +249,15 @@ export class PostMcpServer {
     }
 
     // Set Content-Type from spec if declared (Finding 10)
-    if (op.contentType && ['post', 'put', 'patch'].includes(op.method)) {
+    if (op.contentType && ['post', 'put', 'patch', 'delete'].includes(op.method)) {
       headerParams['Content-Type'] = op.contentType;
     }
 
-    // Build Request Body
+    // Build Request Body (support POST, PUT, PATCH, and DELETE with bodies)
     let bodyData: any = undefined;
     if (args['requestBody'] !== undefined) {
       bodyData = args['requestBody'];
-    } else if (['post', 'put', 'patch'].includes(op.method)) {
+    } else if (['post', 'put', 'patch', 'delete'].includes(op.method)) {
       const bodyObj: Record<string, any> = {};
       for (const [k, v] of Object.entries(args)) {
         if (!op.parameters.some((p) => p.name === k)) {
@@ -273,6 +276,26 @@ export class PostMcpServer {
         formParams.append(k, String(v));
       }
       bodyData = formParams.toString();
+    } else if (
+      (op.contentType === 'multipart/form-data' || headerParams['Content-Type']?.includes('multipart/form-data')) &&
+      bodyData &&
+      typeof bodyData === 'object' &&
+      !(bodyData instanceof FormData)
+    ) {
+      const formData = new FormData();
+      for (const [k, v] of Object.entries(bodyData)) {
+        if (v instanceof Blob || typeof v === 'string') {
+          formData.append(k, v);
+        } else if (Buffer.isBuffer(v)) {
+          formData.append(k, new Blob([new Uint8Array(v)]));
+        } else if (typeof v === 'object' && v !== null) {
+          formData.append(k, JSON.stringify(v));
+        } else if (v !== undefined && v !== null) {
+          formData.append(k, String(v));
+        }
+      }
+      bodyData = formData;
+      delete headerParams['Content-Type'];
     }
 
     const fullTargetUrl = `${this.httpClient.getBaseUrl()}/${path.replace(/^\//, '')}`;
@@ -292,6 +315,8 @@ export class PostMcpServer {
       params: queryParams,
       headers: headerParams,
       data: bodyData,
+      securityRequirement: op.security,
+      specSecuritySchemes: this.spec.securitySchemes,
     });
 
     if (response.isError) {

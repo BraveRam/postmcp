@@ -1,15 +1,41 @@
 import { JSONPath } from 'jsonpath-plus';
 
-function setNestedValue(obj: Record<string, any>, pathParts: string[], value: any): void {
-  let current = obj;
-  for (let i = 0; i < pathParts.length - 1; i++) {
-    const part = pathParts[i];
-    if (!current[part] || typeof current[part] !== 'object') {
-      current[part] = {};
-    }
-    current = current[part];
+function setByPointer(target: any, pointer: string, value: any): void {
+  const parts = pointer
+    .replace(/^\//, '')
+    .split('/')
+    .map((p) => p.replace(/~1/g, '/').replace(/~0/g, '~'));
+
+  if (parts.length === 0 || (parts.length === 1 && parts[0] === '')) {
+    return;
   }
-  current[pathParts[pathParts.length - 1]] = value;
+
+  let current = target;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const part = parts[i];
+    const nextPart = parts[i + 1];
+    const isNextNumeric = /^\d+$/.test(nextPart);
+
+    if (Array.isArray(current)) {
+      const idx = parseInt(part, 10);
+      if (!current[idx] || typeof current[idx] !== 'object') {
+        current[idx] = isNextNumeric ? [] : {};
+      }
+      current = current[idx];
+    } else {
+      if (!current[part] || typeof current[part] !== 'object') {
+        current[part] = isNextNumeric ? [] : {};
+      }
+      current = current[part];
+    }
+  }
+
+  const lastPart = parts[parts.length - 1];
+  if (Array.isArray(current)) {
+    current[parseInt(lastPart, 10)] = value;
+  } else {
+    current[lastPart] = value;
+  }
 }
 
 /**
@@ -21,47 +47,36 @@ export function applyFieldMask(data: any, fieldMasks?: string[]): any {
     return data;
   }
 
-  if (Array.isArray(data)) {
-    return data.map((item) => applyFieldMask(item, fieldMasks));
-  }
+  const isArray = Array.isArray(data);
+  const target = isArray ? [] : {};
+  let hasMatches = false;
 
-  const result: Record<string, any> = {};
+  for (const rawMask of fieldMasks) {
+    if (!rawMask || typeof rawMask !== 'string') continue;
 
-  for (const mask of fieldMasks) {
-    if (!mask.startsWith('$') && !mask.includes('.')) {
-      // Simple top-level field
-      if (data[mask] !== undefined) {
-        result[mask] = data[mask];
+    let path = rawMask.trim();
+    if (!path.startsWith('$')) {
+      if (isArray) {
+        path = path.startsWith('.') ? `$[*]${path}` : `$[*].${path}`;
+      } else {
+        path = path.startsWith('.') ? `$${path}` : `$.${path}`;
       }
-    } else if (!mask.startsWith('$') && mask.includes('.')) {
-      // Nested property path, e.g. "user.profile.name"
-      const pathParts = mask.split('.');
-      let current = data;
-      let found = true;
-      for (const part of pathParts) {
-        if (current === null || typeof current !== 'object' || current[part] === undefined) {
-          found = false;
-          break;
+    }
+
+    try {
+      const pointers = JSONPath({ path, json: data, resultType: 'pointer' });
+      const values = JSONPath({ path, json: data, resultType: 'value' });
+
+      if (Array.isArray(pointers) && pointers.length > 0) {
+        hasMatches = true;
+        for (let i = 0; i < pointers.length; i++) {
+          setByPointer(target, pointers[i], values[i]);
         }
-        current = current[part];
       }
-      if (found && current !== undefined) {
-        setNestedValue(result, pathParts, current);
-      }
-    } else {
-      // JSONPath expression starting with $
-      try {
-        const matches = JSONPath({ path: mask, json: data, wrap: false });
-        if (matches !== undefined) {
-          const cleanKey = mask.replace(/^\$\.?/, '').replace(/[^a-zA-Z0-9_]/g, '_');
-          result[cleanKey] = matches;
-        }
-      } catch {
-        // Ignored if invalid JSONPath
-      }
+    } catch {
+      // Ignored if invalid JSONPath expression
     }
   }
 
-  // Does not fail open: returns filtered object (or empty object if no fields matched)
-  return result;
+  return target;
 }

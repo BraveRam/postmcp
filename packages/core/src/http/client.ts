@@ -3,12 +3,20 @@ import { AuthConfig, applyAuth } from './auth.js';
 import { parseRetryAfter, sleepWithJitter, isIdempotentMethod } from './retry.js';
 import { pollAsyncJob } from './async202.js';
 
+import { SecurityScheme } from '../parser/types.js';
+
 export interface ResilientHttpClientOptions {
   baseUrl: string;
   auth?: AuthConfig;
   timeout?: number;
   maxRetries?: number;
   autoPoll202?: boolean;
+  specSecuritySchemes?: Record<string, SecurityScheme>;
+}
+
+export interface HttpRequestConfig extends AxiosRequestConfig {
+  securityRequirement?: Array<Record<string, string[]>>;
+  specSecuritySchemes?: Record<string, SecurityScheme>;
 }
 
 export interface HttpResponseResult {
@@ -28,6 +36,7 @@ export class ResilientHttpClient {
   private timeout: number;
   private maxRetries: number;
   private autoPoll202: boolean;
+  private specSecuritySchemes?: Record<string, SecurityScheme>;
 
   constructor(options: ResilientHttpClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, '');
@@ -35,6 +44,7 @@ export class ResilientHttpClient {
     this.timeout = options.timeout || 30000;
     this.maxRetries = options.maxRetries || 3;
     this.autoPoll202 = options.autoPoll202 !== false;
+    this.specSecuritySchemes = options.specSecuritySchemes;
   }
 
   public getBaseUrl(): string {
@@ -45,7 +55,7 @@ export class ResilientHttpClient {
     return this.auth;
   }
 
-  public async request(config: AxiosRequestConfig): Promise<HttpResponseResult> {
+  public async request(config: HttpRequestConfig): Promise<HttpResponseResult> {
     const headers: Record<string, string> = {
       Accept: 'application/json, text/plain, */*',
       ...(config.headers as any),
@@ -57,8 +67,9 @@ export class ResilientHttpClient {
       url = `${this.baseUrl}/${url.replace(/^\//, '')}`;
     }
 
-    // SSRF & Credential Protection (Finding 3)
-    applyAuth(headers, queryParams, this.auth, url, this.baseUrl);
+    // SSRF & Credential Protection (Finding 3) with per-operation security enforcement
+    const specSchemes = config.specSecuritySchemes || this.specSecuritySchemes;
+    applyAuth(headers, queryParams, this.auth, url, this.baseUrl, config.securityRequirement, specSchemes);
 
     // Dynamic responseType handling: always fetch as arraybuffer for binary/image or text/json (Finding 12)
     const axiosConfig: AxiosRequestConfig = {
@@ -73,6 +84,7 @@ export class ResilientHttpClient {
 
     let attempts = 0;
     let response: AxiosResponse | undefined;
+    let isPollingTimeout = false;
     const method = (config.method || 'GET').toUpperCase();
     const canRetry = isIdempotentMethod(method, headers);
 
@@ -94,6 +106,9 @@ export class ResilientHttpClient {
           if (response.status === 202 && this.autoPoll202) {
             const pollResult = await pollAsyncJob(response, this.baseUrl, axiosConfig);
             response = pollResult.response;
+            if (pollResult.timedOut) {
+              isPollingTimeout = true;
+            }
           }
         }
 
@@ -169,6 +184,7 @@ export class ResilientHttpClient {
       contentType,
       isError,
       errorMessage,
+      isPollingTimeout: isPollingTimeout ? true : undefined,
     };
   }
 }

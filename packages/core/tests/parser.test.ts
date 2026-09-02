@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import * as path from 'node:path';
-import { parseOpenAPI } from '../src/parser/index.js';
+import axios from 'axios';
+import { parseOpenAPI, dereferenceSpec } from '../src/parser/index.js';
 
 describe('OpenAPI Parser & AST Normalizer', () => {
   it('should parse and normalize a complex OpenAPI 3 spec with circular references', async () => {
@@ -91,5 +92,52 @@ describe('OpenAPI Parser & AST Normalizer', () => {
     expect(spec.macros).toBeDefined();
     expect(spec.macros?.length).toBe(1);
     expect(spec.macros?.[0].name).toBe('refundWorkflow');
+  });
+
+  it('should fetch and dereference remote HTTP $ref schemas', async () => {
+    const remoteSchemaDoc = {
+      User: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          name: { type: 'string' },
+        },
+      },
+    };
+
+    const spyGet = vi.spyOn(axios, 'get').mockResolvedValueOnce({
+      status: 200,
+      data: JSON.stringify(remoteSchemaDoc),
+    } as any);
+
+    const specJson = {
+      openapi: '3.0.0',
+      info: { title: 'Remote Ref Test', version: '1.0' },
+      paths: {
+        '/user': {
+          get: {
+            summary: 'Get user',
+            responses: {
+              '200': {
+                content: {
+                  'application/json': {
+                    schema: {
+                      $ref: 'https://example.com/schemas/models.json#/User',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const spec = await parseOpenAPI(specJson);
+    const userOp = spec.operations[0];
+    expect(userOp.responseSchema).toBeDefined();
+    expect((userOp.responseSchema as any).properties.name.type).toBe('string');
+
+    spyGet.mockRestore();
   });
 });

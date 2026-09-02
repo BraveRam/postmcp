@@ -1,6 +1,7 @@
 import { MacroDefinition } from '../parser/types.js';
-import { interpolateString, interpolateObject, extractExports } from './template.js';
+import { interpolateAction, interpolateObject, extractExports } from './template.js';
 import { ResilientHttpClient } from '../http/client.js';
+import { isSameOriginOrAllowed } from '../http/auth.js';
 
 export interface MacroExecutionResult {
   macroName: string;
@@ -26,11 +27,34 @@ export async function executeMacro(
   const stepResults: MacroExecutionResult['stepResults'] = [];
 
   for (const step of macro.steps) {
-    // Interpolate action string, e.g. "GET /v1/customers?email={{email}}"
-    const interpolatedAction = interpolateString(step.action, context);
+    // Interpolate action string with parameter URI-encoding
+    const interpolatedAction = interpolateAction(step.action, context);
     const [methodStr, pathWithQuery] = interpolatedAction.trim().split(/\s+/);
     const method = (methodStr || 'GET').toLowerCase();
     const interpolatedBody = step.body ? interpolateObject(step.body, context) : undefined;
+
+    // SSRF / Host Redirection Check
+    const isExternalUrl =
+      pathWithQuery.startsWith('http://') ||
+      pathWithQuery.startsWith('https://') ||
+      pathWithQuery.startsWith('//');
+
+    if (isExternalUrl) {
+      const isAllowed = isSameOriginOrAllowed(
+        pathWithQuery,
+        httpClient.getBaseUrl(),
+        httpClient.getAuthConfig()?.allowedExternalHosts
+      );
+      if (!isAllowed) {
+        return {
+          macroName: macro.name,
+          success: false,
+          stepResults,
+          finalData: null,
+          errorMessage: `SSRF Blocked: Macro step '${step.id}' attempted unauthorized cross-origin request to '${pathWithQuery}'`,
+        };
+      }
+    }
 
     // Dry-run simulation mode (Finding 2)
     if (isDryRun) {

@@ -80,4 +80,37 @@ describe('JIT Dynamic Tool Router', () => {
     registry.resetActiveTools();
     expect(registry.getActiveOperations().length).toBe(0);
   });
+
+  it('should promote accessed tools in LRU order upon retrieval and evict least recently used', () => {
+    const registry = new ToolRegistry(operations, { forceJIT: true, maxMountedTools: 2 });
+
+    registry.mountToolsByQuery('refund'); // mounts createRefund
+    registry.mountToolsByQuery('invoice'); // mounts listInvoices
+    expect(registry.getActiveOperations().map((o) => o.id)).toEqual(['createRefund', 'listInvoices']);
+
+    // Access createRefund -> promotes createRefund to MRU
+    const op = registry.getOperation('createRefund');
+    expect(op).toBeDefined();
+
+    // Now mount createUser -> should evict listInvoices (since createRefund was recently accessed)
+    registry.mountToolsByQuery('user');
+    expect(registry.getActiveOperations().length).toBe(2);
+    expect(registry.isOperationMounted('createRefund')).toBe(true);
+    expect(registry.isOperationMounted('listInvoices')).toBe(false); // listInvoices was evicted!
+    expect(registry.isOperationMounted('createUser')).toBe(true);
+  });
+
+  it('should preserve top-ranked search results when search returns more matches than capacity', () => {
+    const registry = new ToolRegistry(operations, { forceJIT: true, maxMountedTools: 2 });
+
+    // Search query matches multiple tools (createRefund, listInvoices, createUser)
+    const mounted = registry.mountToolsByQuery('account user refund invoice', undefined, 5);
+
+    // Should mount and return at most 2 tools, and they must be active
+    expect(mounted.length).toBeLessThanOrEqual(2);
+    expect(registry.getActiveOperations().length).toBe(2);
+    for (const m of mounted) {
+      expect(registry.isOperationMounted(m.id)).toBe(true);
+    }
+  });
 });

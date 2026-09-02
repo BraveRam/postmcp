@@ -89,4 +89,38 @@ describe('Token Diet Engine', () => {
     expect(result.isTruncated).toBe(true);
     expect(result.dietEstimatedTokens).toBeLessThanOrEqual(100);
   });
+
+  it('should strictly honor maxTokens: 1 ceiling without crashing', () => {
+    const sampleData = {
+      message: 'Hello World',
+      items: [1, 2, 3, 4, 5],
+    };
+
+    const result = applyTokenDiet(sampleData, { maxTokens: 1 });
+    expect(result.isTruncated).toBe(true);
+    expect(result.dietEstimatedTokens).toBeLessThanOrEqual(1);
+    expect(result.text.length).toBeLessThanOrEqual(3);
+  });
+
+  it('should support JSONPath root-array expressions and preserve array structure', () => {
+    const rootArray = [
+      { id: 'usr_1', name: 'Alice', secret: 'hide1' },
+      { id: 'usr_2', name: 'Bob', secret: 'hide2' },
+    ];
+
+    // Array root with $[*].id
+    const masked1 = applyFieldMask(rootArray, ['$[*].id']);
+    expect(masked1).toEqual([{ id: 'usr_1' }, { id: 'usr_2' }]);
+
+    // Array root with multiple fields
+    const masked2 = applyFieldMask(rootArray, ['$[*].id', '$[*].name']);
+    expect(masked2).toEqual([
+      { id: 'usr_1', name: 'Alice' },
+      { id: 'usr_2', name: 'Bob' },
+    ]);
+
+    // Simple field name on array root
+    const masked3 = applyFieldMask(rootArray, ['name']);
+    expect(masked3).toEqual([{ name: 'Alice' }, { name: 'Bob' }]);
+  });
 });

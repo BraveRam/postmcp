@@ -1,10 +1,39 @@
 import axios, { AxiosResponse, AxiosRequestConfig } from 'axios';
 import { sleepWithJitter } from './retry.js';
-import { isSameOriginOrAllowed } from './auth.js';
+import { isSameOriginOrAllowed, stripSensitiveAuth } from './auth.js';
 
 export interface AsyncPollResult {
   response: AxiosResponse;
   timedOut: boolean;
+}
+
+function parseBodyAsObject(data: any): any {
+  if (data === null || data === undefined) return null;
+  if (Buffer.isBuffer(data)) {
+    try {
+      return JSON.parse(data.toString('utf-8'));
+    } catch {
+      return null;
+    }
+  }
+  if (data instanceof ArrayBuffer) {
+    try {
+      return JSON.parse(Buffer.from(data).toString('utf-8'));
+    } catch {
+      return null;
+    }
+  }
+  if (typeof data === 'string') {
+    try {
+      return JSON.parse(data);
+    } catch {
+      return null;
+    }
+  }
+  if (typeof data === 'object') {
+    return data;
+  }
+  return null;
 }
 
 export async function pollAsyncJob(
@@ -20,12 +49,23 @@ export async function pollAsyncJob(
     statusUrl = locationHeader.startsWith('http')
       ? locationHeader
       : `${baseUrl.replace(/\/$/, '')}/${locationHeader.replace(/^\//, '')}`;
-  } else if (initialResponse.data && typeof initialResponse.data === 'object') {
-    const jobData = initialResponse.data;
-    if (jobData.status_url && typeof jobData.status_url === 'string') {
-      statusUrl = jobData.status_url.startsWith('http')
-        ? jobData.status_url
-        : `${baseUrl.replace(/\/$/, '')}/${jobData.status_url.replace(/^\//, '')}`;
+  } else {
+    const jobData = parseBodyAsObject(initialResponse.data);
+    if (jobData && typeof jobData === 'object') {
+      const candidate =
+        jobData.status_url ||
+        jobData.statusUrl ||
+        jobData.job_url ||
+        jobData.jobUrl ||
+        jobData.location ||
+        (jobData.job_id ? `/jobs/${jobData.job_id}` : undefined) ||
+        (jobData.id && (jobData.status || jobData.state) ? `/jobs/${jobData.id}` : undefined);
+
+      if (candidate && typeof candidate === 'string') {
+        statusUrl = candidate.startsWith('http')
+          ? candidate
+          : `${baseUrl.replace(/\/$/, '')}/${candidate.replace(/^\//, '')}`;
+      }
     }
   }
 
@@ -37,9 +77,7 @@ export async function pollAsyncJob(
   // Cross-origin auth header stripping (Finding 19)
   const pollHeaders: Record<string, any> = { ...requestConfig.headers };
   if (!isSameOriginOrAllowed(statusUrl, baseUrl)) {
-    delete pollHeaders['Authorization'];
-    delete pollHeaders['authorization'];
-    delete pollHeaders['Cookie'];
+    stripSensitiveAuth(pollHeaders);
   }
 
   const startTime = Date.now();
@@ -53,22 +91,29 @@ export async function pollAsyncJob(
         headers: pollHeaders,
         timeout: 5000,
         validateStatus: () => true,
+        responseType: requestConfig.responseType || 'arraybuffer',
       });
 
       if (statusRes.status === 200 || statusRes.status === 201) {
-        const data = statusRes.data;
+        const data = parseBodyAsObject(statusRes.data) || statusRes.data;
         if (data && typeof data === 'object') {
-          const status = (data.status || data.state || '').toLowerCase();
-          if (
-            status === 'completed' ||
-            status === 'succeeded' ||
-            status === 'finished' ||
-            status === 'success' ||
-            status === 'done'
-          ) {
-            return { response: statusRes, timedOut: false };
-          }
-          if (status === 'failed' || status === 'error' || status === 'cancelled') {
+          const status = String(data.status || data.state || '').toLowerCase();
+          const inProgressStatuses = [
+            'pending',
+            'in_progress',
+            'in-progress',
+            'inprogress',
+            'running',
+            'processing',
+            'queued',
+            'started',
+            'active',
+          ];
+
+          if (inProgressStatuses.includes(status)) {
+            // Still in progress, continue polling loop
+          } else {
+            // Completed, succeeded, failed, or payload without status field
             return { response: statusRes, timedOut: false };
           }
         } else {

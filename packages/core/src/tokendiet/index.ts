@@ -30,7 +30,7 @@ export function estimateTokenCount(str: string): number {
 
 export function applyTokenDiet(data: any, options: TokenDietOptions = {}): TokenDietResult {
   const enabled = options.enabled !== false;
-  const maxTokens = options.maxTokens || 2500;
+  const maxTokens = options.maxTokens !== undefined ? options.maxTokens : 2500;
   const convertToMarkdown = options.convertToMarkdownTable !== false;
   const maxProseLength = options.maxProseLength || 1000;
 
@@ -97,8 +97,14 @@ export function applyTokenDiet(data: any, options: TokenDietOptions = {}): Token
   if (textOutput.length > maxChars) {
     isTruncated = true;
     const suffix = `\n\n... [Response capped at ~${maxTokens} tokens. Use pagination or filters to view more.]`;
-    const sliceLen = Math.max(0, maxChars - suffix.length);
-    textOutput = textOutput.slice(0, sliceLen) + suffix;
+    if (maxChars <= 0) {
+      textOutput = '';
+    } else if (maxChars <= suffix.length) {
+      textOutput = textOutput.slice(0, maxChars);
+    } else {
+      const sliceLen = maxChars - suffix.length;
+      textOutput = textOutput.slice(0, sliceLen) + suffix;
+    }
   }
 
   const dietTokens = estimateTokenCount(textOutput);

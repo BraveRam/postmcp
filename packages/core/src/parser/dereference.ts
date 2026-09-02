@@ -1,9 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import axios from 'axios';
 import YAML from 'yaml';
 
 /**
- * Safe RFC 6901 JSON Schema / OpenAPI $ref dereferencer with circular reference protection.
+ * Safe RFC 6901 JSON Schema / OpenAPI $ref dereferencer with circular reference protection,
+ * remote HTTP $ref fetching, and relative nested file resolution.
  */
 
 function decodeJsonPointerPart(part: string): string {
@@ -11,8 +13,8 @@ function decodeJsonPointerPart(part: string): string {
   return decodeURIComponent(part).replace(/~1/g, '/').replace(/~0/g, '~');
 }
 
-function resolvePointer(root: any, pointer: string): any {
-  if (pointer === '#' || pointer === '') {
+export function resolvePointer(root: any, pointer: string): any {
+  if (pointer === '#' || pointer === '' || !pointer) {
     return root;
   }
 
@@ -33,19 +35,56 @@ function resolvePointer(root: any, pointer: string): any {
   return current;
 }
 
-export function dereferenceSpec(rawDoc: any, basePath?: string): any {
+export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<any> {
   const root = JSON.parse(JSON.stringify(rawDoc)); // Clone
   const visitedPaths = new Map<string, number>();
-  const externalDocCache = new Map<string, any>();
+  const docCache = new Map<string, { doc: any; base: string }>();
 
-  function loadExternalFile(filePath: string): any {
-    if (externalDocCache.has(filePath)) {
-      return externalDocCache.get(filePath);
+  async function loadDoc(uriOrPath: string, currentBase?: string): Promise<{ doc: any; base: string }> {
+    // Check if remote URL
+    const isRemote =
+      uriOrPath.startsWith('http://') ||
+      uriOrPath.startsWith('https://') ||
+      (currentBase && (currentBase.startsWith('http://') || currentBase.startsWith('https://')));
+
+    if (isRemote) {
+      let fullUrl = uriOrPath;
+      if (!uriOrPath.startsWith('http://') && !uriOrPath.startsWith('https://') && currentBase) {
+        fullUrl = new URL(uriOrPath, currentBase.endsWith('/') ? currentBase : `${currentBase}/`).toString();
+      }
+
+      if (docCache.has(fullUrl)) {
+        return docCache.get(fullUrl)!;
+      }
+
+      const res = await axios.get(fullUrl, {
+        headers: { Accept: 'application/json, application/yaml, text/yaml, */*' },
+        responseType: 'text',
+      });
+
+      let parsed: any;
+      try {
+        parsed = JSON.parse(res.data);
+      } catch {
+        parsed = YAML.parse(res.data);
+      }
+
+      const newBase = new URL('.', fullUrl).toString();
+      const result = { doc: parsed, base: newBase };
+      docCache.set(fullUrl, result);
+      return result;
     }
-    const resolvedPath = basePath ? path.resolve(basePath, filePath) : path.resolve(filePath);
+
+    // Local file path
+    const resolvedPath = currentBase ? path.resolve(currentBase, uriOrPath) : path.resolve(uriOrPath);
+    if (docCache.has(resolvedPath)) {
+      return docCache.get(resolvedPath)!;
+    }
+
     if (!fs.existsSync(resolvedPath)) {
-      throw new Error(`External $ref file not found: ${filePath} (resolved: ${resolvedPath})`);
+      throw new Error(`External $ref file not found: ${uriOrPath} (resolved: ${resolvedPath})`);
     }
+
     const content = fs.readFileSync(resolvedPath, 'utf-8');
     let parsed: any;
     try {
@@ -53,23 +92,27 @@ export function dereferenceSpec(rawDoc: any, basePath?: string): any {
     } catch {
       parsed = YAML.parse(content);
     }
-    externalDocCache.set(filePath, parsed);
-    return parsed;
+
+    const newBase = path.dirname(resolvedPath);
+    const result = { doc: parsed, base: newBase };
+    docCache.set(resolvedPath, result);
+    return result;
   }
 
-  function walk(node: any, currentPath: string = '#'): any {
+  async function walk(node: any, currentDocRoot: any, currentBase?: string, currentPath: string = '#'): Promise<any> {
     if (node === null || typeof node !== 'object') {
       return node;
     }
 
     if (Array.isArray(node)) {
-      return node.map((item, index) => walk(item, `${currentPath}/${index}`));
+      return Promise.all(node.map((item, index) => walk(item, currentDocRoot, currentBase, `${currentPath}/${index}`)));
     }
 
     // Handle $ref
     if (typeof node.$ref === 'string') {
       const ref = node.$ref;
-      const visits = visitedPaths.get(ref) || 0;
+      const scopedRefKey = `${currentBase || 'root'}::${ref}`;
+      const visits = visitedPaths.get(scopedRefKey) || 0;
 
       // Circular reference protection: terminate at depth 2
       if (visits >= 2) {
@@ -81,47 +124,61 @@ export function dereferenceSpec(rawDoc: any, basePath?: string): any {
       }
 
       let target: any = null;
+      let targetDocRoot = currentDocRoot;
+      let targetBase = currentBase;
 
-      if (ref.startsWith('#/')) {
-        target = resolvePointer(root, ref);
-      } else if (ref.includes('#/')) {
-        // File reference with pointer: e.g. "./schemas.yaml#/User"
-        const [filePart, pointerPart] = ref.split('#');
+      if (ref === '#' || ref.startsWith('#/')) {
+        target = resolvePointer(currentDocRoot, ref);
+      } else if (ref.includes('#')) {
+        const [uriPart, pointerPart] = ref.split('#');
         try {
-          const extDoc = loadExternalFile(filePart);
-          target = resolvePointer(extDoc, `#${pointerPart}`);
+          const loaded = await loadDoc(uriPart, currentBase);
+          const pointer = pointerPart ? (pointerPart.startsWith('/') ? `#${pointerPart}` : `#/${pointerPart}`) : '#';
+          target = resolvePointer(loaded.doc, pointer);
+          targetDocRoot = loaded.doc;
+          targetBase = loaded.base;
         } catch (err: any) {
           throw new Error(`Failed to dereference external $ref '${ref}': ${err.message}`);
         }
-      } else if (!ref.startsWith('http://') && !ref.startsWith('https://')) {
-        // Entire file reference: e.g. "./models.json"
+      } else {
+        // Entire document reference
         try {
-          target = loadExternalFile(ref);
+          const loaded = await loadDoc(ref, currentBase);
+          target = loaded.doc;
+          targetDocRoot = loaded.doc;
+          targetBase = loaded.base;
         } catch (err: any) {
           throw new Error(`Failed to dereference external $ref '${ref}': ${err.message}`);
         }
       }
 
-      if (!target) {
+      if (target === undefined || target === null) {
         throw new Error(`Unresolvable $ref pointer: '${ref}'`);
       }
 
-      visitedPaths.set(ref, visits + 1);
-      const resolved = walk(target, ref);
-      visitedPaths.set(ref, visits); // backtrack
+      visitedPaths.set(scopedRefKey, visits + 1);
+      const resolved = await walk(target, targetDocRoot, targetBase, ref);
+      visitedPaths.set(scopedRefKey, visits); // backtrack
 
-      // Merge remaining properties alongside $ref
+      // Merge remaining sibling properties alongside $ref if resolved is an object
       const { $ref: _, ...rest } = node;
-      return { ...resolved, ...walk(rest, currentPath) };
+      if (Object.keys(rest).length === 0) {
+        return resolved;
+      }
+      const restResolved = await walk(rest, currentDocRoot, currentBase, currentPath);
+      if (typeof resolved === 'object' && resolved !== null && !Array.isArray(resolved)) {
+        return { ...resolved, ...restResolved };
+      }
+      return resolved;
     }
 
     // Handle object properties
     const result: Record<string, any> = {};
     for (const [key, value] of Object.entries(node)) {
-      result[key] = walk(value, `${currentPath}/${key}`);
+      result[key] = await walk(value, currentDocRoot, currentBase, `${currentPath}/${key}`);
     }
     return result;
   }
 
-  return walk(root);
+  return walk(root, root, basePath);
 }

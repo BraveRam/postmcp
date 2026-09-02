@@ -53,15 +53,28 @@ export class ToolRegistry {
     return Array.from(this.activeOperations.values());
   }
 
+  private promoteTool(id: string): void {
+    const idx = this.mountedOrder.indexOf(id);
+    if (idx !== -1) {
+      this.mountedOrder.splice(idx, 1);
+      this.mountedOrder.push(id);
+    }
+  }
+
   /**
    * Retrieves an operation only if it is currently accessible.
    * In JIT mode, unmounted operations are strictly inaccessible.
+   * Promotes the accessed tool to the MRU position (true LRU).
    */
   public getOperation(id: string): NormalizedOperation | undefined {
     if (!this.isJITMode) {
       return this.allOperations.get(id);
     }
-    return this.activeOperations.get(id);
+    const op = this.activeOperations.get(id);
+    if (op) {
+      this.promoteTool(id);
+    }
+    return op;
   }
 
   public isOperationMounted(id: string): boolean {
@@ -74,12 +87,17 @@ export class ToolRegistry {
 
   public mountToolsByQuery(query: string, tag?: string, limit: number = 5): NormalizedOperation[] {
     const matched = this.index.search(query, tag, limit);
+    // Only mount up to maxMountedTools best matches so lower ranked results don't evict higher ranked results
+    const toolsToMount = matched.slice(0, this.maxMountedTools);
     let changed = false;
 
-    for (const op of matched) {
-      if (!this.activeOperations.has(op.id)) {
+    for (const op of toolsToMount) {
+      if (this.activeOperations.has(op.id)) {
+        // Promote already mounted tool in LRU order
+        this.promoteTool(op.id);
+      } else {
         // Enforce LRU capacity limit
-        if (this.mountedOrder.length >= this.maxMountedTools) {
+        while (this.mountedOrder.length >= this.maxMountedTools) {
           const evictedId = this.mountedOrder.shift();
           if (evictedId) {
             this.activeOperations.delete(evictedId);
@@ -96,7 +114,7 @@ export class ToolRegistry {
       this.onToolsChangedCallback();
     }
 
-    return matched;
+    return toolsToMount.filter((op) => this.activeOperations.has(op.id));
   }
 
   public unmountTool(id: string): boolean {
