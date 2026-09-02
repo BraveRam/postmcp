@@ -2,8 +2,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { NormalizedSpec, NormalizedOperation } from '@postmcp/types';
-import { Button } from './ui/Button';
-import { Input } from './ui/Input';
 import { Badge } from './ui/Badge';
 import { Switch } from './ui/Switch';
 import { Card } from './ui/Card';
@@ -39,12 +37,9 @@ import {
 } from '@/components/ai-elements/tool';
 import {
   Bot,
-  User,
   Copy,
   Check,
-  RefreshCw,
   Globe,
-  Settings2,
   Sparkles,
   Zap,
 } from 'lucide-react';
@@ -64,11 +59,7 @@ interface SandboxMessage {
 
 export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
   const [model, setModel] = useState('openai/gpt-4o');
-  const [gatewayApiKey, setGatewayApiKey] = useState('');
-  const [gatewayUrl, setGatewayUrl] = useState('https://ai-gateway.vercel.app/v1');
-  const [targetApiKey, setTargetApiKey] = useState('');
   const [dryRun, setDryRun] = useState<boolean>(true);
-  const [showGatewayDrawer, setShowGatewayDrawer] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [toolCardOpen, setToolCardOpen] = useState<Record<string, boolean>>({});
 
@@ -142,13 +133,6 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
     abortControllerRef.current = controller;
 
     try {
-      const authConfig = targetApiKey.trim()
-        ? {
-            bearerToken: targetApiKey.trim(),
-            apiKey: { name: 'Authorization', value: targetApiKey.trim(), in: 'header' as const },
-          }
-        : undefined;
-
       const res = await fetch('/api/sandbox', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -156,10 +140,6 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
         body: JSON.stringify({
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
           model,
-          apiKey: gatewayApiKey.trim() || undefined,
-          gatewayUrl: gatewayUrl.trim() || undefined,
-          targetApiKey: targetApiKey.trim() || undefined,
-          authConfig,
           dryRun,
           spec,
           selectedOperationId: selectedOperation?.id,
@@ -203,7 +183,7 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
       {/* Top Configuration Bar */}
       <Card className="p-3 bg-zinc-950 border-zinc-800">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <span className="font-semibold text-white flex items-center gap-1.5 font-mono shrink-0">
               <Globe className="h-4 w-4 text-zinc-300" />
               AI Gateway:
@@ -221,17 +201,6 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
               <option value="google/gemini-1.5-flash">google/gemini-1.5-flash</option>
               <option value="meta/llama-3.3-70b">meta/llama-3.3-70b</option>
             </select>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowGatewayDrawer(!showGatewayDrawer)}
-              className={showGatewayDrawer ? 'border-white text-white' : ''}
-            >
-              <Settings2 className="h-3.5 w-3.5 mr-1" />
-              <span className="hidden sm:inline">Gateway Settings</span>
-              <span className="sm:hidden">Settings</span>
-            </Button>
           </div>
 
           <div className="flex items-center justify-between sm:justify-end gap-3 pt-1 sm:pt-0 border-t sm:border-t-0 border-zinc-800">
@@ -239,53 +208,12 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
             <Switch checked={dryRun} onChange={setDryRun} />
           </div>
         </div>
-
-        {/* Vercel AI Gateway Drawer */}
-        {showGatewayDrawer && (
-          <div className="mt-3 pt-3 border-t border-zinc-800 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
-            <div>
-              <label className="text-zinc-400 block mb-1">
-                Vercel AI Gateway API Key
-              </label>
-              <Input
-                type="password"
-                value={gatewayApiKey}
-                onChange={(e) => setGatewayApiKey(e.target.value)}
-                placeholder="vck_... (or AI_GATEWAY_API_KEY)"
-                className="text-xs bg-black"
-              />
-            </div>
-            <div>
-              <label className="text-zinc-400 block mb-1">
-                AI Gateway Base URL
-              </label>
-              <Input
-                value={gatewayUrl}
-                onChange={(e) => setGatewayUrl(e.target.value)}
-                placeholder="https://ai-gateway.vercel.app/v1"
-                className="text-xs bg-black"
-              />
-            </div>
-            <div>
-              <label className="text-zinc-400 block mb-1">
-                Target API Key (for live GETs)
-              </label>
-              <Input
-                type="password"
-                value={targetApiKey}
-                onChange={(e) => setTargetApiKey(e.target.value)}
-                placeholder="Upstream API key"
-                className="text-xs bg-black"
-              />
-            </div>
-          </div>
-        )}
       </Card>
 
       {/* AI Elements: Conversation Container */}
       <Card className="flex-1 flex flex-col overflow-hidden bg-black border-zinc-800 relative">
         <Conversation>
-          <ConversationContent className="p-3 sm:p-5 space-y-4">
+          <ConversationContent ref={conversationContentRef} className="p-3 sm:p-5 space-y-4">
             {messages.length === 0 ? (
               <ConversationEmptyState
                 title="PostMCP Live Sandbox"

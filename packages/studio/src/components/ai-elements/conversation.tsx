@@ -7,32 +7,40 @@ import { Button } from '@/components/ui/Button';
 
 export interface ConversationProps extends React.HTMLAttributes<HTMLDivElement> {}
 
-export function Conversation({ className, children, ...props }: ConversationProps) {
-  return (
-    <div
-      className={cn('relative flex-1 flex flex-col h-full overflow-hidden w-full', className)}
-      {...props}
-    >
-      {children}
-    </div>
-  );
-}
+export const Conversation = React.forwardRef<HTMLDivElement, ConversationProps>(
+  ({ className, children, ...props }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={cn('relative flex-1 flex flex-col h-full overflow-hidden w-full', className)}
+        {...props}
+      >
+        {children}
+      </div>
+    );
+  }
+);
+Conversation.displayName = 'Conversation';
 
 export interface ConversationContentProps extends React.HTMLAttributes<HTMLDivElement> {}
 
-export function ConversationContent({ className, children, ...props }: ConversationContentProps) {
-  return (
-    <div
-      className={cn(
-        'flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 scroll-smooth',
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </div>
-  );
-}
+export const ConversationContent = React.forwardRef<HTMLDivElement, ConversationContentProps>(
+  ({ className, children, ...props }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          'flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 scroll-smooth',
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </div>
+    );
+  }
+);
+ConversationContent.displayName = 'ConversationContent';
 
 export interface ConversationEmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
   title?: string;
@@ -79,7 +87,7 @@ export function ConversationScrollButton({
       size="icon"
       onClick={onClick}
       className={cn(
-        'absolute bottom-3 right-4 h-8 w-8 rounded-full bg-zinc-900/90 border-zinc-700 text-white shadow-lg backdrop-blur hover:bg-zinc-800',
+        'absolute bottom-3 right-4 h-8 w-8 rounded-full bg-zinc-900/90 border-zinc-700 text-white shadow-lg backdrop-blur hover:bg-zinc-800 cursor-pointer',
         className
       )}
       {...props}
