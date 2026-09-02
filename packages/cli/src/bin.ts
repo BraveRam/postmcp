@@ -86,18 +86,19 @@ export function createCli(): Command {
   const presetsCmd = program
     .command('presets')
     .description('Manage and explore bundled top 50+ API presets')
-    .action(() => {
-      listPresetsCommand().catch((err) => {
+    .argument('[filter]', 'Optional search query or category filter')
+    .action((filter) => {
+      listPresetsCommand(filter).catch((err) => {
         console.error(pc.red(`Fatal error: ${err.message}`));
         process.exit(1);
       });
     });
 
   presetsCmd
-    .command('list')
+    .command('list [filter]')
     .description('List all available presets in catalog')
-    .action(() => {
-      listPresetsCommand().catch((err) => {
+    .action((filter) => {
+      listPresetsCommand(filter).catch((err) => {
         console.error(pc.red(`Fatal error: ${err.message}`));
         process.exit(1);
       });

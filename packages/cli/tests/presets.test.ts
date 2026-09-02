@@ -9,7 +9,7 @@ describe('Presets Catalog & Resolver', () => {
     expect(BUNDLED_PRESETS['slack']).toBeDefined();
     expect(BUNDLED_PRESETS['petstore']).toBeDefined();
 
-    expect(BUNDLED_PRESETS['stripe'].category).toBe('Payments & Billing');
+    expect(BUNDLED_PRESETS['stripe'].category).toBe('Payments & Commerce');
     expect(BUNDLED_PRESETS['github'].defaultBaseUrl).toBe('https://api.github.com');
   });
 
