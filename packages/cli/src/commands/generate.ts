@@ -1,15 +1,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { parseOpenAPI } from '@postmcp/core';
+import type { GenerateCommandOptions } from '@postmcp/types';
 import { resolvePresetSpec } from '../presets/index.js';
 import { generateTypeScriptProject } from '../generators/typescript.js';
 import { generatePythonProject } from '../generators/python.js';
 import pc from 'picocolors';
 
-export interface GenerateCommandOptions {
-  lang?: string;
-  out?: string;
-}
+export type { GenerateCommandOptions };
 
 export async function generateCommand(specArg: string, options: GenerateCommandOptions): Promise<void> {
   let specPath: string | object = specArg;

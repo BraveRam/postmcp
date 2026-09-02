@@ -1,23 +1,10 @@
 import { parseOpenAPI, startStdioServer, startHttpServer, AuthConfig, NormalizedSpec } from '@postmcp/core';
+import type { RunCommandOptions } from '@postmcp/types';
 import { loadEnvFile, loadConfigFile, parseHeaderFlags, parseApiKeyFlag } from '../config/loader.js';
 import { resolvePresetSpec, getPreset, Preset } from '../presets/index.js';
 import pc from 'picocolors';
 
-export interface RunCommandOptions {
-  baseUrl?: string;
-  transport?: 'stdio' | 'http';
-  port?: string;
-  host?: string;
-  header?: string[];
-  bearer?: string;
-  apiKey?: string;
-  jit?: boolean;
-  dryRun?: boolean;
-  tokenDiet?: boolean;
-  maxTokens?: string;
-  envFile?: string;
-  config?: string;
-}
+export type { RunCommandOptions };
 
 export async function runCommand(specArg: string, options: RunCommandOptions): Promise<void> {
   // 1. Load environment and configuration files

@@ -2,17 +2,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { parseOpenAPI } from '@postmcp/core';
+import type { ExportCommandOptions } from '@postmcp/types';
 import { resolvePresetSpec } from '../presets/index.js';
 import pc from 'picocolors';
 
-export interface ExportCommandOptions {
-  target?: 'cursor' | 'claude' | 'windsurf' | 'all';
-  client?: 'cursor' | 'claude' | 'windsurf' | 'all';
-  write?: boolean;
-  env?: string[];
-  bearer?: string;
-  baseUrl?: string;
-}
+export type { ExportCommandOptions };
 
 export function getClientConfigPath(client: 'cursor' | 'claude' | 'windsurf'): string {
   const home = os.homedir();

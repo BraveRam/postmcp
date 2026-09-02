@@ -23,6 +23,9 @@ importers:
       '@postmcp/presets':
         specifier: workspace:*
         version: link:../presets
+      '@postmcp/types':
+        specifier: workspace:*
+        version: link:../types
       axios:
         specifier: ^1.20.0
         version: 1.20.0
@@ -60,6 +63,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.6.1
         version: 1.30.0(zod@3.25.76)
+      '@postmcp/types':
+        specifier: workspace:*
+        version: link:../types
       axios:
         specifier: ^1.7.9
         version: 1.20.0
@@ -96,6 +102,10 @@ importers:
         version: 3.2.7(@types/node@22.20.1)(yaml@2.9.0)
 
   packages/presets:
+    dependencies:
+      '@postmcp/types':
+        specifier: workspace:*
+        version: link:../types
     devDependencies:
       '@types/node':
         specifier: ^22.13.5
@@ -109,6 +119,21 @@ importers:
       vitest:
         specifier: ^3.0.7
         version: 3.2.7(@types/node@22.20.1)(yaml@2.9.0)
+
+  packages/types:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.13.5
+        version: 22.20.1
+      axios:
+        specifier: ^1.8.1
+        version: 1.20.0
+      tsup:
+        specifier: ^8.4.0
+        version: 8.5.1(postcss@8.5.26)(typescript@5.9.3)(yaml@2.9.0)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
 
 packages:
 

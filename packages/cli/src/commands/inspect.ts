@@ -1,11 +1,10 @@
 import { parseOpenAPI } from '@postmcp/core';
+import type { InspectCommandOptions } from '@postmcp/types';
 import { resolvePresetSpec, getPreset } from '../presets/index.js';
 import Table from 'cli-table3';
 import pc from 'picocolors';
 
-export interface InspectCommandOptions {
-  json?: boolean;
-}
+export type { InspectCommandOptions };
 
 export function estimateSpecTokenSavings(spec: any): { rawTokens: number; optimizedTokens: number; savingsPct: number } {
   const rawTokensPerOp = spec.operations.map((op: any) => {

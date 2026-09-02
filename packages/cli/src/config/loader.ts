@@ -2,21 +2,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import dotenv from 'dotenv';
 import { AuthConfig } from '@postmcp/core';
+import type { PostMcpCliConfig } from '@postmcp/types';
 
-export interface PostMcpCliConfig {
-  spec?: string;
-  baseUrl?: string;
-  auth?: AuthConfig;
-  jit?: boolean;
-  dryRun?: boolean;
-  transport?: 'stdio' | 'http';
-  port?: number;
-  tokenDiet?: {
-    enabled?: boolean;
-    maxTokens?: number;
-    convertToMarkdownTable?: boolean;
-  };
-}
+export type { PostMcpCliConfig };
 
 export function loadEnvFile(envFilePath?: string): void {
   if (envFilePath) {

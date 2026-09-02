@@ -1,7 +1,7 @@
 {
-  "name": "@postmcp/presets",
+  "name": "@postmcp/types",
   "version": "0.1.0",
-  "description": "50+ Curated, context-optimized API presets for PostMCP",
+  "description": "Unified TypeScript types and interfaces for the PostMCP ecosystem",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -18,17 +18,12 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "vitest run",
-    "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@postmcp/types": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.13.5",
+    "axios": "^1.8.1",
     "tsup": "^8.4.0",
-    "typescript": "^5.7.3",
-    "vitest": "^3.0.7"
+    "typescript": "^5.7.3"
   }
 }

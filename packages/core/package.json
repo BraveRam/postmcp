@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.1",
+    "@postmcp/types": "workspace:*",
     "axios": "^1.7.9",
     "csv-parse": "^7.0.2",
     "jsonpath-plus": "^10.3.0",

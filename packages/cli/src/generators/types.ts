@@ -1,3 +1,1 @@
-export interface GeneratedProject {
-  files: Record<string, string>;
-}
+export type { GeneratedProject } from '@postmcp/types';

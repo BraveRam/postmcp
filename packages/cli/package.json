@@ -28,6 +28,7 @@
   "dependencies": {
     "@postmcp/core": "workspace:*",
     "@postmcp/presets": "workspace:*",
+    "@postmcp/types": "workspace:*",
     "axios": "^1.20.0",
     "cli-table3": "^0.6.5",
     "commander": "^13.1.0",

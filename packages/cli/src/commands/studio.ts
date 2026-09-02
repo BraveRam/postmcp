@@ -1,10 +1,8 @@
+import type { StudioCommandOptions } from '@postmcp/types';
 import open from 'open';
 import pc from 'picocolors';
 
-export interface StudioCommandOptions {
-  port?: string;
-  noOpen?: boolean;
-}
+export type { StudioCommandOptions };
 
 export async function studioCommand(specArg?: string, options: StudioCommandOptions = {}): Promise<void> {
   const port = options.port || '3000';
