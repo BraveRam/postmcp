@@ -1,9 +1,26 @@
+'use client';
+
 import React, { useState } from 'react';
-import { NormalizedOperation, HttpMethod, RiskTier } from '@postmcp/types';
+import { NormalizedOperation } from '@postmcp/types';
 import { Badge } from './ui/Badge';
 import { Input } from './ui/Input';
-import { Search, CheckSquare, Square, X } from 'lucide-react';
 import { Button } from './ui/Button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/Select';
+import {
+  Search,
+  CheckSquare,
+  Square,
+  Layers,
+  ChevronRight,
+  Filter,
+  X,
+} from 'lucide-react';
 
 interface ApiExplorerProps {
   operations: NormalizedOperation[];
@@ -11,7 +28,7 @@ interface ApiExplorerProps {
   onSelectOperation: (op: NormalizedOperation) => void;
   enabledOperations: Record<string, boolean>;
   onToggleOperation: (id: string, enabled: boolean) => void;
-  onToggleAll: (enable: boolean) => void;
+  onToggleAll: (enabled: boolean) => void;
   onCloseMobile?: () => void;
 }
 
@@ -24,48 +41,42 @@ export function ApiExplorer({
   onToggleAll,
   onCloseMobile,
 }: ApiExplorerProps) {
-  const [filterQuery, setFilterQuery] = useState('');
-  const [methodFilter, setMethodFilter] = useState<string>('all');
-  const [riskFilter, setRiskFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [methodFilter, setMethodFilter] = useState('all');
 
   const filteredOps = operations.filter((op) => {
-    const matchesQuery =
-      !filterQuery ||
-      op.id.toLowerCase().includes(filterQuery.toLowerCase()) ||
-      op.path.toLowerCase().includes(filterQuery.toLowerCase()) ||
-      op.summary.toLowerCase().includes(filterQuery.toLowerCase()) ||
-      op.tags.some((t) => t.toLowerCase().includes(filterQuery.toLowerCase()));
+    const matchesSearch =
+      op.path.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      op.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (op.summary && op.summary.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchesMethod = methodFilter === 'all' || op.method.toLowerCase() === methodFilter.toLowerCase();
-    const matchesRisk = riskFilter === 'all' || op.riskTier === riskFilter;
+    const matchesMethod =
+      methodFilter === 'all' || op.method.toLowerCase() === methodFilter.toLowerCase();
 
-    return matchesQuery && matchesMethod && matchesRisk;
+    return matchesSearch && matchesMethod;
   });
 
-  const allEnabled = operations.length > 0 && operations.every((op) => enabledOperations[op.id] !== false);
   const enabledCount = operations.filter((op) => enabledOperations[op.id] !== false).length;
+  const allEnabled = enabledCount === operations.length;
 
   return (
-    <div className="w-full md:w-72 lg:w-80 border-r border-zinc-800 bg-zinc-950 flex flex-col h-full overflow-hidden shrink-0">
-      {/* Search & Filters */}
-      <div className="p-3 border-b border-zinc-800 space-y-2.5 bg-black">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
-            <Input
-              value={filterQuery}
-              onChange={(e) => setFilterQuery(e.target.value)}
-              placeholder="Search endpoints..."
-              className="pl-8 h-8 text-xs bg-zinc-900 border-zinc-800 w-full"
-            />
-          </div>
-          {onCloseMobile && (
+    <div className="flex flex-col h-full bg-black border-r border-zinc-800 select-none">
+      {/* Search & Header */}
+      <div className="p-3 border-b border-zinc-800 space-y-2.5">
+        <div className="relative flex items-center">
+          <Search className="absolute left-2.5 h-3.5 w-3.5 text-zinc-500" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Filter operations..."
+            className="pl-8 h-8 text-xs bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus-visible:border-zinc-500"
+          />
+          {searchQuery && (
             <Button
               variant="ghost"
               size="icon"
-              onClick={onCloseMobile}
-              className="md:hidden h-8 w-8 text-zinc-400 hover:text-white shrink-0"
-              aria-label="Close navigation"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-1 h-6 w-6 text-zinc-400 hover:text-white"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -73,7 +84,7 @@ export function ApiExplorer({
         </div>
 
         {/* Method & Quick Filters */}
-        <div className="flex items-center justify-between text-[11px] text-zinc-400">
+        <div className="flex items-center justify-between text-[11px] text-zinc-400 gap-2">
           <div className="flex items-center gap-1">
             <button
               onClick={() => onToggleAll(!allEnabled)}
@@ -90,18 +101,21 @@ export function ApiExplorer({
             </button>
           </div>
 
-          <select
-            value={methodFilter}
-            onChange={(e) => setMethodFilter(e.target.value)}
-            className="bg-zinc-900 border border-zinc-800 rounded px-2 py-0.5 text-[11px] text-zinc-200 focus:outline-none focus:border-zinc-500 cursor-pointer font-sans"
-          >
-            <option value="all">All Methods</option>
-            <option value="get">GET</option>
-            <option value="post">POST</option>
-            <option value="put">PUT</option>
-            <option value="patch">PATCH</option>
-            <option value="delete">DELETE</option>
-          </select>
+          <div className="w-28 shrink-0">
+            <Select value={methodFilter} onValueChange={setMethodFilter}>
+              <SelectTrigger className="h-7 text-[11px] bg-zinc-900 border-zinc-800 text-zinc-200">
+                <SelectValue placeholder="All Methods" />
+              </SelectTrigger>
+              <SelectContent align="end">
+                <SelectItem value="all">All Methods</SelectItem>
+                <SelectItem value="get">GET</SelectItem>
+                <SelectItem value="post">POST</SelectItem>
+                <SelectItem value="put">PUT</SelectItem>
+                <SelectItem value="patch">PATCH</SelectItem>
+                <SelectItem value="delete">DELETE</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -134,19 +148,28 @@ export function ApiExplorer({
                     e.stopPropagation();
                     onToggleOperation(op.id, !isEnabled);
                   }}
-                  className="mt-0.5 text-zinc-600 hover:text-white transition-colors cursor-pointer"
+                  className="mt-0.5 text-zinc-500 hover:text-white transition-colors cursor-pointer"
                 >
                   {isEnabled ? (
                     <CheckSquare className="h-3.5 w-3.5 text-white" />
                   ) : (
-                    <Square className="h-3.5 w-3.5 text-zinc-600" />
+                    <Square className="h-3.5 w-3.5 text-zinc-700" />
                   )}
                 </button>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Badge variant={op.method.toLowerCase() as any} className="text-[9px] px-1 py-0 font-bold uppercase">
+                  <div className="flex items-center gap-1.5">
+                    <Badge
+                      variant={
+                        op.method === 'get'
+                          ? 'default'
+                          : op.method === 'post'
+                          ? 'secondary'
+                          : 'outline'
+                      }
+                      className="text-[9px] uppercase px-1 py-0 font-bold tracking-wider"
+                    >
                       {op.method}
                     </Badge>
                     <span className="font-sans text-xs font-medium text-zinc-200 truncate">
@@ -159,13 +182,12 @@ export function ApiExplorer({
                   </p>
                 </div>
 
-                {/* Risk Tier indicator */}
-                {op.riskTier !== 'READ_ONLY' && (
+                {/* Risk Indicator */}
+                {op.riskTier && (
                   <span
                     className="text-[9px] font-sans px-1 py-0 rounded border border-zinc-800 text-zinc-400 bg-zinc-950 mt-0.5 shrink-0"
-                    title={`Risk Tier: ${op.riskTier}`}
                   >
-                    {op.riskTier === 'CRITICAL' ? 'CRIT' : 'MUT'}
+                    {op.riskTier}
                   </span>
                 )}
               </div>
