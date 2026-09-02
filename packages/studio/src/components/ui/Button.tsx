@@ -15,21 +15,21 @@ export function Button({
   ...props
 }: ButtonProps) {
   const baseClasses =
-    'inline-flex items-center justify-center rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:pointer-events-none disabled:opacity-50 select-none';
+    'inline-flex items-center justify-center rounded-md font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 disabled:pointer-events-none disabled:opacity-40 select-none cursor-pointer';
 
   const sizeClasses = {
-    sm: 'h-8 px-3 text-xs gap-1.5',
-    md: 'h-9 px-4 text-sm gap-2',
-    lg: 'h-11 px-6 text-base gap-2.5',
-    icon: 'h-9 w-9 p-0',
+    sm: 'h-8 px-2.5 text-xs gap-1.5',
+    md: 'h-9 px-3.5 text-sm gap-2',
+    lg: 'h-10 px-5 text-sm gap-2.5',
+    icon: 'h-8 w-8 p-0',
   };
 
   const variantClasses = {
-    default: 'bg-blue-600 text-white hover:bg-blue-500 shadow-sm shadow-blue-950',
-    secondary: 'bg-slate-800 text-slate-100 hover:bg-slate-700 border border-slate-700/60',
-    outline: 'border border-slate-800 bg-transparent text-slate-300 hover:bg-slate-900 hover:text-white',
-    ghost: 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50',
-    destructive: 'bg-rose-600/20 text-rose-400 border border-rose-600/30 hover:bg-rose-600/30',
+    default: 'bg-white text-black hover:bg-zinc-200 font-semibold shadow-sm',
+    secondary: 'bg-zinc-900 text-zinc-100 hover:bg-zinc-800 border border-zinc-800',
+    outline: 'border border-zinc-800 bg-transparent text-zinc-300 hover:bg-zinc-900 hover:text-white',
+    ghost: 'text-zinc-400 hover:text-white hover:bg-zinc-900',
+    destructive: 'bg-zinc-900 text-zinc-200 border border-zinc-700 hover:bg-zinc-800',
   };
 
   return (

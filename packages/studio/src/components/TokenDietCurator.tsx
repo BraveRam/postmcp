@@ -3,6 +3,7 @@ import { NormalizedOperation, TokenDietResult } from '@postmcp/types';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { Switch } from './ui/Switch';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/Card';
 import { Sparkles, TrendingDown, Eye, CheckSquare, Square, RefreshCw, Layers } from 'lucide-react';
 
 interface TokenDietCuratorProps {
@@ -62,7 +63,6 @@ export function TokenDietCurator({
           ? '2026-09-02T12:00:00Z'
           : `sample_${f}_value`;
     }
-    // Return array of items to showcase table transformation
     return [item, { ...item, id: `${item.id}_2` }, { ...item, id: `${item.id}_3` }];
   };
 
@@ -106,126 +106,155 @@ export function TokenDietCurator({
     }
   };
 
+  const selectAllFields = () => {
+    onUpdateFieldMask(operation.path, [...availableFields]);
+  };
+
+  const clearMask = () => {
+    onUpdateFieldMask(operation.path, []);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl">
       {/* Metrics Banner */}
-      {simulationResult && (
-        <div className="grid grid-cols-3 gap-3 p-4 bg-gradient-to-r from-blue-950/40 via-slate-900 to-indigo-950/40 border border-blue-500/20 rounded-xl">
-          <div>
-            <span className="text-[11px] text-slate-400 font-medium">Raw REST JSON</span>
-            <div className="text-xl font-bold font-mono text-slate-200 mt-0.5">
-              ~{simulationResult.rawEstimatedTokens} <span className="text-xs text-slate-500 font-normal">toks</span>
-            </div>
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="p-4 pb-2">
+            <CardDescription className="font-mono text-[11px] uppercase tracking-wider text-zinc-500">
+              Raw Token Cost
+            </CardDescription>
+            <CardTitle className="text-2xl font-mono text-white">
+              {simulationResult ? simulationResult.rawEstimatedTokens : '...'} tokens
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0 text-[11px] text-zinc-500 font-mono">
+            Unfiltered JSON response
+          </CardContent>
+        </Card>
 
-          <div>
-            <span className="text-[11px] text-blue-400 font-medium flex items-center gap-1">
-              <Sparkles className="h-3 w-3" />
+        <Card>
+          <CardHeader className="p-4 pb-2">
+            <CardDescription className="font-mono text-[11px] uppercase tracking-wider text-zinc-500">
               Token Diet Output
-            </span>
-            <div className="text-xl font-bold font-mono text-blue-400 mt-0.5">
-              ~{simulationResult.dietEstimatedTokens} <span className="text-xs text-blue-400/60 font-normal">toks</span>
-            </div>
-          </div>
+            </CardDescription>
+            <CardTitle className="text-2xl font-mono text-white">
+              {simulationResult ? simulationResult.dietEstimatedTokens : '...'} tokens
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0 text-[11px] text-zinc-500 font-mono">
+            Masked & formatted for LLM
+          </CardContent>
+        </Card>
 
-          <div>
-            <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
-              <TrendingDown className="h-3 w-3" />
-              Token Savings
-            </span>
-            <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
-              -{simulationResult.savingsPercentage}%
-            </div>
-          </div>
-        </div>
-      )}
+        <Card className="border-white/20 bg-zinc-950">
+          <CardHeader className="p-4 pb-2">
+            <CardDescription className="font-mono text-[11px] uppercase tracking-wider text-zinc-400">
+              Efficiency Gain
+            </CardDescription>
+            <CardTitle className="text-2xl font-mono text-white flex items-center gap-2">
+              <TrendingDown className="h-6 w-6 text-white" />
+              {simulationResult ? `${simulationResult.savingsPercentage}%` : '...'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0 text-[11px] text-zinc-400 font-mono">
+            Token footprint reduction
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Field Mask Selection */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <h4 className="text-xs font-semibold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-              <Layers className="h-3.5 w-3.5 text-blue-400" />
-              Select Response Fields (Field Mask)
-            </h4>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Select key fields to preserve. All unselected noise is pruned from LLM context.
-            </p>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Layers className="h-4 w-4 text-zinc-400" />
+              Response Field Masking ({currentMask.length}/{availableFields.length || 'All'} selected)
+            </CardTitle>
+            <CardDescription>
+              Select high-signal fields to include in LLM context. Unselected fields are stripped automatically.
+            </CardDescription>
           </div>
 
-          {currentMask.length > 0 && (
-            <button
-              onClick={() => onUpdateFieldMask(operation.path, [])}
-              className="text-[11px] text-slate-400 hover:text-slate-200 underline font-mono"
-            >
-              Reset to all fields
-            </button>
+          <div className="flex items-center gap-2">
+            {availableFields.length > 0 && (
+              <>
+                <Button variant="outline" size="sm" onClick={selectAllFields}>
+                  Select All
+                </Button>
+                <Button variant="ghost" size="sm" onClick={clearMask}>
+                  Clear Mask
+                </Button>
+              </>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {availableFields.length === 0 ? (
+            <div className="text-xs text-zinc-500 font-mono p-4 bg-zinc-950 rounded border border-zinc-800 text-center">
+              No schema properties defined in response schema. Using automatic Token Diet heuristic filtering.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              {availableFields.map((field) => {
+                const isSelected = currentMask.includes(field);
+                return (
+                  <button
+                    key={field}
+                    type="button"
+                    onClick={() => toggleField(field)}
+                    className={`flex items-center gap-2 p-2 rounded border text-xs font-mono transition-all text-left cursor-pointer ${
+                      isSelected
+                        ? 'bg-zinc-900 border-white text-white font-semibold shadow-xs'
+                        : 'bg-black border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                    }`}
+                  >
+                    {isSelected ? (
+                      <CheckSquare className="h-3.5 w-3.5 text-white shrink-0" />
+                    ) : (
+                      <Square className="h-3.5 w-3.5 text-zinc-600 shrink-0" />
+                    )}
+                    <span className="truncate">{field}</span>
+                  </button>
+                );
+              })}
+            </div>
           )}
-        </div>
 
-        {availableFields.length === 0 ? (
-          <div className="text-xs text-slate-500 italic p-3 bg-slate-900/40 border border-slate-800/60 rounded-lg">
-            No discrete properties declared in response schema. Global noise pruning and Markdown table conversion still apply.
+          {/* Table Optimization Toggle */}
+          <div className="flex items-center justify-between pt-4 border-t border-zinc-800">
+            <div>
+              <span className="text-xs font-semibold text-white block">
+                Markdown Table Formatting
+              </span>
+              <span className="text-[11px] text-zinc-500">
+                Transform array payloads into compact Markdown tables for ~60% extra token savings.
+              </span>
+            </div>
+            <Switch
+              checked={convertToMarkdownTable}
+              onChange={setConvertToMarkdownTable}
+            />
           </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 p-3 bg-[#0d131f]/70 border border-slate-800/80 rounded-lg max-h-48 overflow-y-auto">
-            {availableFields.map((field) => {
-              const isChecked = currentMask.includes(field);
-              return (
-                <div
-                  key={field}
-                  onClick={() => toggleField(field)}
-                  className={`flex items-center gap-2 p-1.5 rounded cursor-pointer transition-colors text-xs font-mono select-none ${
-                    isChecked ? 'bg-blue-600/20 text-blue-300 font-semibold' : 'text-slate-400 hover:bg-slate-800/50'
-                  }`}
-                >
-                  {isChecked ? (
-                    <CheckSquare className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                  ) : (
-                    <Square className="h-3.5 w-3.5 text-slate-600 shrink-0" />
-                  )}
-                  <span className="truncate">{field}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Controls: Table Switch & Max Tokens */}
-      <div className="grid grid-cols-2 gap-4 p-3 bg-[#0d131f]/50 border border-slate-800/60 rounded-lg text-xs">
-        <Switch
-          checked={convertToMarkdownTable}
-          onChange={setConvertToMarkdownTable}
-          label="Auto-convert JSON Arrays to Markdown Tables"
-        />
-
-        <div className="flex items-center justify-end gap-2 font-mono">
-          <span className="text-slate-400">Max Tokens:</span>
-          <select
-            value={maxTokens}
-            onChange={(e) => setMaxTokens(Number(e.target.value))}
-            className="bg-[#070a10] border border-slate-800 rounded px-2 py-1 text-slate-200"
-          >
-            <option value="1000">1,000 toks</option>
-            <option value="2500">2,500 toks (Default)</option>
-            <option value="5000">5,000 toks</option>
-            <option value="10000">10,000 toks</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Live Output Preview */}
-      <div>
-        <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-          <Eye className="h-3.5 w-3.5 text-blue-400" />
-          Live Token Diet Preview (LLM Context Format)
-        </h4>
-
-        <pre className="p-3 bg-[#070a10] border border-slate-800/80 rounded-lg text-xs font-mono text-emerald-400 overflow-x-auto max-h-56 whitespace-pre-wrap leading-relaxed">
-          {simulationResult?.text || 'Computing preview...'}
-        </pre>
-      </div>
+      {/* Live Preview */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Eye className="h-4 w-4 text-zinc-400" />
+            Live Formatted Response Preview
+          </CardTitle>
+          <CardDescription>
+            The exact text injected into the LLM context window when calling this tool.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <pre className="p-4 bg-black border border-zinc-800 rounded-md font-mono text-xs text-zinc-200 overflow-x-auto max-h-96 whitespace-pre">
+            {simulationResult ? simulationResult.text : 'Calculating preview...'}
+          </pre>
+        </CardContent>
+      </Card>
     </div>
   );
 }

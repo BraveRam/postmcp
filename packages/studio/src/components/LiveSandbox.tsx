@@ -6,6 +6,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Badge } from './ui/Badge';
 import { Switch } from './ui/Switch';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/Card';
 import { ScrollArea } from './ui/ScrollArea';
 import {
   Bot,
@@ -13,10 +14,9 @@ import {
   Send,
   Sparkles,
   Terminal,
-  ShieldCheck,
+  Shield,
   KeyRound,
   Loader2,
-  ShieldAlert,
   Lock,
 } from 'lucide-react';
 
@@ -50,9 +50,6 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Detect required auth scheme name
-  const primarySchemeName = spec.securitySchemes ? Object.keys(spec.securitySchemes)[0] : 'API_KEY';
 
   const handleSend = async () => {
     if (!prompt.trim() || isLoading) return;
@@ -99,189 +96,183 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
         ]);
       }
     } catch (err: any) {
-      console.error('Sandbox error:', err);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: `Error running sandbox: ${err.message}`,
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#070a10] rounded-xl border border-slate-800/80 overflow-hidden">
-      {/* Header Controls */}
-      <div className="px-4 py-2.5 border-b border-slate-800 flex items-center justify-between bg-[#0b101b]">
-        <div className="flex items-center gap-2">
-          <Bot className="h-4 w-4 text-blue-400" />
-          <span className="text-xs font-semibold text-white">AI Sandbox</span>
-          <Badge variant={dryRun ? 'success' : 'warning'} className="text-[10px] font-mono">
-            {dryRun ? 'Dry-Run Guard ON' : 'Live GET Mode'}
-          </Badge>
-        </div>
-
-        <div className="flex items-center gap-3 text-xs">
-          <button
-            onClick={() => setShowSecurityDrawer(!showSecurityDrawer)}
-            className="text-[11px] text-slate-400 hover:text-blue-400 flex items-center gap-1.5 transition-colors"
-          >
-            <Lock className="h-3 w-3" />
-            <span>
-              {targetApiKey || aiApiKey ? 'Credentials Configured' : 'Configure Auth & Safety'}
+    <div className="flex flex-col h-[calc(100vh-140px)] max-w-5xl space-y-4">
+      {/* Top Configuration Bar */}
+      <Card className="p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-3">
+            <span className="font-semibold text-white flex items-center gap-1.5 font-mono">
+              <Bot className="h-4 w-4 text-zinc-300" />
+              Model:
             </span>
-          </button>
-
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-mono text-[11px]">Model:</span>
             <select
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              className="bg-[#0d131f] border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none"
+              className="bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-zinc-500 cursor-pointer font-mono"
             >
-              <option value="gpt-4o">GPT-4o</option>
-              <option value="gpt-4o-mini">GPT-4o Mini</option>
-              <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
-              <option value="gemini-2-flash">Gemini 2.0 Flash</option>
+              <option value="gpt-4o">OpenAI GPT-4o</option>
+              <option value="gpt-4o-mini">OpenAI GPT-4o-mini</option>
+              <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet</option>
+              <option value="claude-3-5-haiku-latest">Claude 3.5 Haiku</option>
+              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
             </select>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSecurityDrawer(!showSecurityDrawer)}
+              className={showSecurityDrawer ? 'border-white text-white' : ''}
+            >
+              <KeyRound className="h-3.5 w-3.5 mr-1" />
+              Credentials & Keys
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-zinc-400">Dry-Run Simulation:</span>
+              <Switch checked={dryRun} onChange={setDryRun} />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Security & Credentials Drawer */}
-      {showSecurityDrawer && (
-        <div className="p-3 bg-[#0d131f] border-b border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-          <div>
-            <label className="text-[11px] font-semibold text-slate-300 block mb-1 flex items-center gap-1">
-              <KeyRound className="h-3 w-3 text-blue-400" />
-              Target API Credential ({primarySchemeName})
-            </label>
-            <Input
-              value={targetApiKey}
-              onChange={(e) => setTargetApiKey(e.target.value)}
-              type="password"
-              placeholder={`Bearer token or API key for ${spec.title}`}
-              className="text-xs h-7 bg-[#070a10]"
-            />
+        {/* Security Drawer */}
+        {showSecurityDrawer && (
+          <div className="mt-3 pt-3 border-t border-zinc-800 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            <div>
+              <label className="text-zinc-400 font-mono block mb-1">
+                LLM Provider API Key (Optional)
+              </label>
+              <Input
+                type="password"
+                value={aiApiKey}
+                onChange={(e) => setAiApiKey(e.target.value)}
+                placeholder="sk-... (leave empty for simulated client)"
+                className="text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-zinc-400 font-mono block mb-1">
+                Target API Key / Bearer Token
+              </label>
+              <Input
+                type="password"
+                value={targetApiKey}
+                onChange={(e) => setTargetApiKey(e.target.value)}
+                placeholder="API Key for live upstream requests"
+                className="text-xs"
+              />
+            </div>
           </div>
+        )}
+      </Card>
 
-          <div>
-            <label className="text-[11px] font-semibold text-slate-300 block mb-1 flex items-center gap-1">
-              <Sparkles className="h-3 w-3 text-purple-400" />
-              LLM Provider API Key (Optional)
-            </label>
-            <Input
-              value={aiApiKey}
-              onChange={(e) => setAiApiKey(e.target.value)}
-              type="password"
-              placeholder={
-                model.startsWith('claude')
-                  ? 'Anthropic API Key (sk-ant-...)'
-                  : model.startsWith('gemini')
-                  ? 'Google Gemini API Key (AIzaSy...)'
-                  : 'OpenAI / Gateway Key (simulated if blank)'
-              }
-              className="text-xs h-7 bg-[#070a10]"
-            />
-          </div>
-
-          <div className="flex items-center pt-3">
-            <Switch
-              checked={dryRun}
-              onChange={setDryRun}
-              label="Dry-Run Safeguard (Blocks live destructive mutations)"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Chat Transcript Area */}
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4 max-w-3xl mx-auto">
-          {messages.map((msg, i) => (
+      {/* Chat Messages Area */}
+      <Card className="flex-1 flex flex-col overflow-hidden bg-black">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.map((m, idx) => (
             <div
-              key={i}
-              className={`flex gap-3 text-xs leading-relaxed ${
-                msg.role === 'user' ? 'justify-end' : 'justify-start'
+              key={idx}
+              className={`flex gap-3 text-xs ${
+                m.role === 'user' ? 'justify-end' : 'justify-start'
               }`}
             >
-              {msg.role !== 'user' && (
-                <div className="h-6 w-6 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
-                  <Bot className="h-3.5 w-3.5" />
+              {m.role === 'assistant' && (
+                <div className="h-7 w-7 rounded bg-white text-black flex items-center justify-center shrink-0 font-bold">
+                  <Bot className="h-4 w-4" />
                 </div>
               )}
 
               <div
-                className={`rounded-xl p-3.5 max-w-[85%] space-y-2.5 ${
-                  msg.role === 'user'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-[#0d131f] border border-slate-800 text-slate-200'
+                className={`max-w-[80%] rounded-lg p-3.5 space-y-2 leading-relaxed ${
+                  m.role === 'user'
+                    ? 'bg-zinc-900 border border-zinc-700 text-white'
+                    : 'bg-zinc-950 border border-zinc-800 text-zinc-200'
                 }`}
               >
-                <div className="whitespace-pre-wrap">{msg.content}</div>
+                <div className="whitespace-pre-wrap">{m.content}</div>
 
-                {msg.toolCall && (
-                  <div className="p-2.5 bg-[#070a10] border border-blue-500/30 rounded-lg space-y-1.5 font-mono text-[11px]">
-                    <div className="flex items-center justify-between text-blue-400 font-semibold">
-                      <span className="flex items-center gap-1">
-                        <Terminal className="h-3 w-3" />
-                        Tool Invocation: {msg.toolCall.name}
+                {/* Tool Call Rendering */}
+                {m.toolCall && (
+                  <div className="p-2.5 bg-black border border-zinc-800 rounded font-mono text-[11px] space-y-1 mt-2">
+                    <div className="flex items-center justify-between text-zinc-400 border-b border-zinc-800/80 pb-1">
+                      <span className="text-white font-semibold flex items-center gap-1.5">
+                        <Terminal className="h-3 w-3 text-white" />
+                        Tool Invocation: {m.toolCall.name}
                       </span>
-                      <Badge variant="success" className="text-[9px] px-1 py-0">
-                        Executed
+                      <Badge variant="secondary" className="text-[9px] py-0">
+                        MCP Call
                       </Badge>
                     </div>
-                    <pre className="text-slate-400 overflow-x-auto">
-                      {JSON.stringify(msg.toolCall.args, null, 2)}
+                    <pre className="text-zinc-300 overflow-x-auto pt-1">
+                      {JSON.stringify(m.toolCall.args, null, 2)}
                     </pre>
                   </div>
                 )}
 
-                {msg.result && (
-                  <div className="p-2.5 bg-[#070a10] border border-emerald-500/30 rounded-lg font-mono text-[11px] text-emerald-400">
-                    <div className="text-[10px] text-slate-400 font-sans mb-1 flex items-center justify-between">
-                      <span className="flex items-center gap-1">
-                        <ShieldCheck className="h-3 w-3 text-emerald-400" />
-                        Token Diet Response
-                      </span>
-                      {msg.result.savings !== undefined && (
-                        <span className="text-emerald-400 font-semibold">
-                          -{msg.result.savings}% Tokens
+                {/* Tool Result Rendering */}
+                {m.result && (
+                  <div className="p-2.5 bg-black border border-zinc-800 rounded font-mono text-[11px] space-y-1">
+                    <div className="flex items-center justify-between text-zinc-400 border-b border-zinc-800/80 pb-1">
+                      <span className="text-white font-semibold">Response Payload</span>
+                      {m.result.savings !== undefined && (
+                        <span className="text-zinc-400 text-[10px]">
+                          Token Diet Savings: ~{m.result.savings}%
                         </span>
                       )}
                     </div>
-                    <pre className="overflow-x-auto whitespace-pre-wrap">{msg.result.text}</pre>
+                    <pre className="text-zinc-300 overflow-x-auto whitespace-pre pt-1 max-h-48">
+                      {m.result.text}
+                    </pre>
                   </div>
                 )}
               </div>
 
-              {msg.role === 'user' && (
-                <div className="h-6 w-6 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 shrink-0">
-                  <User className="h-3.5 w-3.5" />
+              {m.role === 'user' && (
+                <div className="h-7 w-7 rounded bg-zinc-800 text-white flex items-center justify-center shrink-0">
+                  <User className="h-4 w-4" />
                 </div>
               )}
             </div>
           ))}
 
           {isLoading && (
-            <div className="flex gap-3 text-xs justify-start items-center text-slate-400">
-              <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-              <span>AI Agent reasoning & executing MCP tool call...</span>
+            <div className="flex items-center gap-2 text-xs text-zinc-400 font-mono">
+              <Loader2 className="h-4 w-4 animate-spin text-white" />
+              <span>Synthesizing tool parameters & executing sandbox request...</span>
             </div>
           )}
         </div>
-      </ScrollArea>
 
-      {/* Input Bar */}
-      <div className="p-3 border-t border-slate-800/80 bg-[#0b101b] flex items-center gap-2">
-        <Input
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-          placeholder="Ask the AI model to call any endpoint tool..."
-          className="flex-1 text-xs bg-[#0d131f]"
-          disabled={isLoading}
-        />
-        <Button size="sm" onClick={handleSend} disabled={isLoading || !prompt.trim()}>
-          <Send className="h-3.5 w-3.5" />
-        </Button>
-      </div>
+        {/* Input Bar */}
+        <div className="p-3 border-t border-zinc-800 bg-zinc-950 flex gap-2">
+          <Input
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+            placeholder="Ask the AI agent to invoke OpenAPI endpoints..."
+            className="flex-1 bg-black text-xs"
+            disabled={isLoading}
+          />
+          <Button onClick={handleSend} disabled={isLoading || !prompt.trim()}>
+            <Send className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 }

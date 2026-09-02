@@ -6,7 +6,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Badge } from './ui/Badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/Dialog';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
+import { Tabs, TabsList, TabsTrigger } from './ui/Tabs';
 import { Copy, Check, Download, Save, CheckCircle2 } from 'lucide-react';
 
 interface ExportModalProps {
@@ -83,7 +83,7 @@ export function ExportModal({
       });
       const data = await res.json();
       if (data.success) {
-        setPersistSuccess(data.message || 'Saved postmcp.config.json');
+        setPersistSuccess(data.message || 'Saved postmcp.config.json to workspace disk');
       }
     } catch (err: any) {
       console.error('Failed to persist config:', err);
@@ -94,10 +94,10 @@ export function ExportModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl bg-zinc-950 border-zinc-800 text-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Download className="h-5 w-5 text-blue-400" />
+            <Download className="h-4 w-4 text-white" />
             Export MCP Client Configuration
           </DialogTitle>
           <DialogDescription>
@@ -107,7 +107,7 @@ export function ExportModal({
 
         <div className="space-y-4">
           <Tabs value={activeTab} onValueChange={(val: any) => setActiveTab(val)}>
-            <TabsList className="grid grid-cols-4 w-full">
+            <TabsList className="grid grid-cols-4 w-full bg-black border-zinc-800">
               <TabsTrigger value="cursor">Cursor</TabsTrigger>
               <TabsTrigger value="claude">Claude Desktop</TabsTrigger>
               <TabsTrigger value="windsurf">Windsurf</TabsTrigger>
@@ -116,44 +116,46 @@ export function ExportModal({
 
             <div className="pt-3 space-y-3">
               {/* Optional Secret Injection */}
-              <div className="p-3 bg-[#0d131f] border border-slate-800 rounded-lg space-y-2">
-                <span className="text-xs font-semibold text-slate-300">
+              <div className="p-3 bg-black border border-zinc-800 rounded-md space-y-2">
+                <span className="text-xs font-semibold text-zinc-300 font-mono">
                   Optional: Inject Authentication Credential / Env Var
                 </span>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <Input
                     value={envKey}
                     onChange={(e) => setEnvKey(e.target.value)}
-                    placeholder="Env Var (e.g. STRIPE_SECRET_KEY)"
+                    placeholder="Env Var (e.g. API_KEY)"
+                    className="bg-zinc-950"
                   />
                   <Input
                     value={envVal}
                     onChange={(e) => setEnvVal(e.target.value)}
                     type="password"
                     placeholder="Value or Reference"
+                    className="bg-zinc-950"
                   />
                 </div>
               </div>
 
               {/* Code Snippet Box */}
               <div className="relative">
-                <pre className="p-4 bg-[#070a10] border border-slate-800/80 rounded-lg text-xs font-mono text-emerald-400 overflow-x-auto max-h-56 whitespace-pre">
+                <pre className="p-4 bg-black border border-zinc-800 rounded-md text-xs font-mono text-zinc-200 overflow-x-auto max-h-56 whitespace-pre">
                   {currentSnippet || 'Generating configuration snippet...'}
                 </pre>
 
                 <button
                   onClick={handleCopy}
-                  className="absolute top-3 right-3 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-md border border-slate-700/80 flex items-center gap-1.5 font-medium transition-colors shadow"
+                  className="absolute top-3 right-3 px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white text-xs rounded border border-zinc-700 flex items-center gap-1.5 font-medium transition-colors shadow-xs cursor-pointer"
                 >
                   {copied ? (
                     <>
-                      <Check className="h-3.5 w-3.5 text-emerald-400" />
-                      <span className="text-emerald-400">Copied!</span>
+                      <Check className="h-3.5 w-3.5 text-white" />
+                      <span className="text-white font-mono">Copied</span>
                     </>
                   ) : (
                     <>
                       <Copy className="h-3.5 w-3.5" />
-                      <span>Copy Snippet</span>
+                      <span className="font-mono">Copy</span>
                     </>
                   )}
                 </button>
@@ -161,15 +163,15 @@ export function ExportModal({
 
               {/* Persistence Alert */}
               {persistSuccess && (
-                <div className="p-2.5 bg-emerald-950/40 border border-emerald-500/30 rounded-lg text-xs text-emerald-400 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <div className="p-2.5 bg-zinc-900 border border-zinc-700 rounded text-xs text-zinc-200 flex items-center gap-2 font-mono">
+                  <CheckCircle2 className="h-4 w-4 text-white shrink-0" />
                   <span>{persistSuccess}</span>
                 </div>
               )}
             </div>
           </Tabs>
 
-          <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-between pt-3 border-t border-zinc-800">
             <Button
               type="button"
               variant="secondary"
@@ -177,8 +179,8 @@ export function ExportModal({
               onClick={handleSaveToWorkspace}
               disabled={isPersisting}
             >
-              <Save className="h-3.5 w-3.5 mr-1 text-blue-400" />
-              {isPersisting ? 'Saving...' : 'Save to Workspace (postmcp.config.json)'}
+              <Save className="h-3.5 w-3.5 mr-1" />
+              {isPersisting ? 'Saving...' : 'Save to Workspace'}
             </Button>
 
             <Button variant="default" size="sm" onClick={onClose}>

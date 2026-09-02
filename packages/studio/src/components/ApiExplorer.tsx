@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { NormalizedOperation, HttpMethod, RiskTier } from '@postmcp/types';
 import { Badge } from './ui/Badge';
 import { Input } from './ui/Input';
-import { Search, CheckSquare, Square, ShieldCheck, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { Search, CheckSquare, Square, Shield } from 'lucide-react';
 
 interface ApiExplorerProps {
   operations: NormalizedOperation[];
@@ -43,33 +43,33 @@ export function ApiExplorer({
   const enabledCount = operations.filter((op) => enabledOperations[op.id] !== false).length;
 
   return (
-    <div className="w-80 border-r border-slate-800/80 bg-[#090d16] flex flex-col h-full overflow-hidden shrink-0">
+    <div className="w-80 border-r border-zinc-800 bg-zinc-950 flex flex-col h-full overflow-hidden shrink-0">
       {/* Search & Filters */}
-      <div className="p-3 border-b border-slate-800/80 space-y-2 bg-[#0b101b]">
+      <div className="p-3 border-b border-zinc-800 space-y-2.5 bg-black">
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-500" />
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
           <Input
             value={filterQuery}
             onChange={(e) => setFilterQuery(e.target.value)}
-            placeholder="Filter endpoints..."
-            className="pl-8 h-8 text-xs bg-[#0d131f]"
+            placeholder="Search endpoints..."
+            className="pl-8 h-8 text-xs bg-zinc-900 border-zinc-800"
           />
         </div>
 
-        {/* Method & Risk Quick Filters */}
-        <div className="flex items-center justify-between text-[11px] text-slate-400">
+        {/* Method & Quick Filters */}
+        <div className="flex items-center justify-between text-[11px] text-zinc-400">
           <div className="flex items-center gap-1">
             <button
               onClick={() => onToggleAll(!allEnabled)}
-              className="text-xs hover:text-blue-400 flex items-center gap-1 font-medium transition-colors"
+              className="text-xs hover:text-white flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
             >
               {allEnabled ? (
-                <CheckSquare className="h-3.5 w-3.5 text-blue-500" />
+                <CheckSquare className="h-3.5 w-3.5 text-white" />
               ) : (
-                <Square className="h-3.5 w-3.5 text-slate-500" />
+                <Square className="h-3.5 w-3.5 text-zinc-600" />
               )}
-              <span>
-                {enabledCount}/{operations.length} Enabled
+              <span className="font-mono text-zinc-300">
+                {enabledCount}/{operations.length} Active
               </span>
             </button>
           </div>
@@ -77,7 +77,7 @@ export function ApiExplorer({
           <select
             value={methodFilter}
             onChange={(e) => setMethodFilter(e.target.value)}
-            className="bg-[#0d131f] border border-slate-800 rounded px-1.5 py-0.5 text-[11px] text-slate-300 focus:outline-none"
+            className="bg-zinc-900 border border-zinc-800 rounded px-2 py-0.5 text-[11px] text-zinc-200 focus:outline-none focus:border-zinc-500 cursor-pointer font-mono"
           >
             <option value="all">All Methods</option>
             <option value="get">GET</option>
@@ -90,9 +90,9 @@ export function ApiExplorer({
       </div>
 
       {/* Operations List */}
-      <div className="flex-1 overflow-y-auto divide-y divide-slate-800/40 p-1">
+      <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
         {filteredOps.length === 0 ? (
-          <div className="py-12 text-center text-xs text-slate-500">No matching operations</div>
+          <div className="py-12 text-center text-xs text-zinc-600 font-mono">No matching operations</div>
         ) : (
           filteredOps.map((op) => {
             const isSelected = op.id === selectedOperationId;
@@ -102,54 +102,53 @@ export function ApiExplorer({
               <div
                 key={op.id}
                 onClick={() => onSelectOperation(op)}
-                className={`group flex items-start gap-2 p-2.5 rounded-md cursor-pointer transition-colors text-xs select-none ${
+                className={`group flex items-start gap-2.5 p-2 rounded-md transition-all cursor-pointer ${
                   isSelected
-                    ? 'bg-blue-600/15 border border-blue-500/30'
-                    : 'hover:bg-slate-800/40 border border-transparent'
+                    ? 'bg-zinc-900 border border-zinc-700 text-white shadow-xs'
+                    : 'border border-transparent hover:bg-zinc-900/60 text-zinc-400 hover:text-zinc-200'
                 } ${!isEnabled ? 'opacity-40' : ''}`}
               >
-                <input
-                  type="checkbox"
-                  checked={isEnabled}
-                  onChange={(e) => {
+                {/* Enable checkbox */}
+                <button
+                  type="button"
+                  onClick={(e) => {
                     e.stopPropagation();
-                    onToggleOperation(op.id, e.target.checked);
+                    onToggleOperation(op.id, !isEnabled);
                   }}
-                  className="mt-0.5 rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-0 focus:ring-offset-0 cursor-pointer"
-                />
+                  className="mt-0.5 text-zinc-600 hover:text-white transition-colors cursor-pointer"
+                >
+                  {isEnabled ? (
+                    <CheckSquare className="h-3.5 w-3.5 text-white" />
+                  ) : (
+                    <Square className="h-3.5 w-3.5 text-zinc-600" />
+                  )}
+                </button>
 
+                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <Badge variant={op.method.toLowerCase() as any} className="text-[9px] px-1 py-0 uppercase">
+                    <Badge variant={op.method.toLowerCase() as any} className="text-[9px] px-1 py-0 font-bold uppercase">
                       {op.method}
                     </Badge>
-                    <span className="font-mono text-[11px] font-medium text-slate-200 truncate group-hover:text-blue-400 transition-colors">
-                      {op.path}
+                    <span className="font-mono text-xs font-medium text-zinc-200 truncate">
+                      {op.id}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-[11px] text-slate-400 truncate">
-                      {op.summary || op.id}
-                    </span>
-
-                    {op.riskTier === 'READ_ONLY' && (
-                      <span title="Read-Only Safe" className="text-emerald-400">
-                        <ShieldCheck className="h-3 w-3" />
-                      </span>
-                    )}
-                    {op.riskTier === 'MUTATION' && (
-                      <span title="State Mutation" className="text-blue-400">
-                        <ShieldAlert className="h-3 w-3" />
-                      </span>
-                    )}
-                    {op.riskTier === 'CRITICAL' && (
-                      <span title="Critical / Destructive Risk" className="text-rose-400">
-                        <AlertTriangle className="h-3 w-3" />
-                      </span>
-                    )}
-                  </div>
+                  <p className="text-[11px] text-zinc-500 truncate font-mono">
+                    {op.path}
+                  </p>
                 </div>
+
+                {/* Risk Tier indicator */}
+                {op.riskTier !== 'READ_ONLY' && (
+                  <span
+                    className="text-[9px] font-mono px-1 py-0 rounded border border-zinc-800 text-zinc-400 bg-zinc-950 mt-0.5"
+                    title={`Risk Tier: ${op.riskTier}`}
+                  >
+                    {op.riskTier === 'CRITICAL' ? 'CRIT' : 'MUT'}
+                  </span>
+                )}
               </div>
             );
           })

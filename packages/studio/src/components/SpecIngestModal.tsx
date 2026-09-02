@@ -5,7 +5,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/Dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
-import { Upload, Globe, FileCode, FileUp, CheckCircle } from 'lucide-react';
+import { Upload, Globe, FileCode, FileUp, CheckCircle2 } from 'lucide-react';
 
 interface SpecIngestModalProps {
   isOpen: boolean;
@@ -78,10 +78,10 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-xl bg-zinc-950 border-zinc-800 text-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5 text-blue-400" />
+            <Upload className="h-4 w-4 text-white" />
             Import OpenAPI Specification
           </DialogTitle>
           <DialogDescription>
@@ -91,16 +91,16 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg text-xs text-rose-400 font-mono">
+            <div className="p-3 bg-zinc-900 border border-zinc-700 rounded text-xs text-zinc-200 font-mono">
               {error}
             </div>
           )}
 
           <Tabs value={activeTab} onValueChange={(val: any) => setActiveTab(val)}>
-            <TabsList className="grid grid-cols-3 w-full">
+            <TabsList className="grid grid-cols-3 w-full bg-black border-zinc-800">
               <TabsTrigger value="file" className="flex items-center gap-1.5">
                 <FileUp className="h-3.5 w-3.5" />
-                Local File / Drag & Drop
+                File Upload
               </TabsTrigger>
               <TabsTrigger value="url" className="flex items-center gap-1.5">
                 <Globe className="h-3.5 w-3.5" />
@@ -108,7 +108,7 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
               </TabsTrigger>
               <TabsTrigger value="paste" className="flex items-center gap-1.5">
                 <FileCode className="h-3.5 w-3.5" />
-                Paste Spec
+                Paste Schema
               </TabsTrigger>
             </TabsList>
 
@@ -121,12 +121,12 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${
+                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${
                   isDragging
-                    ? 'border-blue-500 bg-blue-500/10'
+                    ? 'border-white bg-zinc-900'
                     : selectedFileName
-                    ? 'border-emerald-500/50 bg-emerald-500/5'
-                    : 'border-slate-800 hover:border-slate-700 bg-[#0d131f]'
+                    ? 'border-zinc-500 bg-zinc-900/60'
+                    : 'border-zinc-800 hover:border-zinc-600 bg-black'
                 }`}
               >
                 <input
@@ -138,19 +138,19 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
                 />
                 {selectedFileName ? (
                   <>
-                    <CheckCircle className="h-8 w-8 text-emerald-400" />
-                    <span className="text-xs font-mono font-semibold text-emerald-300">
+                    <CheckCircle2 className="h-8 w-8 text-white" />
+                    <span className="text-xs font-mono font-semibold text-white">
                       {selectedFileName}
                     </span>
-                    <span className="text-[11px] text-slate-500">Click to choose another file</span>
+                    <span className="text-[11px] text-zinc-500">Click to choose another file</span>
                   </>
                 ) : (
                   <>
-                    <FileUp className="h-8 w-8 text-slate-500" />
-                    <span className="text-xs font-semibold text-slate-200">
+                    <FileUp className="h-8 w-8 text-zinc-500" />
+                    <span className="text-xs font-semibold text-zinc-200">
                       Drag & drop your OpenAPI JSON or YAML file here
                     </span>
-                    <span className="text-[11px] text-slate-500">
+                    <span className="text-[11px] text-zinc-500 font-mono">
                       Supports OpenAPI 3.0.x, 3.1.x, Swagger 2.0 (.json, .yaml, .yml)
                     </span>
                   </>
@@ -159,30 +159,31 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
             </TabsContent>
 
             <TabsContent value="url" className="pt-3 space-y-2">
-              <label className="text-xs font-semibold text-slate-300">OpenAPI Spec URL</label>
+              <label className="text-xs font-semibold text-zinc-300">OpenAPI Spec URL</label>
               <Input
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://api.example.com/openapi.json"
+                className="bg-black"
               />
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-zinc-500 font-mono">
                 HTTPS URL pointing to OpenAPI 3.0 / 3.1 specification.
               </p>
             </TabsContent>
 
             <TabsContent value="paste" className="pt-3 space-y-2">
-              <label className="text-xs font-semibold text-slate-300">Raw OpenAPI JSON / YAML</label>
+              <label className="text-xs font-semibold text-zinc-300">Raw OpenAPI JSON / YAML</label>
               <textarea
                 value={rawSpec}
                 onChange={(e) => setRawSpec(e.target.value)}
                 placeholder="Paste JSON or YAML OpenAPI definition..."
                 rows={8}
-                className="w-full rounded-lg border border-slate-800 bg-[#0d131f] p-3 text-xs font-mono text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-zinc-800 bg-black p-3 text-xs font-mono text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-400"
               />
             </TabsContent>
           </Tabs>
 
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel
             </Button>

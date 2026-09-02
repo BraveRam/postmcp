@@ -12,6 +12,7 @@ import { PresetSelectorModal } from '@/components/PresetSelectorModal';
 import { SpecIngestModal } from '@/components/SpecIngestModal';
 import { ExportModal } from '@/components/ExportModal';
 import { FileText, Sparkles, Workflow, Bot, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 
 export default function StudioPage() {
   const [spec, setSpec] = useState<NormalizedSpec | null>(null);
@@ -153,7 +154,7 @@ export default function StudioPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-[#090d16]">
+    <div className="flex flex-col h-screen overflow-hidden bg-black text-zinc-100">
       {/* Top Header */}
       <Header
         spec={spec}
@@ -165,19 +166,19 @@ export default function StudioPage() {
 
       {/* Main Workspace Layout */}
       {isLoading ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-          <span className="text-sm font-medium">Analyzing OpenAPI schema & generating MCP tools...</span>
+        <div className="flex-1 flex flex-col items-center justify-center text-zinc-400 gap-3 font-mono">
+          <Loader2 className="h-6 w-6 animate-spin text-white" />
+          <span className="text-xs">Analyzing OpenAPI schema & generating MCP tools...</span>
         </div>
       ) : !spec ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-4">
-          <p className="text-sm">No specification loaded.</p>
-          <button
+        <div className="flex-1 flex flex-col items-center justify-center text-zinc-400 gap-4 font-mono">
+          <p className="text-xs">No specification loaded.</p>
+          <Button
             onClick={() => setIsPresetsOpen(true)}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium shadow"
+            variant="default"
           >
             Explore 60+ API Presets
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="flex-1 flex overflow-hidden">
@@ -192,16 +193,16 @@ export default function StudioPage() {
           />
 
           {/* Right Panel: Workbenches */}
-          <div className="flex-1 flex flex-col overflow-hidden bg-[#070a10]">
+          <div className="flex-1 flex flex-col overflow-hidden bg-black">
             {/* Workbench Tab Bar */}
-            <div className="flex items-center justify-between border-b border-slate-800/80 bg-[#0b101b] px-6">
+            <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-950 px-6">
               <div className="flex gap-6">
                 <button
                   onClick={() => setActiveTab('detail')}
-                  className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors ${
+                  className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer font-mono ${
                     activeTab === 'detail'
-                      ? 'border-blue-500 text-blue-400'
-                      : 'border-transparent text-slate-400 hover:text-slate-200'
+                      ? 'border-white text-white'
+                      : 'border-transparent text-zinc-500 hover:text-zinc-300'
                   }`}
                 >
                   <FileText className="h-3.5 w-3.5" />
@@ -210,10 +211,10 @@ export default function StudioPage() {
 
                 <button
                   onClick={() => setActiveTab('tokendiet')}
-                  className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors ${
+                  className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer font-mono ${
                     activeTab === 'tokendiet'
-                      ? 'border-blue-500 text-blue-400'
-                      : 'border-transparent text-slate-400 hover:text-slate-200'
+                      ? 'border-white text-white'
+                      : 'border-transparent text-zinc-500 hover:text-zinc-300'
                   }`}
                 >
                   <Sparkles className="h-3.5 w-3.5" />
@@ -222,10 +223,10 @@ export default function StudioPage() {
 
                 <button
                   onClick={() => setActiveTab('macros')}
-                  className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors ${
+                  className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer font-mono ${
                     activeTab === 'macros'
-                      ? 'border-blue-500 text-blue-400'
-                      : 'border-transparent text-slate-400 hover:text-slate-200'
+                      ? 'border-white text-white'
+                      : 'border-transparent text-zinc-500 hover:text-zinc-300'
                   }`}
                 >
                   <Workflow className="h-3.5 w-3.5" />
@@ -234,10 +235,10 @@ export default function StudioPage() {
 
                 <button
                   onClick={() => setActiveTab('sandbox')}
-                  className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors ${
+                  className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer font-mono ${
                     activeTab === 'sandbox'
-                      ? 'border-blue-500 text-blue-400'
-                      : 'border-transparent text-slate-400 hover:text-slate-200'
+                      ? 'border-white text-white'
+                      : 'border-transparent text-zinc-500 hover:text-zinc-300'
                   }`}
                 >
                   <Bot className="h-3.5 w-3.5" />
@@ -246,14 +247,14 @@ export default function StudioPage() {
               </div>
 
               {selectedOperation && (
-                <span className="text-xs font-mono text-slate-400 truncate max-w-xs">
+                <span className="text-xs font-mono text-zinc-500 truncate max-w-xs">
                   {selectedOperation.method.toUpperCase()} {selectedOperation.path}
                 </span>
               )}
             </div>
 
             {/* Workbench Tab Content */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-6 bg-black">
               {activeTab === 'detail' && selectedOperation && (
                 <EndpointDetail operation={selectedOperation} />
               )}
