@@ -54,7 +54,7 @@ Standard naive OpenAPI-to-MCP converters dump 100+ raw endpoints into the LLM co
 2. 🥗 **Token Diet Engine**: Prunes nulls/links/boilerplate and automatically formats object arrays into compact Markdown tables (**reducing payload tokens by 70%+**).
 3. 🛡️ **3-Tier Risk Guardrails**: Tags operations with MCP hints (`readOnlyHint`, `destructiveHint`) and supports `--dry-run` simulation mode.
 4. 🔗 **Composite Macro Tools**: Chained multi-step REST workflows executed in memory in a single tool call.
-5. 🎨 **Visual Web Studio**: Dark-mode local workbench with Live Sandbox (Vercel AI Gateway) and copyable config snippets.
+5. 🎨 **Visual Web Studio**: Dark-mode Next.js 16 + shadcn/ui workbench with Live Sandbox (Vercel AI Gateway) and copyable config snippets.
 
 ---
 
@@ -62,7 +62,7 @@ Standard naive OpenAPI-to-MCP converters dump 100+ raw endpoints into the LLM co
 
 - `packages/core`: Spec parser, Token Diet engine, JIT router, and MCP SDK v2 protocol server (`@postmcp/core`).
 - `packages/cli`: `postmcp` CLI executable (`postmcp run`, `postmcp studio`, `postmcp export`).
-- `packages/studio`: Next.js local workbench for visual endpoint curation and live sandbox testing.
+- `packages/studio`: Next.js 16 + shadcn/ui local workbench for visual endpoint curation and live sandbox testing.
 - `presets/`: Curated, token-dieted configs for the top 50 developer APIs (GitHub, Linear, Stripe, Supabase, Slack, etc.).
 
 ---

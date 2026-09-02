@@ -122,10 +122,10 @@ postmcp/
 │   │   │   └── index.ts               # Commander CLI entrypoint
 │   │   ├── tsconfig.json
 │   │   └── package.json
-│   └── studio/                        # Next.js 15 App Router visual studio (@postmcp/studio)
+│   └── studio/                        # Next.js 16 App Router visual studio with shadcn/ui (@postmcp/studio)
 │       ├── src/
 │       │   ├── app/                   # Workbench UI pages & API routes
-│       │   ├── components/            # Visual spec tree, token visualizer, live sandbox, modals
+│       │   ├── components/            # shadcn/ui components, spec tree, live sandbox, modals
 │       │   └── lib/                   # Direct integration with @postmcp/core & Vercel AI SDK
 │       ├── tsconfig.json
 │       └── package.json
@@ -349,7 +349,7 @@ Allows developers and presets to bundle multi-step REST operations into high-lev
 
 ## 5. Visual Web Studio (`packages/studio`)
 
-The Web Studio is a local Next.js 15 App Router workbench launched via `npx postmcp studio`:
+The Web Studio is a local **Next.js 16 App Router** (React 19, Turbopack) workbench styled with **Tailwind CSS** and **shadcn/ui** components, launched via `npx postmcp studio`:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -371,6 +371,17 @@ The Web Studio is a local Next.js 15 App Router workbench launched via `npx post
 │                      │  [ 1-Click Copy Config for Cursor ]   │ Markdown Tbl │
 └──────────────────────┴───────────────────────────────────────┴──────────────┘
 ```
+
+### UI Architecture & shadcn/ui Component Suite:
+The Studio is built with modern, accessible **shadcn/ui** components:
+- **`Command` (cmdk)**: Instant fuzzy search and keyboard navigation across all API endpoints, tags, and tools.
+- **`Accordion` / `Collapsible`**: Hierarchical API tree organized by OpenAPI tags, paths, and HTTP methods.
+- **`Badge`**: Distinct color-coded badges for HTTP methods (`GET` emerald, `POST` blue, `PUT` amber, `DELETE` rose) and Safety Risk Tiers (`READ_ONLY`, `MUTATION`, `CRITICAL`).
+- **`Switch` & `Checkbox`**: Interactive toggles to enable/disable tools and visually pick Token Diet field masks.
+- **`Tabs`**: Seamless switching between *Endpoint Inspector*, *Token Diet Config*, *Macro Workflow Builder*, and *Live Sandbox*.
+- **`Dialog` & `Drawer`**: High-polish Copyable Snippet Modal for 1-click `.cursor/mcp.json` / `claude_desktop_config.json` export.
+- **`ScrollArea`**: Smooth virtualized scrolling for massive JSON schemas (e.g. Stripe/GitHub specs).
+- **`Tooltip`**: Instant hover explanations for parameter validations, token calculation diffs, and risk hints.
 
 ### Key Studio Features:
 1. **Drag & Drop / URL Spec Ingestion**: Ingests specs from local files, live URLs, or bundled presets.
@@ -435,7 +446,8 @@ The Web Studio is a local Next.js 15 App Router workbench launched via `npx post
 - [ ] Curate 50+ optimized presets with pre-configured field masks and risk classifications (GitHub, Stripe, Linear, Supabase, Slack, Sentry, Notion, Resend, Shopify, etc.).
 
 ### Phase 4: Visual Web Studio (`packages/studio`)
-- [ ] Build Next.js 15 App Router workbench UI with Tailwind CSS.
+- [ ] Build Next.js 16 App Router workbench UI with React 19, Turbopack, and Tailwind CSS.
+- [ ] Implement complete shadcn/ui component suite (`Command`, `Accordion`, `Badge`, `Switch`, `Tabs`, `Dialog`, `ScrollArea`, `Tooltip`).
 - [ ] Build Spec Explorer & Visual Endpoint Checklist.
 - [ ] Build Live Sandbox powered by Vercel AI SDK & AI Gateway.
 - [ ] Build Real-Time Token Visualizer & Copyable Snippet Modal.
