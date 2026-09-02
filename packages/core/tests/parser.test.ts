@@ -140,4 +140,51 @@ describe('OpenAPI Parser & AST Normalizer', () => {
 
     spyGet.mockRestore();
   });
+
+  it('should fetch and dereference remote YAML $ref with direct pointer #/User', async () => {
+    const remoteYaml = `
+User:
+  type: object
+  properties:
+    id:
+      type: string
+    role:
+      type: string
+`;
+
+    const spyGet = vi.spyOn(axios, 'get').mockResolvedValueOnce({
+      status: 200,
+      data: remoteYaml,
+    } as any);
+
+    const specJson = {
+      openapi: '3.0.0',
+      info: { title: 'Remote YAML Test', version: '1.0' },
+      paths: {
+        '/profile': {
+          get: {
+            summary: 'Get profile',
+            responses: {
+              '200': {
+                content: {
+                  'application/json': {
+                    schema: {
+                      $ref: 'https://example.com/schemas.yaml#/User',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const spec = await parseOpenAPI(specJson);
+    const profileOp = spec.operations[0];
+    expect(profileOp.responseSchema).toBeDefined();
+    expect((profileOp.responseSchema as any).properties.role.type).toBe('string');
+
+    spyGet.mockRestore();
+  });
 });

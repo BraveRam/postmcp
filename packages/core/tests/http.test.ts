@@ -308,4 +308,34 @@ describe('Resilient HTTP, Auth, and Parameter Serialization', () => {
       applyAuth({}, {}, undefined, targetUrl, baseUrl, [{ BearerAuth: [] }, {}], specSecuritySchemes);
     }).not.toThrow();
   });
+
+  it('should reject empty credentials and unset environment variables', () => {
+    const specSecuritySchemes: any = {
+      BearerAuth: { type: 'http', scheme: 'bearer' },
+      ApiKeyHeader: { type: 'apiKey', in: 'header', name: 'X-API-KEY' },
+    };
+
+    const targetUrl = 'https://api.example.com/protected';
+    const baseUrl = 'https://api.example.com';
+
+    // 1. Empty string in securitySchemes -> throws error
+    expect(() => {
+      applyAuth({}, {}, { securitySchemes: { BearerAuth: '' } }, targetUrl, baseUrl, [{ BearerAuth: [] }], specSecuritySchemes);
+    }).toThrow('Authentication Error: Operation requires security scheme [BearerAuth]');
+
+    // 2. Whitespace-only in securitySchemes -> throws error
+    expect(() => {
+      applyAuth({}, {}, { securitySchemes: { BearerAuth: '   ' } }, targetUrl, baseUrl, [{ BearerAuth: [] }], specSecuritySchemes);
+    }).toThrow('Authentication Error: Operation requires security scheme [BearerAuth]');
+
+    // 3. Unset env var in bearerToken -> throws error
+    expect(() => {
+      applyAuth({}, {}, { bearerToken: '$UNSET_ENV_VARIABLE_XYZ' }, targetUrl, baseUrl, [{ BearerAuth: [] }], specSecuritySchemes);
+    }).toThrow('Authentication Error: Operation requires security scheme [BearerAuth]');
+
+    // 4. Empty API Key value in general auth -> does NOT inject empty header
+    const headers: Record<string, string> = {};
+    applyAuth(headers, {}, { apiKey: { name: 'X-API-KEY', value: '', in: 'header' } }, targetUrl, baseUrl);
+    expect(headers['X-API-KEY']).toBeUndefined();
+  });
 });

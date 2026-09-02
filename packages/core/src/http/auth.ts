@@ -26,6 +26,12 @@ export function substituteEnvVars(value: string): string {
   });
 }
 
+function getNonEmptySecret(val: any): string | null {
+  if (val === undefined || val === null) return null;
+  const substituted = substituteEnvVars(String(val)).trim();
+  return substituted.length > 0 ? substituted : null;
+}
+
 export function isSameOriginOrAllowed(targetUrl: string, baseUrl: string, allowedHosts?: string[]): boolean {
   if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
     return true; // Relative URL is always same-origin
@@ -80,34 +86,42 @@ function applyGeneralAuth(
 ): void {
   // Bearer Token
   if (config.bearerToken && !headers['Authorization']) {
-    const token = substituteEnvVars(config.bearerToken);
-    headers['Authorization'] = `Bearer ${token}`;
+    const token = getNonEmptySecret(config.bearerToken);
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
   }
 
   // Basic Auth
   if (config.basicAuth && !headers['Authorization']) {
     if (typeof config.basicAuth === 'string') {
-      const raw = substituteEnvVars(config.basicAuth);
-      const token = raw.includes(':') ? Buffer.from(raw).toString('base64') : raw;
-      headers['Authorization'] = `Basic ${token}`;
+      const raw = getNonEmptySecret(config.basicAuth);
+      if (raw) {
+        const token = raw.includes(':') ? Buffer.from(raw).toString('base64') : raw;
+        headers['Authorization'] = `Basic ${token}`;
+      }
     } else {
-      const u = substituteEnvVars(config.basicAuth.username || '');
-      const p = substituteEnvVars(config.basicAuth.password || '');
-      const b64 = Buffer.from(`${u}:${p}`).toString('base64');
-      headers['Authorization'] = `Basic ${b64}`;
+      const u = getNonEmptySecret(config.basicAuth.username || '');
+      const p = getNonEmptySecret(config.basicAuth.password || '');
+      if (u || p) {
+        const b64 = Buffer.from(`${u || ''}:${p || ''}`).toString('base64');
+        headers['Authorization'] = `Basic ${b64}`;
+      }
     }
   }
 
   // API Key
   if (config.apiKey) {
-    const val = substituteEnvVars(config.apiKey.value);
-    if (config.apiKey.in === 'header') {
-      headers[config.apiKey.name] = val;
-    } else if (config.apiKey.in === 'query') {
-      queryParams[config.apiKey.name] = val;
-    } else if (config.apiKey.in === 'cookie') {
-      const cookieVal = `${encodeURIComponent(config.apiKey.name)}=${encodeURIComponent(val)}`;
-      headers['Cookie'] = headers['Cookie'] ? `${headers['Cookie']}; ${cookieVal}` : cookieVal;
+    const val = getNonEmptySecret(config.apiKey.value);
+    if (val) {
+      if (config.apiKey.in === 'header') {
+        headers[config.apiKey.name] = val;
+      } else if (config.apiKey.in === 'query') {
+        queryParams[config.apiKey.name] = val;
+      } else if (config.apiKey.in === 'cookie') {
+        const cookieVal = `${encodeURIComponent(config.apiKey.name)}=${encodeURIComponent(val)}`;
+        headers['Cookie'] = headers['Cookie'] ? `${headers['Cookie']}; ${cookieVal}` : cookieVal;
+      }
     }
   }
 }
@@ -154,7 +168,10 @@ export function applyAuth(
   // 1. Custom Headers with env substitution (always applied if configured)
   if (config.headers) {
     for (const [k, v] of Object.entries(config.headers)) {
-      headers[k] = substituteEnvVars(v);
+      const val = getNonEmptySecret(v);
+      if (val !== null) {
+        headers[k] = val;
+      }
     }
   }
 
@@ -164,104 +181,160 @@ export function applyAuth(
     const schemeVal = config.securitySchemes?.[schemeName];
 
     // Check if configured under config.securitySchemes
-    if (schemeVal !== undefined) {
+    if (schemeVal !== undefined && schemeVal !== null) {
       if (schemeDef) {
         if (schemeDef.type === 'http') {
           if (schemeDef.scheme?.toLowerCase() === 'bearer') {
-            const token = typeof schemeVal === 'object' ? schemeVal.token || schemeVal.value : schemeVal;
-            headers['Authorization'] = `Bearer ${substituteEnvVars(String(token))}`;
-            return true;
-          } else if (schemeDef.scheme?.toLowerCase() === 'basic') {
-            if (typeof schemeVal === 'object' && (schemeVal.username || schemeVal.password)) {
-              const u = substituteEnvVars(schemeVal.username || '');
-              const p = substituteEnvVars(schemeVal.password || '');
-              const b64 = Buffer.from(`${u}:${p}`).toString('base64');
-              headers['Authorization'] = `Basic ${b64}`;
-            } else {
-              const raw = substituteEnvVars(typeof schemeVal === 'object' ? schemeVal.value || '' : String(schemeVal));
-              const token = raw.includes(':') ? Buffer.from(raw).toString('base64') : raw;
-              headers['Authorization'] = `Basic ${token}`;
+            const rawToken = typeof schemeVal === 'object' ? schemeVal.token ?? schemeVal.value : schemeVal;
+            const token = getNonEmptySecret(rawToken);
+            if (token) {
+              headers['Authorization'] = `Bearer ${token}`;
+              return true;
             }
-            return true;
+            return false;
+          } else if (schemeDef.scheme?.toLowerCase() === 'basic') {
+            if (typeof schemeVal === 'object') {
+              const u = getNonEmptySecret(schemeVal.username || '');
+              const p = getNonEmptySecret(schemeVal.password || '');
+              if (u || p) {
+                const b64 = Buffer.from(`${u || ''}:${p || ''}`).toString('base64');
+                headers['Authorization'] = `Basic ${b64}`;
+                return true;
+              }
+              const raw = getNonEmptySecret(schemeVal.value);
+              if (raw) {
+                const token = raw.includes(':') ? Buffer.from(raw).toString('base64') : raw;
+                headers['Authorization'] = `Basic ${token}`;
+                return true;
+              }
+              return false;
+            } else {
+              const raw = getNonEmptySecret(schemeVal);
+              if (raw) {
+                const token = raw.includes(':') ? Buffer.from(raw).toString('base64') : raw;
+                headers['Authorization'] = `Basic ${token}`;
+                return true;
+              }
+              return false;
+            }
           }
         } else if (schemeDef.type === 'apiKey') {
           const paramName = schemeDef.name || schemeName;
-          const val = substituteEnvVars(typeof schemeVal === 'object' ? schemeVal.value || '' : String(schemeVal));
-          if (schemeDef.in === 'header') {
-            headers[paramName] = val;
-            return true;
-          } else if (schemeDef.in === 'query') {
-            queryParams[paramName] = val;
-            return true;
-          } else if (schemeDef.in === 'cookie') {
-            const cookieVal = `${encodeURIComponent(paramName)}=${encodeURIComponent(val)}`;
-            headers['Cookie'] = headers['Cookie'] ? `${headers['Cookie']}; ${cookieVal}` : cookieVal;
+          const rawVal = typeof schemeVal === 'object' ? schemeVal.value : schemeVal;
+          const val = getNonEmptySecret(rawVal);
+          if (val) {
+            if (schemeDef.in === 'header') {
+              headers[paramName] = val;
+              return true;
+            } else if (schemeDef.in === 'query') {
+              queryParams[paramName] = val;
+              return true;
+            } else if (schemeDef.in === 'cookie') {
+              const cookieVal = `${encodeURIComponent(paramName)}=${encodeURIComponent(val)}`;
+              headers['Cookie'] = headers['Cookie'] ? `${headers['Cookie']}; ${cookieVal}` : cookieVal;
+              return true;
+            }
+          }
+          return false;
+        } else if (schemeDef.type === 'oauth2' || schemeDef.type === 'openIdConnect') {
+          const rawToken = typeof schemeVal === 'object' ? schemeVal.token ?? schemeVal.value : schemeVal;
+          const token = getNonEmptySecret(rawToken);
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
             return true;
           }
-        } else if (schemeDef.type === 'oauth2' || schemeDef.type === 'openIdConnect') {
-          const token = typeof schemeVal === 'object' ? schemeVal.token || schemeVal.value : schemeVal;
-          headers['Authorization'] = `Bearer ${substituteEnvVars(String(token))}`;
-          return true;
+          return false;
         }
       }
 
       // Fallback if not defined in spec or generic object
       if (typeof schemeVal === 'string') {
-        const val = substituteEnvVars(schemeVal);
-        headers[schemeName] = val;
-        return true;
-      } else if (typeof schemeVal === 'object' && schemeVal !== null) {
-        if (schemeVal.header) {
-          headers[schemeVal.header] = substituteEnvVars(schemeVal.value || '');
-          return true;
-        } else if (schemeVal.query) {
-          queryParams[schemeVal.query] = substituteEnvVars(schemeVal.value || '');
-          return true;
-        } else if (schemeVal.cookie) {
-          const cookieVal = `${encodeURIComponent(schemeVal.cookie)}=${encodeURIComponent(substituteEnvVars(schemeVal.value || ''))}`;
-          headers['Cookie'] = headers['Cookie'] ? `${headers['Cookie']}; ${cookieVal}` : cookieVal;
+        const val = getNonEmptySecret(schemeVal);
+        if (val) {
+          headers[schemeName] = val;
           return true;
         }
+        return false;
+      } else if (typeof schemeVal === 'object' && schemeVal !== null) {
+        if (schemeVal.header) {
+          const val = getNonEmptySecret(schemeVal.value);
+          if (val) {
+            headers[schemeVal.header] = val;
+            return true;
+          }
+        } else if (schemeVal.query) {
+          const val = getNonEmptySecret(schemeVal.value);
+          if (val) {
+            queryParams[schemeVal.query] = val;
+            return true;
+          }
+        } else if (schemeVal.cookie) {
+          const val = getNonEmptySecret(schemeVal.value);
+          if (val) {
+            const cookieVal = `${encodeURIComponent(schemeVal.cookie)}=${encodeURIComponent(val)}`;
+            headers['Cookie'] = headers['Cookie'] ? `${headers['Cookie']}; ${cookieVal}` : cookieVal;
+            return true;
+          }
+        }
+        return false;
       }
     }
 
     // If no config.securitySchemes entry, check if generic auth fields match schemeDef
     if (schemeDef) {
       if (schemeDef.type === 'http' && schemeDef.scheme?.toLowerCase() === 'bearer' && config.bearerToken) {
-        headers['Authorization'] = `Bearer ${substituteEnvVars(config.bearerToken)}`;
-        return true;
+        const token = getNonEmptySecret(config.bearerToken);
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+          return true;
+        }
+        return false;
       }
       if (schemeDef.type === 'http' && schemeDef.scheme?.toLowerCase() === 'basic' && config.basicAuth) {
         if (typeof config.basicAuth === 'string') {
-          const raw = substituteEnvVars(config.basicAuth);
-          const token = raw.includes(':') ? Buffer.from(raw).toString('base64') : raw;
-          headers['Authorization'] = `Basic ${token}`;
+          const raw = getNonEmptySecret(config.basicAuth);
+          if (raw) {
+            const token = raw.includes(':') ? Buffer.from(raw).toString('base64') : raw;
+            headers['Authorization'] = `Basic ${token}`;
+            return true;
+          }
+          return false;
         } else {
-          const u = substituteEnvVars(config.basicAuth.username || '');
-          const p = substituteEnvVars(config.basicAuth.password || '');
-          headers['Authorization'] = `Basic ${Buffer.from(`${u}:${p}`).toString('base64')}`;
+          const u = getNonEmptySecret(config.basicAuth.username || '');
+          const p = getNonEmptySecret(config.basicAuth.password || '');
+          if (u || p) {
+            headers['Authorization'] = `Basic ${Buffer.from(`${u || ''}:${p || ''}`).toString('base64')}`;
+            return true;
+          }
+          return false;
         }
-        return true;
       }
       if (schemeDef.type === 'apiKey' && config.apiKey) {
         const paramName = schemeDef.name || config.apiKey.name;
         const targetIn = schemeDef.in || config.apiKey.in || 'header';
-        const val = substituteEnvVars(config.apiKey.value);
-        if (targetIn === 'header') {
-          headers[paramName] = val;
-          return true;
-        } else if (targetIn === 'query') {
-          queryParams[paramName] = val;
-          return true;
-        } else if (targetIn === 'cookie') {
-          const cookieVal = `${encodeURIComponent(paramName)}=${encodeURIComponent(val)}`;
-          headers['Cookie'] = headers['Cookie'] ? `${headers['Cookie']}; ${cookieVal}` : cookieVal;
-          return true;
+        const val = getNonEmptySecret(config.apiKey.value);
+        if (val) {
+          if (targetIn === 'header') {
+            headers[paramName] = val;
+            return true;
+          } else if (targetIn === 'query') {
+            queryParams[paramName] = val;
+            return true;
+          } else if (targetIn === 'cookie') {
+            const cookieVal = `${encodeURIComponent(paramName)}=${encodeURIComponent(val)}`;
+            headers['Cookie'] = headers['Cookie'] ? `${headers['Cookie']}; ${cookieVal}` : cookieVal;
+            return true;
+          }
         }
+        return false;
       }
       if ((schemeDef.type === 'oauth2' || schemeDef.type === 'openIdConnect') && config.bearerToken) {
-        headers['Authorization'] = `Bearer ${substituteEnvVars(config.bearerToken)}`;
-        return true;
+        const token = getNonEmptySecret(config.bearerToken);
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+          return true;
+        }
+        return false;
       }
     }
 
@@ -298,7 +371,7 @@ export function applyAuth(
       if (!isAuthOptional) {
         const requiredNames = securityRequirement.map((req) => Object.keys(req).join(' & ')).join(', ');
         throw new Error(
-          `Authentication Error: Operation requires security scheme [${requiredNames}], but no matching credentials were provided in configuration.`
+          `Authentication Error: Operation requires security scheme [${requiredNames}], but no valid non-empty matching credentials were provided in configuration.`
         );
       }
       applyGeneralAuth(headers, queryParams, config);
