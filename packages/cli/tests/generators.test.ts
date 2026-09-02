@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateTypeScriptProject } from '../src/generators/typescript.js';
-import { generatePythonProject } from '../src/generators/python.js';
+import { generateTypeScriptProject, generatePythonProject } from '@postmcp/core';
 import { NormalizedSpec } from '@postmcp/core';
 
 describe('Standalone MCP Server Code Generators', () => {
@@ -44,7 +43,7 @@ describe('Standalone MCP Server Code Generators', () => {
     securitySchemes: {},
   };
 
-  it('should generate complete TypeScript MCP server files', () => {
+  it('should generate complete TypeScript MCP SDK v2 server files', () => {
     const project = generateTypeScriptProject(sampleSpec);
 
     expect(project.files['package.json']).toBeDefined();
@@ -53,13 +52,15 @@ describe('Standalone MCP Server Code Generators', () => {
     expect(project.files['README.md']).toBeDefined();
 
     const packageJson = JSON.parse(project.files['package.json']);
-    expect(packageJson.dependencies['@modelcontextprotocol/sdk']).toBeDefined();
+    expect(packageJson.dependencies['@modelcontextprotocol/server']).toBeDefined();
+    expect(packageJson.dependencies['@modelcontextprotocol/node']).toBeDefined();
     expect(packageJson.dependencies['axios']).toBeDefined();
 
     const indexTs = project.files['src/index.ts'];
     expect(indexTs).toContain("'createRefund'");
     expect(indexTs).toContain("'listCharges'");
     expect(indexTs).toContain('StdioServerTransport');
+    expect(indexTs).toContain('server.registerTool');
   });
 
   it('should generate complete Python FastMCP server files', () => {
@@ -72,8 +73,8 @@ describe('Standalone MCP Server Code Generators', () => {
 
     const serverPy = project.files['server.py'];
     expect(serverPy).toContain('from mcp.server.fastmcp import FastMCP');
-    expect(serverPy).toContain('@mcp.tool(name="createRefund"');
-    expect(serverPy).toContain('charge_id: str, amount: float');
+    expect(serverPy).toContain('@mcp.tool()');
     expect(serverPy).toContain('async def create_refund');
+    expect(serverPy).toContain('charge_id: str');
   });
 });

@@ -45,6 +45,7 @@ export interface InspectCommandOptions {
 
 export interface GenerateCommandOptions {
   lang?: string;
+  target?: string;
   out?: string;
 }
 

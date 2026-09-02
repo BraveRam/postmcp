@@ -426,32 +426,32 @@ The Studio is built with modern, accessible **shadcn/ui** components:
 ## 8. Implementation Phases & Milestones
 
 ### Phase 1: Core Runtime Engine (`@postmcp/core`)
-- [ ] Implement OpenAPI 2.0 / 3.0 / 3.1 AST parser & circular `$ref` dereferencer.
-- [ ] Implement Smart Token Diet engine (null pruner, Markdown table generator, JSONPath masking).
-- [ ] Implement Adaptive Hybrid JIT Tool Router (in-memory BM25 index + dynamic mounting).
-- [ ] Implement 3-Tier Safety Classifier & `--dry-run` mode.
-- [ ] Implement Declarative Macro Workflow Chainer.
-- [ ] Implement Media Adapter (Image content blocks, CSV parser, PDF artifacts).
-- [ ] Implement Resilient HTTP client (Auth injection, 429 backoff, 202 auto-polling).
-- [ ] Implement MCP SDK v2 Stdio and Streamable HTTP server wrappers.
+- [x] Implement OpenAPI 2.0 / 3.0 / 3.1 AST parser & circular `$ref` dereferencer.
+- [x] Implement Smart Token Diet engine (null pruner, Markdown table generator, JSONPath masking).
+- [x] Implement Adaptive Hybrid JIT Tool Router (in-memory BM25 index + dynamic mounting).
+- [x] Implement 3-Tier Safety Classifier & `--dry-run` mode.
+- [x] Implement Declarative Macro Workflow Chainer.
+- [x] Implement Media Adapter (Image content blocks, CSV parser, PDF artifacts).
+- [x] Implement Resilient HTTP client (Auth injection, 429 backoff, 202 auto-polling).
+- [x] Implement MCP SDK v2 Stdio and Streamable HTTP server wrappers.
 
 ### Phase 2: CLI Binary (`packages/cli`)
-- [ ] Build `postmcp run <spec>` command.
-- [ ] Build `postmcp inspect <spec>` summary inspector.
-- [ ] Build `postmcp export <spec> --target cursor|claude` command.
-- [ ] Build `postmcp presets list/sync` command.
-- [ ] Package CLI for zero-install `npx postmcp` execution.
+- [x] Build `postmcp run <spec>` command.
+- [x] Build `postmcp inspect <spec>` summary inspector.
+- [x] Build `postmcp export <spec> --target cursor|claude` command.
+- [x] Build `postmcp presets list/sync` command.
+- [x] Package CLI for zero-install `npx postmcp` execution.
 
 ### Phase 3: Presets Catalog (`presets/`)
-- [ ] Curate 50+ optimized presets with pre-configured field masks and risk classifications (GitHub, Stripe, Linear, Supabase, Slack, Sentry, Notion, Resend, Shopify, etc.).
+- [x] Curate 50+ optimized presets with pre-configured field masks and risk classifications (GitHub, Stripe, Linear, Supabase, Slack, Sentry, Notion, Resend, Shopify, etc.).
 
 ### Phase 4: Visual Web Studio (`packages/studio`)
-- [ ] Build Next.js 16 App Router workbench UI with React 19, Turbopack, and Tailwind CSS.
-- [ ] Implement complete shadcn/ui component suite (`Command`, `Accordion`, `Badge`, `Switch`, `Tabs`, `Dialog`, `ScrollArea`, `Tooltip`).
-- [ ] Build Spec Explorer & Visual Endpoint Checklist.
-- [ ] Build Live Sandbox powered by Vercel AI SDK & AI Gateway.
-- [ ] Build Real-Time Token Visualizer & Copyable Snippet Modal.
+- [x] Build Next.js 16 App Router workbench UI with React 19, Turbopack, and Tailwind CSS.
+- [x] Implement complete shadcn/ui component suite (`Command`, `Accordion`, `Badge`, `Switch`, `Tabs`, `Dialog`, `ScrollArea`, `Tooltip`).
+- [x] Build Spec Explorer & Visual Endpoint Checklist.
+- [x] Build Live Sandbox powered by Vercel AI SDK & AI Gateway.
+- [x] Build Real-Time Token Visualizer & Copyable Snippet Modal.
 
 ### Phase 5: Code Generators (`packages/core/src/codegen`)
-- [ ] Implement Python FastMCP + Pydantic + httpx generator.
-- [ ] Implement TypeScript MCP SDK v2 + Zod generator.
+- [x] Implement Python FastMCP + Pydantic + httpx generator.
+- [x] Implement TypeScript MCP SDK v2 + Zod generator.

@@ -6,3 +6,4 @@ export * from './macro/index.js';
 export * from './media/index.js';
 export * from './http/index.js';
 export * from './server/index.js';
+export * from './codegen/index.js';

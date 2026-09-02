@@ -1,10 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { parseOpenAPI } from '@postmcp/core';
+import { parseOpenAPI, generateProject, generateTypeScriptProject, generatePythonProject } from '@postmcp/core';
 import type { GenerateCommandOptions } from '@postmcp/types';
 import { resolvePresetSpec } from '../presets/index.js';
-import { generateTypeScriptProject } from '../generators/typescript.js';
-import { generatePythonProject } from '../generators/python.js';
 import pc from 'picocolors';
 
 export type { GenerateCommandOptions };
@@ -12,7 +10,7 @@ export type { GenerateCommandOptions };
 export async function generateCommand(specArg: string, options: GenerateCommandOptions): Promise<void> {
   let specPath: string | object = specArg;
   if (!specPath) {
-    console.error(pc.red('Error: No OpenAPI spec provided. Usage: postmcp generate <spec-path-or-url-or-@preset>'));
+    console.error(pc.red('Error: No OpenAPI spec provided. Usage: postmcp generate <spec-path-or-url-or-@preset> --target <python|typescript>'));
     process.exit(1);
     return;
   }
@@ -33,21 +31,23 @@ export async function generateCommand(specArg: string, options: GenerateCommandO
   } catch (err: any) {
     console.error(pc.red(`Failed to parse specification: ${err.message}`));
     process.exit(1);
+    return;
   }
 
-  const lang = (options.lang || 'typescript').toLowerCase();
+  const targetLang = (options.target || options.lang || 'typescript').toLowerCase();
   const outDir = path.resolve(options.out || `./${spec.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}-mcp`);
 
-  console.log(pc.cyan(`⚡ Generating standalone ${pc.bold(lang.toUpperCase())} MCP server for '${spec.title}'...`));
+  console.log(pc.cyan(`⚡ Generating standalone ${pc.bold(targetLang.toUpperCase())} MCP server for '${spec.title}'...`));
 
   let project;
-  if (lang === 'ts' || lang === 'typescript') {
+  if (targetLang === 'ts' || targetLang === 'typescript') {
     project = generateTypeScriptProject(spec);
-  } else if (lang === 'py' || lang === 'python') {
+  } else if (targetLang === 'py' || targetLang === 'python') {
     project = generatePythonProject(spec);
   } else {
-    console.error(pc.red(`Unsupported language '${lang}'. Supported languages: 'ts' (TypeScript), 'py' (Python/FastMCP).`));
+    console.error(pc.red(`Unsupported target '${targetLang}'. Supported targets: 'typescript' ('ts'), 'python' ('py').`));
     process.exit(1);
+    return;
   }
 
   // Write files to target directory
@@ -70,7 +70,7 @@ export async function generateCommand(specArg: string, options: GenerateCommandO
   console.log(`  ${pc.bold(outDir)}`);
   console.log();
   console.log(pc.dim('Next steps:'));
-  if (lang === 'ts' || lang === 'typescript') {
+  if (targetLang === 'ts' || targetLang === 'typescript') {
     console.log(`  cd ${path.relative(process.cwd(), outDir) || '.'}`);
     console.log('  npm install');
     console.log('  npm run build');
