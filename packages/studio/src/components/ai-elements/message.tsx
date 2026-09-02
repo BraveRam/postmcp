@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import { Bot, User, Copy, Check, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 
@@ -12,7 +11,6 @@ export interface MessageProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function Message({
   from = 'assistant',
-  avatar,
   className,
   children,
   ...props
@@ -22,32 +20,20 @@ export function Message({
   return (
     <div
       className={cn(
-        'group flex gap-3 sm:gap-4 text-xs font-sans animate-in fade-in-50 duration-200',
+        'group flex w-full font-mono text-xs animate-in fade-in-50 duration-200',
         isUser ? 'justify-end' : 'justify-start',
         className
       )}
       {...props}
     >
-      {!isUser && (
-        <div className="h-7 w-7 rounded bg-white text-black flex items-center justify-center shrink-0 font-bold shadow-xs">
-          {avatar || <Bot className="h-4 w-4" />}
-        </div>
-      )}
-
       <div
         className={cn(
-          'max-w-[90%] sm:max-w-[80%] space-y-2.5',
+          'w-full max-w-[92%] sm:max-w-[85%] space-y-2',
           isUser ? 'items-end' : 'items-start'
         )}
       >
         {children}
       </div>
-
-      {isUser && (
-        <div className="h-7 w-7 rounded bg-zinc-900 border border-zinc-700 text-white flex items-center justify-center shrink-0 shadow-xs">
-          {avatar || <User className="h-4 w-4" />}
-        </div>
-      )}
     </div>
   );
 }
@@ -65,10 +51,10 @@ export function MessageContent({
   return (
     <div
       className={cn(
-        'rounded-lg p-3.5 sm:p-4 text-xs leading-relaxed transition-all',
+        'rounded-lg p-3 sm:p-4 text-xs font-mono leading-relaxed transition-all',
         from === 'user'
-          ? 'bg-zinc-900 border border-zinc-700 text-white'
-          : 'bg-zinc-950 border border-zinc-800 text-zinc-200',
+          ? 'bg-zinc-900 border border-zinc-700 text-white ml-auto'
+          : 'bg-zinc-950 border border-zinc-800 text-zinc-200 mr-auto',
         className
       )}
       {...props}
@@ -88,7 +74,7 @@ export function MessageResponse({
   ...props
 }: MessageResponseProps) {
   return (
-    <div className={cn('whitespace-pre-wrap font-sans text-xs', className)} {...props}>
+    <div className={cn('whitespace-pre-wrap font-mono text-xs leading-relaxed', className)} {...props}>
       {children}
     </div>
   );
@@ -126,7 +112,7 @@ export function MessageAction({
     <Button
       variant="ghost"
       size="sm"
-      className={cn('h-6 px-2 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900', className)}
+      className={cn('h-6 px-2 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 font-mono', className)}
       title={tooltip || label}
       {...props}
     >

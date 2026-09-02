@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { NormalizedSpec, NormalizedOperation } from '@postmcp/types';
-import { Badge } from './ui/Badge';
 import { Switch } from './ui/Switch';
 import { Card } from './ui/Card';
 import { ModelSelectorDropdown } from './ModelSelectorDropdown';
@@ -16,8 +15,6 @@ import {
   Message,
   MessageContent,
   MessageResponse,
-  MessageActions,
-  MessageAction,
 } from '@/components/ai-elements/message';
 import {
   PromptInput,
@@ -37,9 +34,6 @@ import {
   ToolOutput,
 } from '@/components/ai-elements/tool';
 import {
-  Bot,
-  Copy,
-  Check,
   Globe,
   Sparkles,
   Zap,
@@ -61,7 +55,6 @@ interface SandboxMessage {
 export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
   const [model, setModel] = useState('zai/glm-5.3-flash');
   const [dryRun, setDryRun] = useState<boolean>(true);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [toolCardOpen, setToolCardOpen] = useState<Record<string, boolean>>({});
 
   const [inputPrompt, setInputPrompt] = useState(
@@ -100,12 +93,6 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
       abortControllerRef.current.abort();
       setIsLoading(false);
     }
-  };
-
-  const handleCopy = (id: string, text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
   };
 
   const toggleToolCard = (id: string) => {
@@ -180,7 +167,7 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] max-w-5xl space-y-3 sm:space-y-4 font-sans">
+    <div className="flex flex-col h-[calc(100vh-140px)] max-w-5xl space-y-3 sm:space-y-4 font-mono">
       {/* Top Configuration Bar */}
       <Card className="p-3 bg-zinc-950 border-zinc-800">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
@@ -236,22 +223,6 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
                           </ToolContent>
                         </Tool>
                       </div>
-                    )}
-
-                    {/* AI Elements: Message Actions */}
-                    {m.role === 'assistant' && (
-                      <MessageActions>
-                        <MessageAction
-                          onClick={() => handleCopy(m.id, m.content)}
-                          label={copiedId === m.id ? 'Copied' : 'Copy'}
-                        >
-                          {copiedId === m.id ? (
-                            <Check className="h-3 w-3 text-white" />
-                          ) : (
-                            <Copy className="h-3 w-3 text-zinc-400" />
-                          )}
-                        </MessageAction>
-                      </MessageActions>
                     )}
                   </MessageContent>
                 </Message>
