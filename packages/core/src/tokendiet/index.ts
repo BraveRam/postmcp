@@ -11,6 +11,7 @@ export interface TokenDietOptions {
   fieldMasks?: string[];
   maxTokens?: number; // default: 2500
   convertToMarkdownTable?: boolean; // default: true
+  maxProseLength?: number; // default: 1000
 }
 
 export interface TokenDietResult {
@@ -23,6 +24,7 @@ export interface TokenDietResult {
 }
 
 export function estimateTokenCount(str: string): number {
+  if (!str) return 0;
   return Math.ceil(str.length / 3.8);
 }
 
@@ -30,14 +32,20 @@ export function applyTokenDiet(data: any, options: TokenDietOptions = {}): Token
   const enabled = options.enabled !== false;
   const maxTokens = options.maxTokens || 2500;
   const convertToMarkdown = options.convertToMarkdownTable !== false;
+  const maxProseLength = options.maxProseLength || 1000;
 
-  const rawJson = JSON.stringify(data, null, 2) || '';
+  let rawJson = '';
+  try {
+    rawJson = data !== undefined ? JSON.stringify(data, null, 2) || '' : '{}';
+  } catch {
+    rawJson = String(data);
+  }
   const rawEstimatedTokens = estimateTokenCount(rawJson);
 
-  if (!enabled || !data) {
+  if (!enabled || data === undefined) {
     return {
-      text: rawJson,
-      structured: data,
+      text: rawJson || '{}',
+      structured: data ?? {},
       rawEstimatedTokens,
       dietEstimatedTokens: rawEstimatedTokens,
       savingsPercentage: 0,
@@ -49,7 +57,19 @@ export function applyTokenDiet(data: any, options: TokenDietOptions = {}): Token
   let processed = options.fieldMasks ? applyFieldMask(data, options.fieldMasks) : data;
 
   // 2. Prune nulls and boilerplate noise
-  processed = pruneNullsAndNoise(processed);
+  processed = pruneNullsAndNoise(processed, maxProseLength);
+
+  // If pruning reduced the entire payload to undefined, handle safely (Finding 16)
+  if (processed === undefined) {
+    return {
+      text: '{}',
+      structured: {},
+      rawEstimatedTokens,
+      dietEstimatedTokens: estimateTokenCount('{}'),
+      savingsPercentage: rawEstimatedTokens > 0 ? 99 : 0,
+      isTruncated: false,
+    };
+  }
 
   // 3. Format into text output
   let textOutput = '';
@@ -72,17 +92,16 @@ export function applyTokenDiet(data: any, options: TokenDietOptions = {}): Token
     textOutput = typeof processed === 'string' ? processed : JSON.stringify(processed, null, 2);
   }
 
-  // 4. Check token ceiling & truncate if needed
-  let dietTokens = estimateTokenCount(textOutput);
-  if (dietTokens > maxTokens) {
+  // 4. Strictly enforce token ceiling (Finding 18)
+  const maxChars = Math.floor(maxTokens * 3.8);
+  if (textOutput.length > maxChars) {
     isTruncated = true;
-    const maxChars = Math.floor(maxTokens * 3.8);
-    textOutput =
-      textOutput.slice(0, maxChars) +
-      `\n\n... [Response capped at ~${maxTokens} tokens. Use specific filters or pagination to view additional records.]`;
-    dietTokens = maxTokens;
+    const suffix = `\n\n... [Response capped at ~${maxTokens} tokens. Use pagination or filters to view more.]`;
+    const sliceLen = Math.max(0, maxChars - suffix.length);
+    textOutput = textOutput.slice(0, sliceLen) + suffix;
   }
 
+  const dietTokens = estimateTokenCount(textOutput);
   const savingsPercentage =
     rawEstimatedTokens > 0
       ? Math.max(0, Math.round(((rawEstimatedTokens - dietTokens) / rawEstimatedTokens) * 100))

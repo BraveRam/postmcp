@@ -6,6 +6,7 @@ import {
   HttpMethod,
   RiskTier,
   SecurityScheme,
+  MacroDefinition,
 } from './types.js';
 
 function cleanOperationId(method: HttpMethod, path: string, rawId?: string): string {
@@ -19,7 +20,9 @@ function cleanOperationId(method: HttpMethod, path: string, rawId?: string): str
       if (cleaned.includes('_')) {
         return cleaned
           .split('_')
-          .map((part, index) => (index === 0 ? part.charAt(0).toLowerCase() + part.slice(1) : part.charAt(0).toUpperCase() + part.slice(1)))
+          .map((part, index) =>
+            index === 0 ? part.toLowerCase() : part.charAt(0).toUpperCase() + part.slice(1)
+          )
           .join('');
       }
       return cleaned.charAt(0).toLowerCase() + cleaned.slice(1);
@@ -32,7 +35,8 @@ function cleanOperationId(method: HttpMethod, path: string, rawId?: string): str
     .filter(Boolean)
     .map((part) => {
       if (part.startsWith('{') && part.endsWith('}')) {
-        return 'By' + part.slice(1, -1).charAt(0).toUpperCase() + part.slice(2);
+        const inner = part.slice(1, -1);
+        return 'By' + inner.charAt(0).toUpperCase() + inner.slice(1);
       }
       return part.charAt(0).toUpperCase() + part.slice(1);
     });
@@ -41,13 +45,19 @@ function cleanOperationId(method: HttpMethod, path: string, rawId?: string): str
 }
 
 function classifyRiskTier(method: HttpMethod, path: string, summary: string): RiskTier {
-  if (method === 'get' || method === 'head' || method === 'options') {
-    return 'READ_ONLY';
+  const destructiveRegex = /(delete|drop|purge|cancel|terminate|refund|transfer|destroy|wipe|revoke|admin|billing|auth)/i;
+  const isDestructiveIntent = destructiveRegex.test(path) || destructiveRegex.test(summary);
+
+  if (method === 'delete') {
+    return 'CRITICAL';
   }
 
-  const destructiveRegex = /(delete|drop|purge|cancel|terminate|refund|transfer|destroy|wipe|revoke|admin)/i;
-  if (method === 'delete' || destructiveRegex.test(path) || destructiveRegex.test(summary)) {
+  if (isDestructiveIntent && (method === 'post' || method === 'put' || method === 'patch' || method === 'get')) {
     return 'CRITICAL';
+  }
+
+  if (method === 'get' || method === 'head' || method === 'options') {
+    return 'READ_ONLY';
   }
 
   return 'MUTATION';
@@ -60,7 +70,7 @@ function buildUnifiedInputSchema(
   const properties: Record<string, JSONSchemaObject> = {};
   const required: string[] = [];
 
-  // Add path/query/header parameters
+  // Add path/query/header/cookie parameters
   for (const param of parameters) {
     properties[param.name] = {
       ...param.schema,
@@ -219,7 +229,8 @@ export function normalizeSpec(spec: any): NormalizedSpec {
         const jsonContent =
           op.requestBody.content['application/json'] ||
           op.requestBody.content['application/x-www-form-urlencoded'] ||
-          op.requestBody.content['multipart/form-data'];
+          op.requestBody.content['multipart/form-data'] ||
+          op.requestBody.content['text/plain'];
 
         if (jsonContent?.schema) {
           requestBodySchema = jsonContent.schema;
@@ -229,6 +240,8 @@ export function normalizeSpec(spec: any): NormalizedSpec {
           contentType = 'application/x-www-form-urlencoded';
         } else if (op.requestBody.content['multipart/form-data']) {
           contentType = 'multipart/form-data';
+        } else if (op.requestBody.content['text/plain']) {
+          contentType = 'text/plain';
         }
       }
 
@@ -257,6 +270,10 @@ export function normalizeSpec(spec: any): NormalizedSpec {
     }
   }
 
+  // Extract Macros (Finding 22)
+  const rawMacros = spec.macros || spec['x-macros'] || spec['x-postmcp-macros'] || [];
+  const macros: MacroDefinition[] = Array.isArray(rawMacros) ? rawMacros : [];
+
   return {
     title,
     version,
@@ -264,5 +281,6 @@ export function normalizeSpec(spec: any): NormalizedSpec {
     servers,
     operations,
     securitySchemes,
+    macros: macros.length > 0 ? macros : undefined,
   };
 }

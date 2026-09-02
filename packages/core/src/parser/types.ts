@@ -25,7 +25,7 @@ export interface NormalizedParameter {
   description?: string;
   required: boolean;
   schema: JSONSchemaObject;
-  style?: string;
+  style?: string; // form, spaceDelimited, pipeDelimited, deepObject, simple, matrix
   explode?: boolean;
 }
 

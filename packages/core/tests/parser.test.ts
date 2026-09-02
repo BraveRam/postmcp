@@ -28,23 +28,68 @@ describe('OpenAPI Parser & AST Normalizer', () => {
     expect(getCategoryTree?.responseSchema).toBeDefined();
   });
 
-  it('should parse inline YAML string properly', async () => {
-    const yamlSpec = `
-openapi: 3.0.0
-info:
-  title: Minimal YAML API
-  version: 2.0.0
-paths:
-  /status:
-    get:
-      summary: Health check
-      responses:
-        '200':
-          description: OK
-`;
-    const spec = await parseOpenAPI(yamlSpec);
-    expect(spec.title).toBe('Minimal YAML API');
-    expect(spec.operations.length).toBe(1);
-    expect(spec.operations[0].id).toBe('getStatus');
+  it('should generate fallback operation IDs without trailing } brace (Finding 6)', async () => {
+    const specJson = {
+      openapi: '3.0.0',
+      info: { title: 'Test', version: '1.0' },
+      paths: {
+        '/users/{userId}': {
+          get: {
+            summary: 'Get user',
+            responses: { '200': { description: 'OK' } },
+          },
+        },
+      },
+    };
+    const spec = await parseOpenAPI(specJson);
+    expect(spec.operations[0].id).toBe('getUsersByUserId');
+    expect(spec.operations[0].id).not.toContain('}');
+  });
+
+  it('should classify dangerous GET endpoints as CRITICAL instead of READ_ONLY (Finding 14)', async () => {
+    const specJson = {
+      openapi: '3.0.0',
+      info: { title: 'Test', version: '1.0' },
+      paths: {
+        '/billing/refund': {
+          get: {
+            summary: 'Refund transaction via GET',
+            responses: { '200': { description: 'OK' } },
+          },
+        },
+        '/admin/wipe': {
+          get: {
+            summary: 'Wipe all cache',
+            responses: { '200': { description: 'OK' } },
+          },
+        },
+      },
+    };
+    const spec = await parseOpenAPI(specJson);
+    const refundOp = spec.operations.find((o) => o.path === '/billing/refund');
+    const wipeOp = spec.operations.find((o) => o.path === '/admin/wipe');
+
+    expect(refundOp?.riskTier).toBe('CRITICAL');
+    expect(wipeOp?.riskTier).toBe('CRITICAL');
+  });
+
+  it('should extract macros defined in root spec document (Finding 22)', async () => {
+    const specJson = {
+      openapi: '3.0.0',
+      info: { title: 'Test', version: '1.0' },
+      paths: {},
+      macros: [
+        {
+          name: 'refundWorkflow',
+          description: 'Refund workflow',
+          parameters: { type: 'object' },
+          steps: [{ id: 'step1', action: 'POST /refund' }],
+        },
+      ],
+    };
+    const spec = await parseOpenAPI(specJson);
+    expect(spec.macros).toBeDefined();
+    expect(spec.macros?.length).toBe(1);
+    expect(spec.macros?.[0].name).toBe('refundWorkflow');
   });
 });

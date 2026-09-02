@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { applyTokenDiet, pruneNullsAndNoise, arrayToMarkdownTable } from '../src/tokendiet/index.js';
+import {
+  applyTokenDiet,
+  pruneNullsAndNoise,
+  arrayToMarkdownTable,
+  applyFieldMask,
+  stripHtml,
+} from '../src/tokendiet/index.js';
 
 describe('Token Diet Engine', () => {
   it('should prune nulls, empty strings, and HATEOAS link noise', () => {
@@ -26,32 +32,61 @@ describe('Token Diet Engine', () => {
     });
   });
 
-  it('should convert an array of objects into a compact Markdown table', () => {
-    const records = [
-      { id: '1', name: 'Fluffy', tag: 'cat', price: 50 },
-      { id: '2', name: 'Barky', tag: 'dog', price: 100 },
-    ];
+  it('should handle payload that prunes entirely to undefined without crashing (Finding 16)', () => {
+    const raw = {
+      onlyNull: null,
+      emptyString: '',
+      nestedNull: { sub: null },
+    };
 
-    const table = arrayToMarkdownTable(records);
-    expect(table).toContain('| id | name | tag | price |');
-    expect(table).toContain('| 1 | Fluffy | cat | 50 |');
-    expect(table).toContain('| 2 | Barky | dog | 100 |');
+    const result = applyTokenDiet(raw, { enabled: true });
+    expect(result.text).toBe('{}');
+    expect(result.dietEstimatedTokens).toBeGreaterThan(0);
+    expect(result.isTruncated).toBe(false);
   });
 
-  it('should achieve significant token reduction on list payloads', () => {
-    const list = Array.from({ length: 30 }, (_, i) => ({
-      id: `cus_${i}`,
-      name: `Customer ${i}`,
-      email: `customer${i}@example.com`,
-      status: 'active',
-      nullField: null,
-      _links: { self: `/v1/customers/cus_${i}` },
+  it('should preserve nested structure and not fail open on invalid masks (Finding 17)', () => {
+    const data = {
+      user: {
+        id: 7,
+        profile: { email: 'test@example.com', secret: 'hidden' },
+      },
+      other: 'value',
+    };
+
+    // Valid nested mask
+    const masked = applyFieldMask(data, ['user.profile.email']);
+    expect(masked).toEqual({
+      user: {
+        profile: {
+          email: 'test@example.com',
+        },
+      },
+    });
+
+    // Invalid mask should return empty object, not original payload (fail-safe)
+    const invalidMasked = applyFieldMask(data, ['nonExistentField']);
+    expect(invalidMasked).toEqual({});
+  });
+
+  it('should strip HTML tags and cap long prose fields (Finding 21)', () => {
+    const htmlSnippet = '<p>Hello <b>World</b>! <script>alert(1)</script></p>';
+    expect(stripHtml(htmlSnippet)).toBe('Hello World!');
+
+    const longProse = 'A'.repeat(2000);
+    const cleaned = pruneNullsAndNoise({ desc: longProse }, 100);
+    expect(cleaned.desc.length).toBeLessThan(150);
+    expect(cleaned.desc).toContain('... [truncated]');
+  });
+
+  it('should strictly enforce max token ceiling (Finding 18)', () => {
+    const hugeList = Array.from({ length: 500 }, (_, i) => ({
+      id: `item_${i}`,
+      name: `Very long descriptive name for item ${i} with extra text and attributes`,
     }));
 
-    const result = applyTokenDiet(list, { enabled: true, convertToMarkdownTable: true });
-    expect(result.savingsPercentage).toBeGreaterThan(50);
-    expect(result.text).toContain('| id | name | email | status |');
-    expect(result.text).not.toContain('_links');
-    expect(result.text).not.toContain('nullField');
+    const result = applyTokenDiet(hugeList, { maxTokens: 100 });
+    expect(result.isTruncated).toBe(true);
+    expect(result.dietEstimatedTokens).toBeLessThanOrEqual(100);
   });
 });

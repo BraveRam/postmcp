@@ -1,30 +1,45 @@
 import axios, { AxiosResponse, AxiosRequestConfig } from 'axios';
 import { sleepWithJitter } from './retry.js';
+import { isSameOriginOrAllowed } from './auth.js';
+
+export interface AsyncPollResult {
+  response: AxiosResponse;
+  timedOut: boolean;
+}
 
 export async function pollAsyncJob(
   initialResponse: AxiosResponse,
   baseUrl: string,
   requestConfig: AxiosRequestConfig,
   maxTimeoutMs: number = 15000
-): Promise<AxiosResponse> {
+): Promise<AsyncPollResult> {
   const locationHeader = initialResponse.headers['location'] || initialResponse.headers['status-uri'];
   let statusUrl: string | null = null;
 
   if (locationHeader) {
-    statusUrl = locationHeader.startsWith('http') ? locationHeader : `${baseUrl.replace(/\/$/, '')}/${locationHeader.replace(/^\//, '')}`;
+    statusUrl = locationHeader.startsWith('http')
+      ? locationHeader
+      : `${baseUrl.replace(/\/$/, '')}/${locationHeader.replace(/^\//, '')}`;
   } else if (initialResponse.data && typeof initialResponse.data === 'object') {
     const jobData = initialResponse.data;
-    if (jobData.status_url) {
-      statusUrl = jobData.status_url;
-    } else if (jobData.id || jobData.job_id) {
-      const id = jobData.id || jobData.job_id;
-      statusUrl = `${baseUrl.replace(/\/$/, '')}/jobs/${id}`;
+    if (jobData.status_url && typeof jobData.status_url === 'string') {
+      statusUrl = jobData.status_url.startsWith('http')
+        ? jobData.status_url
+        : `${baseUrl.replace(/\/$/, '')}/${jobData.status_url.replace(/^\//, '')}`;
     }
   }
 
   if (!statusUrl) {
-    // No status URL found, return initial 202 response
-    return initialResponse;
+    // No valid status endpoint found, return initial 202 response
+    return { response: initialResponse, timedOut: false };
+  }
+
+  // Cross-origin auth header stripping (Finding 19)
+  const pollHeaders: Record<string, any> = { ...requestConfig.headers };
+  if (!isSameOriginOrAllowed(statusUrl, baseUrl)) {
+    delete pollHeaders['Authorization'];
+    delete pollHeaders['authorization'];
+    delete pollHeaders['Cookie'];
   }
 
   const startTime = Date.now();
@@ -35,23 +50,29 @@ export async function pollAsyncJob(
 
     try {
       const statusRes = await axios.get(statusUrl, {
-        headers: requestConfig.headers,
+        headers: pollHeaders,
         timeout: 5000,
+        validateStatus: () => true,
       });
 
       if (statusRes.status === 200 || statusRes.status === 201) {
         const data = statusRes.data;
-        // Check if finished or still pending
         if (data && typeof data === 'object') {
           const status = (data.status || data.state || '').toLowerCase();
-          if (status === 'completed' || status === 'succeeded' || status === 'finished' || status === 'success') {
-            return statusRes;
+          if (
+            status === 'completed' ||
+            status === 'succeeded' ||
+            status === 'finished' ||
+            status === 'success' ||
+            status === 'done'
+          ) {
+            return { response: statusRes, timedOut: false };
           }
-          if (status === 'failed' || status === 'error') {
-            return statusRes;
+          if (status === 'failed' || status === 'error' || status === 'cancelled') {
+            return { response: statusRes, timedOut: false };
           }
         } else {
-          return statusRes;
+          return { response: statusRes, timedOut: false };
         }
       }
 
@@ -61,5 +82,6 @@ export async function pollAsyncJob(
     }
   }
 
-  return initialResponse;
+  // Timed out polling
+  return { response: initialResponse, timedOut: true };
 }

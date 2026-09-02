@@ -40,7 +40,7 @@ describe('Safety Classifier & Dry-Run Simulator', () => {
     expect(annotations.readOnlyHint).toBe(false);
   });
 
-  it('should produce a non-destructive execution simulation in dry-run mode', () => {
+  it('should redact sensitive headers and body fields in dry-run mode (Finding 15)', () => {
     const op: NormalizedOperation = {
       id: 'dropDatabase',
       method: 'delete',
@@ -53,9 +53,29 @@ describe('Safety Classifier & Dry-Run Simulator', () => {
       riskTier: 'CRITICAL',
     };
 
-    const sim = simulateExecution(op, '/db/main', { Authorization: 'Bearer secret_key' });
+    const headers = {
+      authorization: 'Bearer secret_token',
+      'X-API-KEY': 'api_key_123',
+      'Custom-Header': 'public_val',
+      Cookie: 'session=abc',
+    };
+
+    const body = {
+      dbName: 'production',
+      password: 'super_secret_password',
+      adminToken: 'token_xyz',
+    };
+
+    const sim = simulateExecution(op, 'https://api.example.com/db/main', headers, { env: 'prod' }, body);
     expect(sim.isDryRun).toBe(true);
-    expect(sim.message).toContain('[DRY-RUN SIMULATION]');
-    expect(sim.headers.Authorization).toBe('[REDACTED]');
+    expect(sim.targetUrl).toBe('https://api.example.com/db/main');
+    expect(sim.queryParams).toEqual({ env: 'prod' });
+    expect(sim.headers.authorization).toBe('[REDACTED]');
+    expect(sim.headers['X-API-KEY']).toBe('[REDACTED]');
+    expect(sim.headers.Cookie).toBe('[REDACTED]');
+    expect(sim.headers['Custom-Header']).toBe('public_val');
+    expect(sim.body.password).toBe('[REDACTED]');
+    expect(sim.body.adminToken).toBe('[REDACTED]');
+    expect(sim.body.dbName).toBe('production');
   });
 });

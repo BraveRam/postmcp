@@ -47,14 +47,37 @@ describe('JIT Dynamic Tool Router', () => {
     expect(results[0].id).toBe('createRefund');
   });
 
-  it('should dynamically mount matched tools in ToolRegistry', () => {
+  it('should prevent access to unmounted operations in JIT mode (Finding 1)', () => {
     const registry = new ToolRegistry(operations, true); // Force JIT mode
     expect(registry.getIsJIT()).toBe(true);
-    expect(registry.getActiveOperations().length).toBe(0);
 
-    const mounted = registry.mountToolsByQuery('invoice');
-    expect(mounted.length).toBe(1);
-    expect(mounted[0].id).toBe('listInvoices');
-    expect(registry.getActiveOperations().length).toBe(1);
+    // Unmounted tool cannot be retrieved directly (prevents guessing bypass)
+    expect(registry.getOperation('createRefund')).toBeUndefined();
+
+    // Mount tool
+    registry.mountToolsByQuery('refund');
+    expect(registry.getOperation('createRefund')).toBeDefined();
+
+    // Unmount tool
+    registry.unmountTool('createRefund');
+    expect(registry.getOperation('createRefund')).toBeUndefined();
+  });
+
+  it('should enforce LRU capacity eviction and reset mechanism (Finding 1)', () => {
+    const registry = new ToolRegistry(operations, { forceJIT: true, maxMountedTools: 2 });
+
+    registry.mountToolsByQuery('refund');
+    registry.mountToolsByQuery('invoice');
+    expect(registry.getActiveOperations().length).toBe(2);
+
+    // Mount 3rd tool -> should evict the oldest
+    registry.mountToolsByQuery('user');
+    expect(registry.getActiveOperations().length).toBe(2);
+    expect(registry.getOperation('createRefund')).toBeUndefined(); // evicted
+    expect(registry.getOperation('createUser')).toBeDefined();
+
+    // Reset
+    registry.resetActiveTools();
+    expect(registry.getActiveOperations().length).toBe(0);
   });
 });

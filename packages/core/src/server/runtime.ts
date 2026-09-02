@@ -18,7 +18,7 @@ import { executeMacro } from '../macro/executor.js';
 import { isImageContentType, formatImageContent } from '../media/image.js';
 import { isCsvContentType, csvToMarkdownTable } from '../media/csv.js';
 import { saveBinaryArtifact } from '../media/binary.js';
-import { ResilientHttpClient, AuthConfig } from '../http/index.js';
+import { ResilientHttpClient, AuthConfig, serializeParameters, validateInputArguments } from '../http/index.js';
 
 export interface PostMcpServerOptions {
   spec: NormalizedSpec;
@@ -75,6 +75,10 @@ export class PostMcpServer {
     return this.server;
   }
 
+  public getRegistry(): ToolRegistry {
+    return this.registry;
+  }
+
   private setupHandlers(): void {
     // 1. List Tools Handler
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -89,15 +93,15 @@ export class PostMcpServer {
         });
       }
 
-      // Add active operations
+      // Add active operations with proper MCP annotations nesting (Finding 4)
       for (const op of this.registry.getActiveOperations()) {
         const annotations = getToolAnnotations(op);
         tools.push({
           name: op.id,
           description: op.description || op.summary,
           inputSchema: op.inputSchema as any,
-          ...annotations,
-        } as any);
+          annotations: annotations as any,
+        });
       }
 
       // Add macros
@@ -116,13 +120,13 @@ export class PostMcpServer {
 
     // 2. Dynamic Tool Mounting Notification
     this.registry.onToolsChanged(() => {
-      try {
-        this.server.notification({
+      this.server
+        .notification({
           method: 'notifications/tools/list_changed',
+        })
+        .catch(() => {
+          // Safely ignored if server is offline or in testing mode
         });
-      } catch {
-        // Ignored if client transport closed
-      }
     });
 
     // 3. Call Tool Handler
@@ -157,7 +161,7 @@ export class PostMcpServer {
         };
       }
 
-      // Handle Macro tools
+      // Handle Macro tools (with dry-run protection, Finding 2)
       if (name.startsWith('macro_')) {
         const macroName = name.replace(/^macro_/, '');
         const macro = this.spec.macros?.find((m) => m.name === macroName);
@@ -168,18 +172,35 @@ export class PostMcpServer {
           };
         }
 
-        const macroResult = await executeMacro(macro, args, this.httpClient);
+        const macroResult = await executeMacro(macro, args, this.httpClient, this.isDryRun);
+        if (!macroResult.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Macro Execution Failed: ${macroResult.errorMessage || 'Unknown step failure'}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+
         const diet = applyTokenDiet(macroResult.finalData, this.tokenDietOptions);
         return {
           content: [{ type: 'text', text: diet.text }],
         };
       }
 
-      // Handle standard OpenAPI operations
+      // Handle standard OpenAPI operations (Finding 1: checks activeOperations in JIT mode)
       const operation = this.registry.getOperation(name);
       if (!operation) {
+        const isHiddenInJIT = this.registry.getIsJIT() && this.registry.getAllOperations().some((op) => op.id === name);
+        const hint = isHiddenInJIT
+          ? `Tool '${name}' is not currently mounted. Please call 'tool_search' with relevant keywords first to mount it.`
+          : `Tool '${name}' not found in registry.`;
+
         return {
-          content: [{ type: 'text', text: `Error: Tool '${name}' not found in registry.` }],
+          content: [{ type: 'text', text: `Error: ${hint}` }],
           isError: true,
         };
       }
@@ -189,51 +210,82 @@ export class PostMcpServer {
   }
 
   private async executeOperation(op: NormalizedOperation, args: Record<string, any>): Promise<any> {
-    // 1. Separate path, query, header, and body arguments
-    let path = op.path;
-    const queryParams: Record<string, any> = {};
-    const headerParams: Record<string, string> = {};
-    let bodyData: any = undefined;
-
-    for (const param of op.parameters) {
-      const val = args[param.name];
-      if (val !== undefined) {
-        if (param.in === 'path') {
-          path = path.replace(`{${param.name}}`, encodeURIComponent(String(val)));
-        } else if (param.in === 'query') {
-          queryParams[param.name] = val;
-        } else if (param.in === 'header') {
-          headerParams[param.name] = String(val);
-        }
-      }
+    // 1. Validate required inputs (Finding 11)
+    const validation = validateInputArguments(op.inputSchema, args);
+    if (!validation.valid) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Validation Error for tool '${op.id}':\n- ${validation.errors.join('\n- ')}`,
+          },
+        ],
+        isError: true,
+      };
     }
 
+    // 2. Serialize parameters according to OpenAPI styles (Finding 9 & 10)
+    let serialized: ReturnType<typeof serializeParameters>;
+    try {
+      serialized = serializeParameters(op.path, op.parameters, args);
+    } catch (err: any) {
+      return {
+        content: [{ type: 'text', text: `Parameter Error: ${err.message}` }],
+        isError: true,
+      };
+    }
+
+    const { path, queryParams, headerParams, cookieParams } = serialized;
+
+    // Attach Cookie header if cookie parameters are present (Finding 10)
+    if (Object.keys(cookieParams).length > 0) {
+      const cookieStr = Object.entries(cookieParams)
+        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+        .join('; ');
+      headerParams['Cookie'] = cookieStr;
+    }
+
+    // Set Content-Type from spec if declared (Finding 10)
+    if (op.contentType && ['post', 'put', 'patch'].includes(op.method)) {
+      headerParams['Content-Type'] = op.contentType;
+    }
+
+    // Build Request Body
+    let bodyData: any = undefined;
     if (args['requestBody'] !== undefined) {
       bodyData = args['requestBody'];
-    } else {
-      // Gather remaining args not in path/query/header as body if POST/PUT/PATCH
-      if (['post', 'put', 'patch'].includes(op.method)) {
-        const bodyObj: Record<string, any> = {};
-        for (const [k, v] of Object.entries(args)) {
-          if (!op.parameters.some((p) => p.name === k)) {
-            bodyObj[k] = v;
-          }
+    } else if (['post', 'put', 'patch'].includes(op.method)) {
+      const bodyObj: Record<string, any> = {};
+      for (const [k, v] of Object.entries(args)) {
+        if (!op.parameters.some((p) => p.name === k)) {
+          bodyObj[k] = v;
         }
-        if (Object.keys(bodyObj).length > 0) {
-          bodyData = bodyObj;
-        }
+      }
+      if (Object.keys(bodyObj).length > 0) {
+        bodyData = bodyObj;
       }
     }
 
-    // 2. Check Dry-Run Simulation Mode
+    // If URL-encoded content type, serialize body (Finding 10)
+    if (op.contentType === 'application/x-www-form-urlencoded' && bodyData && typeof bodyData === 'object') {
+      const formParams = new URLSearchParams();
+      for (const [k, v] of Object.entries(bodyData)) {
+        formParams.append(k, String(v));
+      }
+      bodyData = formParams.toString();
+    }
+
+    const fullTargetUrl = `${this.httpClient.getBaseUrl()}/${path.replace(/^\//, '')}`;
+
+    // 3. Check Dry-Run Simulation Mode (Finding 15)
     if (this.isDryRun && op.riskTier !== 'READ_ONLY') {
-      const sim = simulateExecution(op, path, headerParams, bodyData);
+      const sim = simulateExecution(op, fullTargetUrl, headerParams, queryParams, bodyData);
       return {
         content: [{ type: 'text', text: JSON.stringify(sim, null, 2) }],
       };
     }
 
-    // 3. Dispatch real HTTP request
+    // 4. Dispatch real HTTP request
     const response = await this.httpClient.request({
       method: op.method as any,
       url: path,
@@ -254,7 +306,7 @@ export class PostMcpServer {
       };
     }
 
-    // 4. Handle Media Responses
+    // 5. Handle Media Responses (Finding 12 & 21)
     const contentType = response.contentType || '';
     if (isImageContentType(contentType) && Buffer.isBuffer(response.data)) {
       const imageBlock = formatImageContent(response.data, contentType);
@@ -271,18 +323,18 @@ export class PostMcpServer {
     }
 
     if (Buffer.isBuffer(response.data)) {
-      const filePath = await saveBinaryArtifact(response.data, op.id);
+      const filePath = await saveBinaryArtifact(response.data, op.id, contentType);
       return {
         content: [
           {
             type: 'text',
-            text: `Binary file received (${response.data.length} bytes) and saved to local artifact:\n${filePath}`,
+            text: `Binary file received (${response.data.length} bytes, type: ${contentType || 'binary'}) and saved to local artifact:\n${filePath}`,
           },
         ],
       };
     }
 
-    // 5. Apply Token Diet Compression
+    // 6. Apply Token Diet Compression
     const diet = applyTokenDiet(response.data, this.tokenDietOptions);
 
     return {

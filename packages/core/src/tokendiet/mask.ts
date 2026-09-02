@@ -1,7 +1,20 @@
 import { JSONPath } from 'jsonpath-plus';
 
+function setNestedValue(obj: Record<string, any>, pathParts: string[], value: any): void {
+  let current = obj;
+  for (let i = 0; i < pathParts.length - 1; i++) {
+    const part = pathParts[i];
+    if (!current[part] || typeof current[part] !== 'object') {
+      current[part] = {};
+    }
+    current = current[part];
+  }
+  current[pathParts[pathParts.length - 1]] = value;
+}
+
 /**
  * Extracts and filters only the specified fields/JSONPaths from the payload.
+ * Preserves nested structure and does not fail open.
  */
 export function applyFieldMask(data: any, fieldMasks?: string[]): any {
   if (!fieldMasks || fieldMasks.length === 0 || !data || typeof data !== 'object') {
@@ -20,23 +33,35 @@ export function applyFieldMask(data: any, fieldMasks?: string[]): any {
       if (data[mask] !== undefined) {
         result[mask] = data[mask];
       }
+    } else if (!mask.startsWith('$') && mask.includes('.')) {
+      // Nested property path, e.g. "user.profile.name"
+      const pathParts = mask.split('.');
+      let current = data;
+      let found = true;
+      for (const part of pathParts) {
+        if (current === null || typeof current !== 'object' || current[part] === undefined) {
+          found = false;
+          break;
+        }
+        current = current[part];
+      }
+      if (found && current !== undefined) {
+        setNestedValue(result, pathParts, current);
+      }
     } else {
-      // JSONPath expression
-      const path = mask.startsWith('$') ? mask : `$.${mask}`;
+      // JSONPath expression starting with $
       try {
-        const matches = JSONPath({ path, json: data, wrap: false });
+        const matches = JSONPath({ path: mask, json: data, wrap: false });
         if (matches !== undefined) {
-          const keyName = mask.split('.').pop() || mask;
-          result[keyName] = matches;
+          const cleanKey = mask.replace(/^\$\.?/, '').replace(/[^a-zA-Z0-9_]/g, '_');
+          result[cleanKey] = matches;
         }
       } catch {
-        // Fallback: direct key check
-        if (data[mask] !== undefined) {
-          result[mask] = data[mask];
-        }
+        // Ignored if invalid JSONPath
       }
     }
   }
 
-  return Object.keys(result).length > 0 ? result : data;
+  // Does not fail open: returns filtered object (or empty object if no fields matched)
+  return result;
 }
