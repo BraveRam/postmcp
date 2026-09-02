@@ -5,6 +5,7 @@ import { NormalizedSpec, NormalizedOperation } from '@postmcp/types';
 import { Badge } from './ui/Badge';
 import { Switch } from './ui/Switch';
 import { Card } from './ui/Card';
+import { ModelSelectorDropdown } from './ModelSelectorDropdown';
 import {
   Conversation,
   ConversationContent,
@@ -58,7 +59,7 @@ interface SandboxMessage {
 }
 
 export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
-  const [model, setModel] = useState('openai/gpt-4o');
+  const [model, setModel] = useState('zai/glm-5.3-flash');
   const [dryRun, setDryRun] = useState<boolean>(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [toolCardOpen, setToolCardOpen] = useState<Record<string, boolean>>({});
@@ -188,19 +189,7 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
               <Globe className="h-4 w-4 text-zinc-300" />
               AI Gateway:
             </span>
-            <select
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-zinc-500 cursor-pointer font-mono"
-            >
-              <option value="openai/gpt-4o">openai/gpt-4o</option>
-              <option value="openai/gpt-4o-mini">openai/gpt-4o-mini</option>
-              <option value="anthropic/claude-3-5-sonnet">anthropic/claude-3-5-sonnet</option>
-              <option value="anthropic/claude-3-5-haiku">anthropic/claude-3-5-haiku</option>
-              <option value="google/gemini-1.5-pro">google/gemini-1.5-pro</option>
-              <option value="google/gemini-1.5-flash">google/gemini-1.5-flash</option>
-              <option value="meta/llama-3.3-70b">meta/llama-3.3-70b</option>
-            </select>
+            <ModelSelectorDropdown value={model} onChange={setModel} />
           </div>
 
           <div className="flex items-center justify-between sm:justify-end gap-3 pt-1 sm:pt-0 border-t sm:border-t-0 border-zinc-800">
@@ -274,7 +263,7 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
                 <MessageContent from="assistant">
                   <div className="flex items-center gap-2 font-mono text-zinc-400">
                     <Sparkles className="h-3.5 w-3.5 animate-pulse text-white" />
-                    <span>Executing via Vercel AI Gateway...</span>
+                    <span>Executing via {model}...</span>
                   </div>
                 </MessageContent>
               </Message>
@@ -291,7 +280,7 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
               <PromptInputTextarea
                 value={inputPrompt}
                 onChange={(e) => setInputPrompt(e.target.value)}
-                placeholder="Ask the AI agent to invoke OpenAPI endpoints through Vercel AI Gateway..."
+                placeholder={`Ask the AI agent to invoke OpenAPI endpoints through ${model}...`}
                 disabled={isLoading}
               />
             </PromptInputBody>
