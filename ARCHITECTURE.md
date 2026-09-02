@@ -1,5 +1,5 @@
 # PostMCP System Architecture & Engineering Blueprint 📮⚡
-> **The "Postman for MCP"** — Universal, context-optimized, type-safe Model Context Protocol (MCP) server engine, CLI, and Visual Studio for any OpenAPI / Swagger specification.
+> **The "Postman for MCP"** — Universal, context-optimized, safe, type-safe Model Context Protocol (MCP) server engine, CLI, and Visual Studio for any OpenAPI / Swagger specification.
 
 ---
 
@@ -20,10 +20,10 @@ Connecting AI coding assistants (Cursor, Claude Desktop, Antigravity, Windsurf) 
                                   │                                                                      │
 ┌───────────────────────────┐     │  ┌───────────────────────────────┐  ┌─────────────────────────────┐  │     ┌───────────────────────────┐
 │     OpenAPI Specs         │     │  │       Visual Web Studio       │  │        CLI Interface        │  │     │       Target Clients      │
-│  - OpenAPI 3.0 / 3.1      │────►│  │     (Next.js + Tailwind)      │  │     `npx postmcp run`       │  │────►│  - Cursor (.cursor/mcp)   │
-│  - Swagger 2.0            │     │  │  - Visual Spec Curator        │  │     `npx postmcp studio`    │  │     │  - Claude Desktop Config  │
-│  - Local file / Live URL  │     │  │  - Live LLM Test Sandbox      │  │     `npx postmcp export`    │  │     │  - Antigravity / Windsurf │
-└───────────────────────────┘     │  │    (Vercel AI Gateway)        │  │  (stdio & Streamable HTTP)  │  │     │  - Custom Python/TS Agents│
+│  - OpenAPI 3.0 / 3.1      │────►│  │     (Next.js + Tailwind)      │  │     `npx postmcp <cmd>`     │  │────►│  - Cursor (.cursor/mcp)   │
+│  - Swagger 2.0            │     │  │  - Visual Spec Curator        │  │     (run, studio, inspect,  │  │     │  - Claude Desktop Config  │
+│  - Local file / Live URL  │     │  │  - Live LLM Test Sandbox      │  │      generate, presets,     │  │     │  - Antigravity / Windsurf │
+└───────────────────────────┘     │  │    (Vercel AI Gateway)        │  │      export)                │  │     │  - Custom Python/TS Agents│
                                   │  └───────────────┬───────────────┘  └──────────────┬──────────────┘  │     └───────────────────────────┘
                                   │                  │                                 │                 │
                                   │                  └────────────────┬────────────────┘                 │
@@ -36,6 +36,7 @@ Connecting AI coding assistants (Cursor, Claude Desktop, Antigravity, Windsurf) 
                                   │                 │ 3. Smart Token Diet Engine       │                 │
                                   │                 │ 4. 3-Tier Safety & Dry-Run       │                 │
                                   │                 │ 5. Macro Workflow Chainer        │                 │
+                                  │                 │ 6. Media Adapter & Rate Limiter  │                 │
                                   │                 └─────────────────┬────────────────┘                 │
                                   │                                   │                                  │
                                   │         ┌─────────────────────────┴────────────────────────┐         │
@@ -61,12 +62,14 @@ postmcp/
 │   │   │   ├── jit/                   # JIT tool search & dynamic tool mounting registry
 │   │   │   ├── safety/                # Risk tier classifier, dry-run sandbox, confirmation gates
 │   │   │   ├── macro/                 # Multi-step chained workflow executor
+│   │   │   ├── media/                 # Binary & media adapter (MCP Image content, CSV to MD, PDF cache)
+│   │   │   ├── http/                  # HTTP client, auth injector, retry & 202 auto-polling
 │   │   │   ├── server/                # MCP SDK v2 stdio & Streamable HTTP transports
 │   │   │   └── codegen/               # Template-based code generators (Python FastMCP, TypeScript)
 │   │   └── package.json
 │   ├── cli/                           # `postmcp` CLI binary (executable via npx postmcp)
 │   │   ├── src/
-│   │   │   ├── commands/              # run, studio, export, presets, inspect
+│   │   │   ├── commands/              # run, studio, inspect, generate, presets, export
 │   │   │   └── index.ts
 │   │   └── package.json
 │   └── studio/                        # Next.js 15 App Router visual studio (@postmcp/studio)
@@ -90,86 +93,69 @@ postmcp/
 
 ---
 
-## 3. Core Architectural Specifications & Design Decisions
+## 3. Comprehensive Architectural Specifications
 
 ### 3.1 Adaptive Hybrid JIT Tool Router
-* **Endpoint Threshold**:
+* **Threshold**:
   * $\le 20$ endpoints: Directly advertises all operations as static tools with full descriptions and schemas.
-  * $> 20$ endpoints: Automatically switches to dynamic JIT routing, advertising a single `tool_search(query, tag?)` meta-tool.
+  * $> 20$ endpoints: Automatically switches to dynamic JIT routing, advertising a single `tool_search(query: string, tag?: string)` meta-tool.
 * **Dynamic Tool Mounting**:
-  * On `tool_search({ query: "refund charge" })`, matches the top 3–5 most relevant endpoints using an in-memory BM25 + keyword search index.
-  * Dynamically registers the matching tools and emits the standard `notifications/tools/list_changed` MCP event.
-  * Ensures LLM active context stays strictly **under 1,500 tokens** regardless of API spec size.
+  * Matches top 3–5 relevant endpoints via in-memory BM25 lexical + semantic index.
+  * Emits MCP `notifications/tools/list_changed` event to mount matched tools dynamically.
+  * Ensures LLM active context stays strictly **under 1,500 tokens** regardless of spec size.
 
 ### 3.2 Smart Adaptive Token Diet Engine
-* **Null & Noise Pruning**: Automatically strips `null`, `undefined`, empty strings, empty arrays/objects, HATEOAS `_links`, tracking metadata, and internal audit timestamps.
-* **Adaptive JSON-to-Markdown Table Conversion**:
-  * Automatically detects lists/arrays of homogeneous objects and renders them as concise GitHub-flavored Markdown tables.
-  * **Result**: **70% to 90% token reduction** per response with significantly higher LLM parsing accuracy.
-* **Token Capping**: Enforces a default 2,500 token ceiling per tool response with clear pagination/continuation indicators.
+* **Null & Noise Pruning**: Automatically drops `null`, `undefined`, empty strings/arrays/objects, HATEOAS `_links`, and telemetry headers.
+* **JSON-to-Markdown Tables**: Transforms homogeneous object arrays into compact GitHub-flavored Markdown tables (**70% to 90% token reduction**).
+* **Token Capping & Status**: Caps responses at 2,500 tokens with continuation pointers.
 
 ### 3.3 3-Tier Safety Classification & Guardrails
-* **Tier 1: `READ_ONLY`** (`GET`, `HEAD`, `OPTIONS`) — annotated with `readOnlyHint: true, idempotentHint: true`; executes autonomously.
-* **Tier 2: `MUTATION`** (`POST`, `PUT`, `PATCH`) — normal write operations with structured audit trails.
-* **Tier 3: `CRITICAL`** (`DELETE`, destructive operations matching `/(drop|purge|cancel|terminate|refund|transfer|auth|admin)/i`) — annotated with `destructiveHint: true`; supports `--dry-run` simulation mode and `--safe-mode` flags.
+* **Tier 1: `READ_ONLY`** (`GET`, `HEAD`) — `readOnlyHint: true, idempotentHint: true`; executes autonomously.
+* **Tier 2: `MUTATION`** (`POST`, `PUT`, `PATCH`) — normal write operations with structured audit logging.
+* **Tier 3: `CRITICAL`** (`DELETE`, destructive regex matches) — `destructiveHint: true`; supports `--dry-run` simulation and `--safe-mode`.
 
-### 3.4 Universal Auth & Parameter Normalization
-* **Auth**: Supports CLI flags (`--header`, `--bearer`, `--api-key`), environment variable substitution (`${STRIPE_KEY}`), and local `.env` loader in Studio.
-* **Parameter Normalization**: LLMs receive clean, flat JSON Schemas. PostMCP auto-serializes nested objects, array delimiters (`style: form, explode: false`), deepObject query params (`filter[name]=val`), and multipart/form-data.
+### 3.4 Media & Binary Response Adapter
+* **Images (`image/png`, `image/jpeg`, `image/webp`)**: Returns native MCP Image content block (`{ type: "image", data: base64, mimeType }`) for vision LLMs.
+* **CSVs**: Parsed directly into concise Markdown tables.
+* **PDFs & Raw Binaries**: Saved to local temporary artifacts with returned file paths.
 
-### 3.5 Declarative Macro Tools (Chained Workflows)
-* Define multi-step HTTP workflows in `postmcp.config.json` with templated variables and JSONPath exports:
-  ```json
-  {
-    "macros": [
-      {
-        "name": "refundCustomerByEmail",
-        "description": "Finds customer by email, refunds their latest charge, and returns receipt",
-        "parameters": {
-          "email": { "type": "string", "description": "Customer email address" }
-        },
-        "steps": [
-          { "action": "GET /v1/customers?email={{email}}", "export": { "customerId": "data[0].id" } },
-          { "action": "GET /v1/charges?customer={{customerId}}&limit=1", "export": { "chargeId": "data[0].id" } },
-          { "action": "POST /v1/refunds", "body": { "charge": "{{chargeId}}" } }
-        ]
-      }
-    ]
-  }
-  ```
+### 3.5 Network Resilience & Smart Async Polling
+* **202 Accepted Background Jobs**: Automatically polls `Location` / job URL with exponential backoff (up to 15s) so the LLM receives the finished result in a single tool call.
+* **Rate Limits & 503 Retries**: Jittered exponential backoff respecting `Retry-After` headers (up to 3 attempts) before returning actionable cooldown information.
+* **Actionable Error Recovery**: Returns `{ isError: true }` with structured HTTP status, parsed error messages, and concrete parameter correction hints.
 
-### 3.6 Studio Live Sandbox with Vercel AI Gateway
-* Powered by the **Vercel AI SDK** (`ai`), allowing users to test generated tools interactively against any LLM provider (Anthropic, OpenAI, Google Gemini, Groq, Mistral, Ollama) via Vercel AI Gateway or direct provider keys.
-* Real-time token counter displays raw REST response tokens vs. Token Diet tokens side-by-side.
-* 1-Click Copyable Snippet Modal for instant copy-paste into `.cursor/mcp.json` or `claude_desktop_config.json`.
+### 3.6 Transparent Smart Pagination
+* Exposes `page`, `cursor`, `limit` (default: 20).
+* Annotates response with item count and next-call instructions (e.g. *"Showing 20 of 145 items. To view more, call with page=2"*).
+
+### 3.7 Base URL Resolution
+1. CLI `--base-url <url>` flag.
+2. `BASE_URL` or `<SERVICE>_BASE_URL` environment variables.
+3. First URL in OpenAPI `servers[0].url`.
+4. Visual dropdown switcher in Web Studio.
+
+### 3.8 Declarative Macro Tools (Chained Workflows)
+* Multi-step HTTP workflows defined in `postmcp.config.json` with templated parameters and JSONPath response exports.
+
+### 3.9 Web Studio Live Sandbox & Exporter
+* Powered by **Vercel AI SDK** (`ai`) with Vercel AI Gateway for universal model selection.
+* Real-time Token Diet side-by-side comparison counter.
+* Copyable Snippet Modal for 1-click copy-pasting into `.cursor/mcp.json` and `claude_desktop_config.json`.
+* Saves configuration to local `postmcp.config.json` in workspace.
+
+### 3.10 Presets Hub
+* Top 50 presets bundled offline with the npm package.
+* Dynamic sync via `postmcp presets sync` from GitHub into `~/.postmcp/presets/`.
 
 ---
 
-## 4. Implementation Roadmap
+## 4. Complete 6-Command CLI Suite
 
-### Phase 1: Core Engine (`packages/core`)
-- [ ] OpenAPI 2.0 / 3.0 / 3.1 parser with circular reference protection.
-- [ ] Smart Token Diet engine (null stripping, JSONPath field masking, Markdown table generator).
-- [ ] Adaptive Hybrid JIT Tool Router (BM25 search + dynamic tool mounting).
-- [ ] 3-Tier Safety Classifier & `--dry-run` simulation mode.
-- [ ] Declarative Macro Workflow Chainer.
-- [ ] MCP SDK v2 stdio & Streamable HTTP server implementation.
-
-### Phase 2: CLI Binary (`packages/cli`)
-- [ ] `postmcp run <spec>` command.
-- [ ] `postmcp studio` launcher.
-- [ ] `postmcp export` and `postmcp presets sync` commands.
-- [ ] Zero-install `npx postmcp` distribution setup.
-
-### Phase 3: Presets Catalog (`presets/`)
-- [ ] Top 50 curated API configurations (GitHub, Linear, Stripe, Supabase, Slack, Sentry, Notion, etc.).
-
-### Phase 4: Visual Web Studio (`packages/studio`)
-- [ ] Next.js 15 + Tailwind dark-mode workbench.
-- [ ] Drag-and-drop spec dropzone and preset explorer.
-- [ ] Live Sandbox with Vercel AI Gateway + real-time Token Diet visualizer.
-- [ ] Copyable configuration snippet modal.
-
-### Phase 5: Code Generators (`packages/core/src/codegen`)
-- [ ] Python FastMCP + Pydantic generator.
-- [ ] TypeScript MCP SDK v2 + Zod generator.
+| Command | Usage | Description |
+| :--- | :--- | :--- |
+| **`postmcp run <spec>`** | `npx postmcp run ./api.yaml --token-diet --jit` | Launches high-performance stdio or HTTP MCP server. |
+| **`postmcp studio`** | `npx postmcp studio --port 3333` | Launches local Next.js visual workbench. |
+| **`postmcp inspect <spec>`** | `npx postmcp inspect https://api.linear.app/openapi.json` | Terminal summary of endpoints, risk tiers, and token diet savings. |
+| **`postmcp generate <spec>`** | `npx postmcp generate ./api.json --target python -o ./server` | Generates standalone Python FastMCP or TypeScript MCP code. |
+| **`postmcp presets`** | `npx postmcp presets list` / `sync` | Manages and synchronizes community API presets. |
+| **`postmcp export <spec>`** | `npx postmcp export ./api.yaml --target cursor` | Outputs ready-to-use JSON config snippets for IDEs. |
