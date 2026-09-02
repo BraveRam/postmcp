@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { NormalizedOperation, HttpMethod, RiskTier } from '@postmcp/types';
 import { Badge } from './ui/Badge';
 import { Input } from './ui/Input';
-import { Search, CheckSquare, Square, Shield } from 'lucide-react';
+import { Search, CheckSquare, Square, X } from 'lucide-react';
+import { Button } from './ui/Button';
 
 interface ApiExplorerProps {
   operations: NormalizedOperation[];
@@ -11,6 +12,7 @@ interface ApiExplorerProps {
   enabledOperations: Record<string, boolean>;
   onToggleOperation: (id: string, enabled: boolean) => void;
   onToggleAll: (enable: boolean) => void;
+  onCloseMobile?: () => void;
 }
 
 export function ApiExplorer({
@@ -20,6 +22,7 @@ export function ApiExplorer({
   enabledOperations,
   onToggleOperation,
   onToggleAll,
+  onCloseMobile,
 }: ApiExplorerProps) {
   const [filterQuery, setFilterQuery] = useState('');
   const [methodFilter, setMethodFilter] = useState<string>('all');
@@ -43,17 +46,30 @@ export function ApiExplorer({
   const enabledCount = operations.filter((op) => enabledOperations[op.id] !== false).length;
 
   return (
-    <div className="w-80 border-r border-zinc-800 bg-zinc-950 flex flex-col h-full overflow-hidden shrink-0">
+    <div className="w-full md:w-72 lg:w-80 border-r border-zinc-800 bg-zinc-950 flex flex-col h-full overflow-hidden shrink-0">
       {/* Search & Filters */}
       <div className="p-3 border-b border-zinc-800 space-y-2.5 bg-black">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
-          <Input
-            value={filterQuery}
-            onChange={(e) => setFilterQuery(e.target.value)}
-            placeholder="Search endpoints..."
-            className="pl-8 h-8 text-xs bg-zinc-900 border-zinc-800"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
+            <Input
+              value={filterQuery}
+              onChange={(e) => setFilterQuery(e.target.value)}
+              placeholder="Search endpoints..."
+              className="pl-8 h-8 text-xs bg-zinc-900 border-zinc-800 w-full"
+            />
+          </div>
+          {onCloseMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onCloseMobile}
+              className="md:hidden h-8 w-8 text-zinc-400 hover:text-white shrink-0"
+              aria-label="Close navigation"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
         {/* Method & Quick Filters */}
@@ -101,7 +117,10 @@ export function ApiExplorer({
             return (
               <div
                 key={op.id}
-                onClick={() => onSelectOperation(op)}
+                onClick={() => {
+                  onSelectOperation(op);
+                  if (onCloseMobile) onCloseMobile();
+                }}
                 className={`group flex items-start gap-2.5 p-2 rounded-md transition-all cursor-pointer ${
                   isSelected
                     ? 'bg-zinc-900 border border-zinc-700 text-white shadow-xs'
@@ -143,7 +162,7 @@ export function ApiExplorer({
                 {/* Risk Tier indicator */}
                 {op.riskTier !== 'READ_ONLY' && (
                   <span
-                    className="text-[9px] font-mono px-1 py-0 rounded border border-zinc-800 text-zinc-400 bg-zinc-950 mt-0.5"
+                    className="text-[9px] font-mono px-1 py-0 rounded border border-zinc-800 text-zinc-400 bg-zinc-950 mt-0.5 shrink-0"
                     title={`Risk Tier: ${op.riskTier}`}
                   >
                     {op.riskTier === 'CRITICAL' ? 'CRIT' : 'MUT'}
