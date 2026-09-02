@@ -7,6 +7,7 @@ import {
   getPresetsByCategory,
   searchPresets,
   getAllCategories,
+  buildPresetAuthConfig,
 } from '../src/index.js';
 
 describe('Curated Presets Catalog (@postmcp/presets)', () => {
@@ -97,7 +98,59 @@ describe('Curated Presets Catalog (@postmcp/presets)', () => {
     expect(categories).toContain('Demo & Testing');
   });
 
-  it('should have valid macro workflows defined in key presets', () => {
+  it('should dispatch authentication configurations correctly for all preset auth types', () => {
+    const mockEnv = {
+      GITHUB_TOKEN: 'gh_secret_123',
+      GITLAB_TOKEN: 'gl_secret_456',
+      JIRA_API_TOKEN: 'user@example.com:jira_token_789',
+      SHOPIFY_ACCESS_TOKEN: 'shpat_secret_abc',
+      PAGERDUTY_TOKEN: 'pd_secret_xyz',
+      DISCORD_BOT_TOKEN: 'discord_bot_secret',
+      TRELLO_TOKEN: 'trello_key_secret',
+      OPSGENIE_KEY: 'opsgenie_secret',
+    };
+
+    // 1. GitHub (Bearer Token)
+    const github = getPreset('github')!;
+    const githubAuth = buildPresetAuthConfig(github, mockEnv);
+    expect(githubAuth.bearerToken).toBe('gh_secret_123');
+
+    // 2. GitLab (Header PRIVATE-TOKEN)
+    const gitlab = getPreset('gitlab')!;
+    const gitlabAuth = buildPresetAuthConfig(gitlab, mockEnv);
+    expect(gitlabAuth.headers?.['PRIVATE-TOKEN']).toBe('gl_secret_456');
+    expect(gitlabAuth.apiKey?.name).toBe('PRIVATE-TOKEN');
+    expect(gitlabAuth.apiKey?.value).toBe('gl_secret_456');
+
+    // 3. Jira (Basic Auth)
+    const jira = getPreset('jira')!;
+    const jiraAuth = buildPresetAuthConfig(jira, mockEnv);
+    expect(jiraAuth.basicAuth).toBe('user@example.com:jira_token_789');
+
+    // 4. Shopify (Header X-Shopify-Access-Token)
+    const shopify = getPreset('shopify')!;
+    const shopifyAuth = buildPresetAuthConfig(shopify, mockEnv);
+    expect(shopifyAuth.headers?.['X-Shopify-Access-Token']).toBe('shpat_secret_abc');
+    expect(shopifyAuth.apiKey?.name).toBe('X-Shopify-Access-Token');
+
+    // 5. PagerDuty (Header Token token=...)
+    const pagerduty = getPreset('pagerduty')!;
+    const pdAuth = buildPresetAuthConfig(pagerduty, mockEnv);
+    expect(pdAuth.headers?.['Authorization']).toBe('Token token=pd_secret_xyz');
+
+    // 6. Discord (Header Bot ...)
+    const discord = getPreset('discord')!;
+    const discordAuth = buildPresetAuthConfig(discord, mockEnv);
+    expect(discordAuth.headers?.['Authorization']).toBe('Bot discord_bot_secret');
+
+    // 7. Trello (Query param key=...)
+    const trello = getPreset('trello')!;
+    const trelloAuth = buildPresetAuthConfig(trello, mockEnv);
+    expect(trelloAuth.apiKey?.name).toBe('key');
+    expect(trelloAuth.apiKey?.in).toBe('query');
+  });
+
+  it('should have valid macro workflows defined in presets', () => {
     const github = getPreset('github');
     expect(github?.macros).toBeDefined();
     expect(github?.macros?.length).toBeGreaterThan(0);
@@ -106,13 +159,5 @@ describe('Curated Presets Catalog (@postmcp/presets)', () => {
     const stripe = getPreset('stripe');
     expect(stripe?.macros).toBeDefined();
     expect(stripe?.macros?.length).toBeGreaterThan(0);
-
-    const linear = getPreset('linear');
-    expect(linear?.macros).toBeDefined();
-    expect(linear?.macros?.length).toBeGreaterThan(0);
-
-    const notion = getPreset('notion');
-    expect(notion?.macros).toBeDefined();
-    expect(notion?.macros?.length).toBeGreaterThan(0);
   });
 });

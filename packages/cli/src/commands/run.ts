@@ -1,7 +1,7 @@
 import { parseOpenAPI, startStdioServer, startHttpServer, AuthConfig, NormalizedSpec } from '@postmcp/core';
 import type { RunCommandOptions } from '@postmcp/types';
 import { loadEnvFile, loadConfigFile, parseHeaderFlags, parseApiKeyFlag } from '../config/loader.js';
-import { resolvePresetSpec, getPreset, Preset } from '../presets/index.js';
+import { resolvePresetSpec, getPreset, buildPresetAuthConfig, Preset } from '../presets/index.js';
 import pc from 'picocolors';
 
 export type { RunCommandOptions };
@@ -30,13 +30,14 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
     }
   }
 
-  // 3. Parse OpenAPI Specification
+  // 2. Parse OpenAPI Specification
   let parsedSpec: NormalizedSpec;
   try {
     parsedSpec = await parseOpenAPI(specPath);
   } catch (err: any) {
     console.error(pc.red(`Failed to parse OpenAPI specification: ${err.message}`));
     process.exit(1);
+    return;
   }
 
   // If preset defines additional composite macros, wire them into parsed spec
@@ -44,22 +45,25 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
     parsedSpec.macros = [...(parsedSpec.macros || []), ...preset.macros];
   }
 
-  // 4. Build Auth Configuration with preset authEnvVar fallback
+  // 3. Build Auth Configuration with preset-specific auth dispatching (Finding 1)
   const cliHeaders = parseHeaderFlags(options.header);
   const cliApiKey = parseApiKeyFlag(options.apiKey);
-  const presetAuthSecret = preset?.authEnvVar ? process.env[preset.authEnvVar] : undefined;
+  const presetAuthConfig = preset ? buildPresetAuthConfig(preset, process.env) : {};
 
   const authConfig: AuthConfig = {
-    headers: { ...fileConfig.auth?.headers, ...cliHeaders },
+    headers: { ...presetAuthConfig.headers, ...fileConfig.auth?.headers, ...cliHeaders },
     bearerToken:
       options.bearer ||
       fileConfig.auth?.bearerToken ||
-      presetAuthSecret ||
+      presetAuthConfig.bearerToken ||
       process.env.API_KEY ||
       process.env.BEARER_TOKEN,
-    apiKey: cliApiKey || fileConfig.auth?.apiKey,
-    basicAuth: fileConfig.auth?.basicAuth,
-    securitySchemes: fileConfig.auth?.securitySchemes,
+    apiKey: cliApiKey || fileConfig.auth?.apiKey || presetAuthConfig.apiKey,
+    basicAuth: fileConfig.auth?.basicAuth || presetAuthConfig.basicAuth,
+    securitySchemes: {
+      ...presetAuthConfig.securitySchemes,
+      ...fileConfig.auth?.securitySchemes,
+    },
     allowedExternalHosts: fileConfig.auth?.allowedExternalHosts,
     allowCrossOriginAuth: fileConfig.auth?.allowCrossOriginAuth,
   };
@@ -76,7 +80,7 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
   const isTokenDiet = options.tokenDiet !== undefined ? options.tokenDiet : fileConfig.tokenDiet?.enabled !== false;
   const maxTokens = options.maxTokens ? parseInt(options.maxTokens, 10) : fileConfig.tokenDiet?.maxTokens || 2500;
 
-  // Build path-specific field masks from preset
+  // 4. Build path-specific field masks from preset (Finding 2)
   const pathFieldMasks: Record<string, string[]> = {};
   if (preset?.fieldMasks) {
     for (const fm of preset.fieldMasks) {
@@ -93,7 +97,7 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
     tokenDiet: {
       enabled: isTokenDiet,
       maxTokens,
-      fieldMasks: isTokenDiet ? (Object.keys(pathFieldMasks).length > 0 ? Object.values(pathFieldMasks).flat() : undefined) : undefined,
+      pathFieldMasks: isTokenDiet && Object.keys(pathFieldMasks).length > 0 ? pathFieldMasks : undefined,
       convertToMarkdownTable: fileConfig.tokenDiet?.convertToMarkdownTable !== false,
     },
     serverName: parsedSpec.title,

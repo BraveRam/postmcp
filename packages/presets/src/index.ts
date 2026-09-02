@@ -7,6 +7,8 @@ import { PRODUCTIVITY_SUPPORT_PRESETS } from './catalog/productivity-support.js'
 import { MEDIA_SOCIAL_PRESETS } from './catalog/media-social.js';
 
 export * from './types.js';
+export * from './auth.js';
+export * from './builder.js';
 export { DEVELOPER_TOOLS_PRESETS } from './catalog/developer-tools.js';
 export { CLOUD_DATABASES_PRESETS } from './catalog/cloud-databases.js';
 export { PAYMENTS_COMMERCE_PRESETS } from './catalog/payments-commerce.js';

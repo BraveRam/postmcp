@@ -6,22 +6,9 @@ export * from './prune.js';
 export * from './table.js';
 export * from './mask.js';
 
-export interface TokenDietOptions {
-  enabled?: boolean;
-  fieldMasks?: string[];
-  maxTokens?: number; // default: 2500
-  convertToMarkdownTable?: boolean; // default: true
-  maxProseLength?: number; // default: 1000
-}
+import type { TokenDietOptions, TokenDietResult } from '@postmcp/types';
 
-export interface TokenDietResult {
-  text: string;
-  structured: any;
-  rawEstimatedTokens: number;
-  dietEstimatedTokens: number;
-  savingsPercentage: number;
-  isTruncated: boolean;
-}
+export type { TokenDietOptions, TokenDietResult };
 
 export function estimateTokenCount(str: string): number {
   if (!str) return 0;

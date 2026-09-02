@@ -1,22 +1,6 @@
-export interface EndpointDef {
-  path: string;
-  method: 'get' | 'post' | 'put' | 'delete' | 'patch';
-  operationId: string;
-  summary: string;
-  description?: string;
-  parameters?: Array<{
-    name: string;
-    in: 'query' | 'path' | 'header';
-    required?: boolean;
-    schema: { type: string; format?: string; default?: any };
-    description?: string;
-  }>;
-  requestBody?: {
-    required?: boolean;
-    properties: Record<string, { type: string; description?: string; required?: boolean }>;
-  };
-  responseSchema?: Record<string, any>;
-}
+import type { EndpointDef } from '@postmcp/types';
+
+export type { EndpointDef };
 
 export function buildOpenAPISpec(opts: {
   title: string;

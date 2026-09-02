@@ -2,9 +2,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import axios from 'axios';
-import { ALL_PRESETS, PRESETS_BY_ID, getPreset, Preset } from '@postmcp/presets';
+import { ALL_PRESETS, PRESETS_BY_ID, getPreset, buildPresetAuthConfig, Preset } from '@postmcp/presets';
 
-export { ALL_PRESETS, PRESETS_BY_ID, getPreset, Preset };
+export { ALL_PRESETS, PRESETS_BY_ID, getPreset, buildPresetAuthConfig, Preset };
 export const BUNDLED_PRESETS = PRESETS_BY_ID;
 
 export function getPresetCacheDir(): string {

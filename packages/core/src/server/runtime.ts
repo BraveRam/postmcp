@@ -359,8 +359,26 @@ export class PostMcpServer {
       };
     }
 
-    // 6. Apply Token Diet Compression
-    const diet = applyTokenDiet(response.data, this.tokenDietOptions);
+    // 6. Apply Operation-Aware Token Diet Compression (Finding 2)
+    let activeFieldMasks: string[] | undefined = this.tokenDietOptions.fieldMasks;
+    if (this.tokenDietOptions.pathFieldMasks) {
+      if (this.tokenDietOptions.pathFieldMasks[op.path]) {
+        activeFieldMasks = this.tokenDietOptions.pathFieldMasks[op.path];
+      } else {
+        for (const [maskPath, fields] of Object.entries(this.tokenDietOptions.pathFieldMasks)) {
+          const regexStr = '^' + maskPath.replace(/\{[^}]+\}/g, '[^/]+') + '$';
+          if (maskPath === op.path || new RegExp(regexStr).test(op.path)) {
+            activeFieldMasks = fields;
+            break;
+          }
+        }
+      }
+    }
+
+    const diet = applyTokenDiet(response.data, {
+      ...this.tokenDietOptions,
+      fieldMasks: activeFieldMasks,
+    });
 
     return {
       content: [{ type: 'text', text: diet.text }],
