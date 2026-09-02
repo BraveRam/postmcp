@@ -1,39 +1,35 @@
+import { parse } from 'csv-parse/sync';
+
 export function isCsvContentType(contentType?: string): boolean {
   if (!contentType) return false;
   return contentType.includes('text/csv') || contentType.includes('application/csv');
 }
 
 export function csvToMarkdownTable(csvText: string): string {
-  const lines = csvText.trim().split(/\r?\n/).filter((line) => line.trim().length > 0);
-  if (lines.length === 0) return '';
+  const trimmed = csvText.trim();
+  if (!trimmed) return '';
 
-  const parseRow = (line: string) => {
-    // Basic CSV splitting respecting quotes
-    const cells: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        cells.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    cells.push(current.trim());
-    return cells;
-  };
+  let records: string[][];
+  try {
+    records = parse(trimmed, {
+      skip_empty_lines: true,
+      relax_column_count: true,
+      trim: true,
+    });
+  } catch {
+    return trimmed;
+  }
 
-  const headers = parseRow(lines[0]);
-  let md = '| ' + headers.join(' | ') + ' |\n';
+  if (!records || records.length === 0) return '';
+
+  const headers = records[0];
+  let md = '| ' + headers.map((h) => h.replace(/\|/g, '\\|')).join(' | ') + ' |\n';
   md += '| ' + headers.map(() => ':---').join(' | ') + ' |\n';
 
-  for (let i = 1; i < lines.length; i++) {
-    const row = parseRow(lines[i]);
-    md += '| ' + row.join(' | ') + ' |\n';
+  for (let i = 1; i < records.length; i++) {
+    const row = records[i];
+    const paddedRow = headers.map((_, colIdx) => (row[colIdx] !== undefined ? String(row[colIdx]).replace(/\|/g, '\\|') : ''));
+    md += '| ' + paddedRow.join(' | ') + ' |\n';
   }
 
   return md.trim();

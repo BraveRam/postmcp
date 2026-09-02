@@ -1,17 +1,16 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import mime from 'mime-types';
 
 export function getExtensionFromContentType(contentType?: string): string {
   if (!contentType) return 'bin';
-  if (contentType.includes('application/pdf')) return 'pdf';
-  if (contentType.includes('application/zip')) return 'zip';
-  if (contentType.includes('application/json')) return 'json';
-  if (contentType.includes('text/csv')) return 'csv';
-  if (contentType.includes('text/plain')) return 'txt';
-  if (contentType.includes('image/png')) return 'png';
-  if (contentType.includes('image/jpeg')) return 'jpg';
-  if (contentType.includes('image/webp')) return 'webp';
+  const cleanType = contentType.split(';')[0].trim();
+  const ext = mime.extension(cleanType);
+  if (ext) {
+    if (ext === 'jpeg') return 'jpg';
+    return ext;
+  }
   return 'bin';
 }
 
