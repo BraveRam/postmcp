@@ -1,5 +1,6 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs';
+import { createRequire } from 'node:module';
 import { spawn, ChildProcess } from 'node:child_process';
 import type { StudioCommandOptions } from '@postmcp/types';
 import open from 'open';
@@ -9,7 +10,18 @@ import pc from 'picocolors';
 export type { StudioCommandOptions };
 
 export function findStudioDir(): string {
-  // Check common locations relative to CLI package
+  // 1. Try resolving via Node module resolution
+  try {
+    const customRequire = typeof createRequire !== 'undefined' ? createRequire(__filename) : (require as any);
+    const pkgPath = customRequire.resolve('@postmcp/studio/package.json');
+    if (fs.existsSync(pkgPath)) {
+      return path.dirname(pkgPath);
+    }
+  } catch {
+    // Module resolution fallback
+  }
+
+  // 2. Check common workspace and global paths
   const candidates = [
     path.resolve(__dirname, '..', '..', 'studio'),
     path.resolve(__dirname, '..', '..', '..', 'packages', 'studio'),
@@ -45,7 +57,8 @@ export async function waitForServer(url: string, timeoutMs: number = 20000): Pro
 
 export async function studioCommand(specArg?: string, options: StudioCommandOptions = {}): Promise<void> {
   const port = options.port || '3000';
-  const url = `http://localhost:${port}`;
+  const baseUrl = `http://localhost:${port}`;
+  const targetUrl = specArg ? `${baseUrl}?spec=${encodeURIComponent(specArg)}` : baseUrl;
   const studioDir = findStudioDir();
 
   console.log();
@@ -61,8 +74,16 @@ export async function studioCommand(specArg?: string, options: StudioCommandOpti
 
   if (fs.existsSync(studioDir)) {
     const isBuilt = fs.existsSync(path.join(studioDir, '.next'));
-    const command = 'pnpm';
-    const args = isBuilt ? ['start', '--port', port] : ['dev', '--port', port];
+    // In standalone or monorepo environments, prefer npx next or pnpm
+    const isPnpm = fs.existsSync(path.join(studioDir, '..', '..', 'pnpm-lock.yaml'));
+    const command = isPnpm ? 'pnpm' : 'npx';
+    const args = isPnpm
+      ? isBuilt
+        ? ['start', '--port', port]
+        : ['dev', '--port', port]
+      : isBuilt
+      ? ['next', 'start', '-p', port]
+      : ['next', 'dev', '-p', port];
 
     try {
       child = spawn(command, args, {
@@ -97,20 +118,20 @@ export async function studioCommand(specArg?: string, options: StudioCommandOpti
   }
 
   // Wait for server to become responsive
-  const isReady = await waitForServer(url, 15000);
+  const isReady = await waitForServer(baseUrl, 15000);
 
   if (isReady) {
-    console.log(pc.green(`✔ PostMCP Visual Web Studio ready at: ${pc.bold(url)}`));
+    console.log(pc.green(`✔ PostMCP Visual Web Studio ready at: ${pc.bold(targetUrl)}`));
   } else {
-    console.log(pc.dim(`  Studio server starting at: ${url}`));
+    console.log(pc.dim(`  Studio server starting at: ${targetUrl}`));
   }
 
   if (!options.noOpen) {
     try {
-      await open(url);
+      await open(targetUrl);
       console.log(pc.dim(`Opening Web Studio in your default browser...`));
     } catch {
-      console.log(pc.dim(`Please open ${url} in your browser.`));
+      console.log(pc.dim(`Please open ${targetUrl} in your browser.`));
     }
   }
 

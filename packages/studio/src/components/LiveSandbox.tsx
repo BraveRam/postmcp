@@ -5,8 +5,20 @@ import { NormalizedSpec, NormalizedOperation } from '@postmcp/types';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Badge } from './ui/Badge';
+import { Switch } from './ui/Switch';
 import { ScrollArea } from './ui/ScrollArea';
-import { Bot, User, Send, Sparkles, Terminal, ShieldCheck, KeyRound, Loader2 } from 'lucide-react';
+import {
+  Bot,
+  User,
+  Send,
+  Sparkles,
+  Terminal,
+  ShieldCheck,
+  KeyRound,
+  Loader2,
+  ShieldAlert,
+  Lock,
+} from 'lucide-react';
 
 interface LiveSandboxProps {
   spec: NormalizedSpec;
@@ -15,8 +27,10 @@ interface LiveSandboxProps {
 
 export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
   const [model, setModel] = useState('gpt-4o');
-  const [apiKey, setApiKey] = useState('');
-  const [showKeyInput, setShowKeyInput] = useState(false);
+  const [aiApiKey, setAiApiKey] = useState('');
+  const [targetApiKey, setTargetApiKey] = useState('');
+  const [dryRun, setDryRun] = useState<boolean>(true);
+  const [showSecurityDrawer, setShowSecurityDrawer] = useState(false);
   const [prompt, setPrompt] = useState(
     selectedOperation
       ? `Execute ${selectedOperation.id} with valid parameters`
@@ -32,10 +46,13 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
   >([
     {
       role: 'assistant',
-      content: `Hello! The **${spec.title}** MCP server is mounted with **${spec.operations.length} context-optimized tools**. Ask me anything to test real tool dispatching and Token Diet output.`,
+      content: `Hello! The **${spec.title}** MCP server is mounted with **${spec.operations.length} context-optimized tools** and **Dry-Run Protection Active**. Ask me anything to test real tool dispatching and Token Diet output.`,
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Detect required auth scheme name
+  const primarySchemeName = spec.securitySchemes ? Object.keys(spec.securitySchemes)[0] : 'API_KEY';
 
   const handleSend = async () => {
     if (!prompt.trim() || isLoading) return;
@@ -47,13 +64,23 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
     setIsLoading(true);
 
     try {
+      const authConfig = targetApiKey.trim()
+        ? {
+            bearerToken: targetApiKey.trim(),
+            apiKey: { name: 'Authorization', value: targetApiKey.trim(), in: 'header' as const },
+          }
+        : undefined;
+
       const res = await fetch('/api/sandbox', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
           model,
-          apiKey: apiKey.trim() || undefined,
+          apiKey: aiApiKey.trim() || undefined,
+          targetApiKey: targetApiKey.trim() || undefined,
+          authConfig,
+          dryRun,
           spec,
           selectedOperationId: selectedOperation?.id,
         }),
@@ -84,19 +111,21 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
       <div className="px-4 py-2.5 border-b border-slate-800 flex items-center justify-between bg-[#0b101b]">
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-blue-400" />
-          <span className="text-xs font-semibold text-white">Vercel AI SDK Sandbox</span>
-          <Badge variant="secondary" className="text-[10px] font-mono">
-            v4.1
+          <span className="text-xs font-semibold text-white">AI Sandbox</span>
+          <Badge variant={dryRun ? 'success' : 'warning'} className="text-[10px] font-mono">
+            {dryRun ? 'Dry-Run Guard ON' : 'Live GET Mode'}
           </Badge>
         </div>
 
         <div className="flex items-center gap-3 text-xs">
           <button
-            onClick={() => setShowKeyInput(!showKeyInput)}
-            className="text-[11px] text-slate-400 hover:text-blue-400 flex items-center gap-1 transition-colors"
+            onClick={() => setShowSecurityDrawer(!showSecurityDrawer)}
+            className="text-[11px] text-slate-400 hover:text-blue-400 flex items-center gap-1.5 transition-colors"
           >
-            <KeyRound className="h-3 w-3" />
-            <span>{apiKey ? 'Custom Key Set' : 'Add API Key'}</span>
+            <Lock className="h-3 w-3" />
+            <span>
+              {targetApiKey || aiApiKey ? 'Credentials Configured' : 'Configure Auth & Safety'}
+            </span>
           </button>
 
           <div className="flex items-center gap-1.5">
@@ -106,7 +135,7 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
               onChange={(e) => setModel(e.target.value)}
               className="bg-[#0d131f] border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 font-mono focus:outline-none"
             >
-              <option value="gpt-4o">GPT-4o (Vercel Gateway)</option>
+              <option value="gpt-4o">GPT-4o</option>
               <option value="gpt-4o-mini">GPT-4o Mini</option>
               <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
               <option value="gemini-2-flash">Gemini 2.0 Flash</option>
@@ -115,17 +144,44 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
         </div>
       </div>
 
-      {/* Key Input Banner */}
-      {showKeyInput && (
-        <div className="p-3 bg-[#0d131f] border-b border-slate-800 flex items-center gap-2">
-          <KeyRound className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-          <Input
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            type="password"
-            placeholder="OpenAI / Vercel AI Gateway API Key (optional - simulated sandbox active if omitted)"
-            className="text-xs h-7 bg-[#070a10]"
-          />
+      {/* Security & Credentials Drawer */}
+      {showSecurityDrawer && (
+        <div className="p-3 bg-[#0d131f] border-b border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div>
+            <label className="text-[11px] font-semibold text-slate-300 block mb-1 flex items-center gap-1">
+              <KeyRound className="h-3 w-3 text-blue-400" />
+              Target API Credential ({primarySchemeName})
+            </label>
+            <Input
+              value={targetApiKey}
+              onChange={(e) => setTargetApiKey(e.target.value)}
+              type="password"
+              placeholder={`Bearer token or API key for ${spec.title}`}
+              className="text-xs h-7 bg-[#070a10]"
+            />
+          </div>
+
+          <div>
+            <label className="text-[11px] font-semibold text-slate-300 block mb-1 flex items-center gap-1">
+              <Sparkles className="h-3 w-3 text-purple-400" />
+              LLM Provider API Key (Optional)
+            </label>
+            <Input
+              value={aiApiKey}
+              onChange={(e) => setAiApiKey(e.target.value)}
+              type="password"
+              placeholder="OpenAI / AI Gateway Key (simulated if blank)"
+              className="text-xs h-7 bg-[#070a10]"
+            />
+          </div>
+
+          <div className="flex items-center pt-3">
+            <Switch
+              checked={dryRun}
+              onChange={setDryRun}
+              label="Dry-Run Safeguard (Blocks live destructive mutations)"
+            />
+          </div>
         </div>
       )}
 

@@ -8,12 +8,50 @@ async function executeMcpOperation(
   op: NormalizedOperation,
   args: any,
   spec: NormalizedSpec,
-  authConfig?: any
+  authConfig?: any,
+  dryRun: boolean = true
 ) {
-  const baseUrl = spec.servers?.[0]?.url;
+  const isMutation =
+    op.method.toLowerCase() !== 'get' ||
+    op.riskTier === 'MUTATION' ||
+    op.riskTier === 'CRITICAL';
 
-  // If a valid baseUrl is configured and not a placeholder, attempt real HTTP dispatch
-  if (baseUrl && !baseUrl.includes('example.com')) {
+  // Safeguard: In Sandbox, mutations (POST, PUT, DELETE, PATCH) or dryRun=true are NEVER dispatched destructively to live production APIs
+  if (dryRun || isMutation) {
+    const mockItem: Record<string, any> = {
+      id: args?.id || 'res_' + Math.floor(Math.random() * 100000),
+      status: args?.status || 'success',
+      ...args,
+      _sandbox: {
+        mode: 'DRY_RUN_SAFEGUARD',
+        simulatedMethod: op.method.toUpperCase(),
+        targetPath: op.path,
+        riskTier: op.riskTier,
+      },
+      created_at: new Date().toISOString(),
+    };
+
+    const diet = applyTokenDiet([mockItem], {
+      enabled: true,
+      fieldMasks: spec.tokenDiet?.fieldMasks?.[op.path],
+      convertToMarkdownTable: true,
+    });
+
+    const safeguardNotice = isMutation
+      ? `\n\n> 🛡️ **[DRY RUN SAFEGUARD ACTIVE]**: Destructive mutation \`${op.method.toUpperCase()} ${op.path}\` (${op.riskTier}) simulated safely without modifying remote resources.`
+      : '';
+
+    return {
+      operationId: op.id,
+      status: 200,
+      result: diet.text + safeguardNotice,
+      savings: diet.savingsPercentage,
+    };
+  }
+
+  // Safe Read-Only GET Execution with user-provided credentials
+  const baseUrl = spec.servers?.[0]?.url;
+  if (baseUrl && !baseUrl.includes('example.com') && authConfig) {
     try {
       const client = new ResilientHttpClient({
         baseUrl,
@@ -23,10 +61,8 @@ async function executeMcpOperation(
         maxRetries: 1,
       });
 
-      // Map parameters to query/path/body
       let pathUrl = op.path;
       const queryParams: Record<string, any> = {};
-      let bodyData: any = undefined;
 
       if (op.parameters) {
         for (const p of op.parameters) {
@@ -35,23 +71,15 @@ async function executeMcpOperation(
               pathUrl = pathUrl.replace(`{${p.name}}`, encodeURIComponent(String(args[p.name])));
             } else if (p.in === 'query') {
               queryParams[p.name] = args[p.name];
-            } else {
-              bodyData = bodyData || {};
-              bodyData[p.name] = args[p.name];
             }
           }
         }
       }
 
-      if (args && typeof args === 'object' && !bodyData && Object.keys(queryParams).length === 0) {
-        bodyData = args;
-      }
-
       const res = await client.request({
         url: pathUrl,
-        method: op.method.toUpperCase(),
+        method: 'GET',
         params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
-        data: bodyData,
       });
 
       const diet = applyTokenDiet(res.data, {
@@ -66,15 +94,21 @@ async function executeMcpOperation(
         result: diet.text,
         savings: diet.savingsPercentage,
       };
-    } catch {
-      // Fallback to schema-guided response simulation
+    } catch (err: any) {
+      // Fall back with error report
+      return {
+        operationId: op.id,
+        status: 500,
+        result: `Failed to fetch live GET endpoint: ${err.message}`,
+        savings: 0,
+      };
     }
   }
 
-  // Realistic schema-guided operation execution fallback
+  // Default simulated execution
   const mockItem: Record<string, any> = {
-    id: args.id || 'res_' + Math.floor(Math.random() * 100000),
-    status: args.status || 'success',
+    id: args?.id || 'res_' + Math.floor(Math.random() * 100000),
+    status: 'active',
     ...args,
     created_at: new Date().toISOString(),
   };
@@ -102,6 +136,7 @@ export async function POST(request: Request) {
       spec,
       selectedOperationId,
       authConfig,
+      dryRun = true,
     } = await request.json();
 
     if (!spec || !Array.isArray(spec.operations)) {
@@ -126,7 +161,7 @@ export async function POST(request: Request) {
         parameters: jsonSchema((op.inputSchema || { type: 'object', properties: {} }) as any),
         execute: async (args: any) => {
           executedToolCall = { name: op.id, args };
-          const execRes = await executeMcpOperation(op, args, spec, authConfig);
+          const execRes = await executeMcpOperation(op, args, spec, authConfig, dryRun);
           executedToolResult = { text: execRes.result, savings: execRes.savings };
           return execRes;
         },
@@ -170,7 +205,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const execRes = await executeMcpOperation(targetOp, mockArgs, spec, authConfig);
+    const execRes = await executeMcpOperation(targetOp, mockArgs, spec, authConfig, dryRun);
 
     return NextResponse.json({
       role: 'assistant',

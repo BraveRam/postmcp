@@ -91,7 +91,27 @@ export default function StudioPage() {
   };
 
   useEffect(() => {
-    loadPreset('stripe');
+    let initialSpec = process.env.NEXT_PUBLIC_INITIAL_SPEC;
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const querySpec = urlParams.get('spec') || urlParams.get('preset');
+      if (querySpec) {
+        initialSpec = querySpec;
+      }
+    }
+
+    if (initialSpec && initialSpec.trim()) {
+      const trimmed = initialSpec.trim();
+      if (trimmed.startsWith('@')) {
+        loadPreset(trimmed.slice(1));
+      } else if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+        handleIngestSpec({ url: trimmed });
+      } else {
+        handleIngestSpec({ spec: trimmed });
+      }
+    } else {
+      loadPreset('stripe');
+    }
   }, []);
 
   const handleToggleOperation = (id: string, enabled: boolean) => {

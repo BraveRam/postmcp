@@ -132,7 +132,7 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
     delete process.env.POSTMCP_WORKSPACE;
   });
 
-  it('POST /api/sandbox should execute simulated AI agent with dynamic tools and Token Diet output', async () => {
+  it('POST /api/sandbox should enforce dry-run safeguard on destructive mutations and apply Token Diet', async () => {
     const mockSpec = {
       title: 'Stripe API',
       operations: [
@@ -155,6 +155,7 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
         messages: [{ role: 'user', content: 'Refund charge ch_12345' }],
         spec: mockSpec,
         selectedOperationId: 'createRefund',
+        dryRun: true,
       }),
     });
 
@@ -163,6 +164,6 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
 
     expect(data.content).toBeDefined();
     expect(data.toolCall?.name).toBe('createRefund');
-    expect(data.result?.text).toBeDefined();
+    expect(data.result?.text).toContain('DRY RUN SAFEGUARD ACTIVE');
   });
 });
