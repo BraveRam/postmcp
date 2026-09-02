@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import * as os from 'node:os';
 import { GET as getPresetsHandler } from '../src/app/api/presets/route.js';
 import { POST as parseHandler } from '../src/app/api/parse/route.js';
 import { POST as tokenDietHandler } from '../src/app/api/token-diet/route.js';
@@ -20,7 +19,7 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
     expect(data.categories).toContain('Developer Tools');
     expect(data.categories).toContain('Payments & Commerce');
 
-    const stripe = data.presets.find((p: any) => p.id === 'stripe');
+    const stripe = data.presets.find((p: { id: string; name: string }) => p.id === 'stripe');
     expect(stripe).toBeDefined();
     expect(stripe.name).toBe('Stripe API');
   });
