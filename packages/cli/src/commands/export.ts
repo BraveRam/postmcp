@@ -6,6 +6,7 @@ import { resolvePresetSpec } from '../presets/index.js';
 import pc from 'picocolors';
 
 export interface ExportCommandOptions {
+  target?: 'cursor' | 'claude' | 'windsurf' | 'all';
   client?: 'cursor' | 'claude' | 'windsurf' | 'all';
   write?: boolean;
   env?: string[];
@@ -67,7 +68,7 @@ export function buildClientConfigSnippet(
 export async function exportCommand(specArg: string, options: ExportCommandOptions): Promise<void> {
   let specPath = specArg;
   if (!specPath) {
-    console.error(pc.red('Error: No OpenAPI spec provided. Usage: postmcp export <spec-path-or-url-or-@preset>'));
+    console.error(pc.red('Error: No OpenAPI spec provided. Usage: postmcp export <spec-path-or-url-or-@preset> --target cursor|claude|windsurf|all'));
     process.exit(1);
   }
 
@@ -83,9 +84,11 @@ export async function exportCommand(specArg: string, options: ExportCommandOptio
     }
   }
 
-  const client = options.client || 'all';
+  const selectedTarget = (options.target || options.client || 'all').toLowerCase();
   const clientsToExport: Array<'cursor' | 'claude' | 'windsurf'> =
-    client === 'all' ? ['cursor', 'claude', 'windsurf'] : [client];
+    selectedTarget === 'all'
+      ? ['cursor', 'claude', 'windsurf']
+      : [selectedTarget as 'cursor' | 'claude' | 'windsurf'];
 
   console.log(pc.bold(pc.cyan(`⚡ PostMCP 1-Click Client Configuration Exporter`)));
   console.log();
