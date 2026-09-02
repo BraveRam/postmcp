@@ -57,8 +57,8 @@ describe('Standalone MCP Server Code Generators', () => {
     expect(packageJson.dependencies['axios']).toBeDefined();
 
     const indexTs = project.files['src/index.ts'];
-    expect(indexTs).toContain("'createRefund'");
-    expect(indexTs).toContain("'listCharges'");
+    expect(indexTs).toContain('"createRefund"');
+    expect(indexTs).toContain('"listCharges"');
     expect(indexTs).toContain('StdioServerTransport');
     expect(indexTs).toContain('server.registerTool');
   });

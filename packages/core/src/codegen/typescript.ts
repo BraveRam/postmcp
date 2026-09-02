@@ -1,23 +1,106 @@
 import { NormalizedSpec, NormalizedOperation, GeneratedProject } from '@postmcp/types';
 
-function sanitizeIdentifier(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_]/g, '_');
+export function sanitizeIdentifier(name: string): string {
+  let s = name.replace(/[^a-zA-Z0-9_]/g, '_');
+  if (/^[0-9]/.test(s)) {
+    s = `_${s}`;
+  }
+  return s || 'tool';
 }
 
-function mapSchemaToZod(schema: any): string {
-  if (!schema) return 'z.string()';
-  if (schema.type === 'string') return 'z.string()';
-  if (schema.type === 'integer' || schema.type === 'number') return 'z.number()';
-  if (schema.type === 'boolean') return 'z.boolean()';
-  if (schema.type === 'array') return 'z.array(z.any())';
-  if (schema.type === 'object') return 'z.record(z.any())';
+export function convertSchemaToZod(schema: any, depth: number = 0): string {
+  if (!schema || depth > 8) {
+    return 'z.any()';
+  }
+
+  // 1. Enum types
+  if (schema.enum && Array.isArray(schema.enum) && schema.enum.length > 0) {
+    const literals = schema.enum.map((v: any) => JSON.stringify(v)).join(', ');
+    return `z.enum([${literals}])`;
+  }
+
+  // 2. Primitive types
+  if (schema.type === 'string') {
+    let zod = 'z.string()';
+    if (schema.format === 'email') zod += '.email()';
+    if (schema.format === 'uuid') zod += '.uuid()';
+    if (schema.format === 'url' || schema.format === 'uri') zod += '.url()';
+    if (typeof schema.minLength === 'number') zod += `.min(${schema.minLength})`;
+    if (typeof schema.maxLength === 'number') zod += `.max(${schema.maxLength})`;
+    if (schema.description) zod += `.describe(${JSON.stringify(schema.description)})`;
+    return zod;
+  }
+
+  if (schema.type === 'integer' || schema.type === 'number') {
+    let zod = schema.type === 'integer' ? 'z.number().int()' : 'z.number()';
+    if (typeof schema.minimum === 'number') zod += `.min(${schema.minimum})`;
+    if (typeof schema.maximum === 'number') zod += `.max(${schema.maximum})`;
+    if (schema.description) zod += `.describe(${JSON.stringify(schema.description)})`;
+    return zod;
+  }
+
+  if (schema.type === 'boolean') {
+    let zod = 'z.boolean()';
+    if (schema.description) zod += `.describe(${JSON.stringify(schema.description)})`;
+    return zod;
+  }
+
+  // 3. Array types
+  if (schema.type === 'array') {
+    const itemZod = schema.items ? convertSchemaToZod(schema.items, depth + 1) : 'z.any()';
+    let zod = `z.array(${itemZod})`;
+    if (typeof schema.minItems === 'number') zod += `.min(${schema.minItems})`;
+    if (typeof schema.maxItems === 'number') zod += `.max(${schema.maxItems})`;
+    if (schema.description) zod += `.describe(${JSON.stringify(schema.description)})`;
+    return zod;
+  }
+
+  // 4. Object types with nested properties
+  if (schema.type === 'object' || schema.properties) {
+    const props = schema.properties || {};
+    const requiredSet = new Set(Array.isArray(schema.required) ? schema.required : []);
+    const shapeEntries: string[] = [];
+
+    for (const [key, propSchema] of Object.entries<any>(props)) {
+      const isReq = requiredSet.has(key);
+      const innerZod = convertSchemaToZod(propSchema, depth + 1);
+      const fieldZod = isReq ? innerZod : `${innerZod}.optional()`;
+      shapeEntries.push(`    ${JSON.stringify(key)}: ${fieldZod}`);
+    }
+
+    if (shapeEntries.length === 0) {
+      return schema.additionalProperties
+        ? `z.record(z.string(), ${convertSchemaToZod(schema.additionalProperties, depth + 1)})`
+        : 'z.record(z.string(), z.any())';
+    }
+
+    let zod = `z.object({\n${shapeEntries.join(',\n')}\n  })`;
+    if (schema.description) zod += `.describe(${JSON.stringify(schema.description)})`;
+    return zod;
+  }
+
+  // 5. Unions (oneOf / anyOf)
+  if (schema.oneOf && Array.isArray(schema.oneOf) && schema.oneOf.length > 0) {
+    const members = schema.oneOf.map((m: any) => convertSchemaToZod(m, depth + 1));
+    return `z.union([${members.join(', ')}])`;
+  }
+  if (schema.anyOf && Array.isArray(schema.anyOf) && schema.anyOf.length > 0) {
+    const members = schema.anyOf.map((m: any) => convertSchemaToZod(m, depth + 1));
+    return `z.union([${members.join(', ')}])`;
+  }
+
   return 'z.any()';
 }
 
 export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProject {
   const files: Record<string, string> = {};
 
-  const serverName = spec.title.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'mcp-server';
+  const serverName =
+    spec.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || 'mcp-server';
   const baseUrl = spec.servers.length > 0 ? spec.servers[0].url : 'https://api.example.com';
 
   // 1. package.json
@@ -77,69 +160,102 @@ export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProjec
 
   for (const op of spec.operations) {
     const toolId = op.id;
-    const description = (op.description || op.summary || `Execute ${op.id}`).replace(/'/g, "\\'");
+    const description = op.description || op.summary || `Execute ${op.id}`;
 
-    // Build Zod schema shape
-    const zodFields: string[] = [];
-    const pathReplacements: string[] = [];
-    const queryParams: string[] = [];
-    let hasBody = false;
+    // Collect all parameters
+    const pathParams: { name: string; schema: any; required: boolean }[] = [];
+    const queryParams: { name: string; schema: any; required: boolean }[] = [];
+    const headerParams: { name: string; schema: any; required: boolean }[] = [];
+    const bodyProps: { name: string; schema: any; required: boolean }[] = [];
+
+    const schemaFields: string[] = [];
 
     if (op.parameters) {
       for (const p of op.parameters) {
-        const isRequired = p.required;
-        const baseZod = mapSchemaToZod(p.schema);
-        const zodDef = isRequired ? baseZod : `${baseZod}.optional()`;
-        zodFields.push(`  ${p.name}: ${zodDef},`);
+        const isReq = !!p.required;
+        const zodCode = convertSchemaToZod(p.schema);
+        const fieldZod = isReq ? zodCode : `${zodCode}.optional()`;
+        schemaFields.push(`      ${JSON.stringify(p.name)}: ${fieldZod},`);
 
         if (p.in === 'path') {
-          pathReplacements.push(`url = url.replace('{${p.name}}', encodeURIComponent(String(args['${p.name}'])));`);
-        } else if (p.in === 'query') {
-          queryParams.push(`if (args['${p.name}'] !== undefined) query['${p.name}'] = args['${p.name}'];`);
-        } else if (p.in === 'body') {
-          hasBody = true;
+          pathParams.push({ name: p.name, schema: p.schema, required: isReq });
+        } else if (p.in === 'header') {
+          headerParams.push({ name: p.name, schema: p.schema, required: isReq });
+        } else {
+          queryParams.push({ name: p.name, schema: p.schema, required: isReq });
         }
       }
     }
 
-    if (op.inputSchema && op.inputSchema.properties && zodFields.length === 0) {
+    // Merge request body properties (without losing query/path params!)
+    if (op.inputSchema && op.inputSchema.properties) {
+      const knownParamNames = new Set((op.parameters || []).map((p) => p.name));
+      const requiredBodySet = new Set(Array.isArray(op.inputSchema.required) ? op.inputSchema.required : []);
+
       for (const [propName, propSchema] of Object.entries<any>(op.inputSchema.properties)) {
-        const isRequired = (op.inputSchema.required || []).includes(propName);
-        const baseZod = mapSchemaToZod(propSchema);
-        const zodDef = isRequired ? baseZod : `${baseZod}.optional()`;
-        zodFields.push(`  ${propName}: ${zodDef},`);
+        if (!knownParamNames.has(propName)) {
+          const isReq = requiredBodySet.has(propName);
+          const zodCode = convertSchemaToZod(propSchema);
+          const fieldZod = isReq ? zodCode : `${zodCode}.optional()`;
+          schemaFields.push(`      ${JSON.stringify(propName)}: ${fieldZod},`);
+          bodyProps.push({ name: propName, schema: propSchema, required: isReq });
+        }
       }
-      hasBody = true;
     }
 
-    const pathReplacementsCode =
-      pathReplacements.length > 0 ? '\n      ' + pathReplacements.join('\n      ') : '';
-    const queryParamsCode = queryParams.length > 0 ? '\n      ' + queryParams.join('\n      ') : '';
+    // Generate tool execution logic
+    const executionLines: string[] = [];
+    executionLines.push(`      let url = ${JSON.stringify(op.path)};`);
 
-    const bodyCode = hasBody
-      ? `\n      const bodyData: Record<string, any> = {};\n      for (const [k, v] of Object.entries(args)) {\n        if (v !== undefined) bodyData[k] = v;\n      }`
-      : '';
+    for (const p of pathParams) {
+      executionLines.push(`      url = url.replace("{${p.name}}", encodeURIComponent(String(args[${JSON.stringify(p.name)}])));`);
+    }
+
+    if (queryParams.length > 0) {
+      executionLines.push('      const query: Record<string, any> = {};');
+      for (const p of queryParams) {
+        executionLines.push(`      if (args[${JSON.stringify(p.name)}] !== undefined) query[${JSON.stringify(p.name)}] = args[${JSON.stringify(p.name)}];`);
+      }
+    }
+
+    if (headerParams.length > 0) {
+      executionLines.push('      const reqHeaders: Record<string, string> = {};');
+      for (const p of headerParams) {
+        executionLines.push(`      if (args[${JSON.stringify(p.name)}] !== undefined) reqHeaders[${JSON.stringify(p.name)}] = String(args[${JSON.stringify(p.name)}]);`);
+      }
+    }
+
+    if (bodyProps.length > 0) {
+      executionLines.push('      const bodyData: Record<string, any> = {};');
+      for (const p of bodyProps) {
+        executionLines.push(`      if (args[${JSON.stringify(p.name)}] !== undefined) bodyData[${JSON.stringify(p.name)}] = args[${JSON.stringify(p.name)}];`);
+      }
+    }
+
+    const queryArg = queryParams.length > 0 ? 'params: Object.keys(query).length > 0 ? query : undefined,' : '';
+    const bodyArg = bodyProps.length > 0 ? 'data: Object.keys(bodyData).length > 0 ? bodyData : undefined,' : '';
+    const headerArg = headerParams.length > 0 ? 'headers: reqHeaders,' : '';
 
     toolRegistrations.push(`
-// Tool: ${toolId}
+// Tool: ${JSON.stringify(toolId)}
 server.registerTool(
-  '${toolId}',
+  ${JSON.stringify(toolId)},
   {
-    description: '${description}',
+    description: ${JSON.stringify(description)},
     inputSchema: z.object({
-${zodFields.join('\n')}
+${schemaFields.join('\n')}
     }),
   },
-  async (args, ctx) => {
+  async (args: any, ctx: any) => {
     try {
-      let url = '${op.path}';${pathReplacementsCode}
-      const query: Record<string, any> = {};${queryParamsCode}${bodyCode}
+${executionLines.join('\n')}
 
       const res = await httpClient.request({
         url,
-        method: '${op.method.toUpperCase()}',
-        params: Object.keys(query).length > 0 ? query : undefined,
-        data: ${hasBody ? 'Object.keys(bodyData).length > 0 ? bodyData : undefined' : 'undefined'},
+        method: ${JSON.stringify(op.method.toUpperCase())},
+        ${queryArg}
+        ${bodyArg}
+        ${headerArg}
       });
 
       const formatted = formatTokenDiet(res.data);
@@ -150,7 +266,7 @@ ${zodFields.join('\n')}
       const msg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
       return {
         isError: true,
-        content: [{ type: 'text', text: \`Error executing ${toolId}: \${msg}\` }],
+        content: [{ type: 'text', text: \`Error executing \${${JSON.stringify(toolId)}}: \${msg}\` }],
       };
     }
   }
@@ -170,7 +286,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const BASE_URL = (process.env.BASE_URL || '${baseUrl}').replace(/\\/$/, '');
+const BASE_URL = (process.env.BASE_URL || ${JSON.stringify(baseUrl)}).replace(/\\/$/, '');
 const API_KEY = process.env.API_KEY || process.env.BEARER_TOKEN || '';
 
 const httpClient = axios.create({
@@ -201,15 +317,15 @@ function formatTokenDiet(data: any): string {
 }
 
 const server = new McpServer({
-  name: '${spec.title}',
-  version: '${spec.version || '1.0.0'}',
+  name: ${JSON.stringify(spec.title)},
+  version: ${JSON.stringify(spec.version || '1.0.0')},
 });
 ${toolRegistrations.join('\n')}
 
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('${spec.title} MCP Server running on stdio');
+  console.error(\`\${${JSON.stringify(spec.title)}} MCP Server running on stdio\`);
 }
 
 main().catch((err) => {
