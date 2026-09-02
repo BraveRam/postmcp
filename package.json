@@ -1,8 +1,8 @@
 {
-  "name": "openmcp-monorepo",
+  "name": "postmcp-monorepo",
   "version": "0.1.0",
   "private": true,
-  "description": "The Postman for MCP - Turn any OpenAPI spec into a context-optimized MCP server",
+  "description": "PostMCP - The Postman for MCP. Turn any OpenAPI spec into a context-optimized MCP server in seconds.",
   "scripts": {
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",

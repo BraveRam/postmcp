@@ -1,19 +1,20 @@
-# OpenMCP 🚀 (openapi-to-mcp)
+# PostMCP 📮⚡
 
-> **The "Postman for MCP"** — Turn any OpenAPI / Swagger spec into a context-optimized, type-safe Model Context Protocol (MCP) server in under 60 seconds.
+> **The "Postman for MCP"** — Turn any OpenAPI / Swagger spec into a context-optimized, safe, type-safe Model Context Protocol (MCP) server in under 60 seconds.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![MCP Compliant](https://img.shields.io/badge/MCP-100%25-green.svg)](https://modelcontextprotocol.io/)
+[![npm package](https://img.shields.io/badge/npm-postmcp-red.svg)](https://www.npmjs.com/package/postmcp)
 
 ---
 
 ## ⚡ Quickstart (Zero Code)
 
-Run any OpenAPI spec directly in **Claude Desktop**, **Cursor**, or **Antigravity**:
+Connect any REST API directly to **Claude Desktop**, **Cursor**, **Antigravity**, or **Windsurf**:
 
 ```bash
-# Run any OpenAPI spec on the fly
-npx openmcp run https://api.stripe.com/openapi.json \
+# Run any OpenAPI spec on the fly with Token Diet and JIT tool search
+npx postmcp run https://api.stripe.com/openapi.json \
   --header "Authorization: Bearer $STRIPE_SECRET_KEY" \
   --token-diet \
   --jit
@@ -22,28 +23,45 @@ npx openmcp run https://api.stripe.com/openapi.json \
 ### Launch the Visual Web Studio
 
 ```bash
-npx openmcp studio
+npx postmcp studio
+```
+
+### 1-Click Cursor Setup (`.cursor/mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "linear": {
+      "command": "npx",
+      "args": ["-y", "postmcp", "run", "https://api.linear.app/openapi.json", "--token-diet", "--jit"],
+      "env": {
+        "LINEAR_API_KEY": "${env:LINEAR_API_KEY}"
+      }
+    }
+  }
+}
 ```
 
 ---
 
-## 🌟 Why OpenMCP?
+## 🌟 Why PostMCP?
 
-Current naive OpenAPI-to-MCP converters dump 100+ raw endpoints into the LLM context window and return 50KB JSON payloads, causing context overflows and hallucinated tool calls. 
+Standard naive OpenAPI-to-MCP converters dump 100+ raw endpoints into the LLM context window and return 50KB JSON payloads, causing context overflows and hallucinated tool calls. 
 
-**OpenMCP solves this with 4 core innovations:**
+**PostMCP solves this with 5 core pillars:**
 
-1. 🔍 **JIT Tool Router (`tool_search`)**: Dynamically mounts only the 3–5 relevant tools needed for the user's intent instead of 100+ static tools.
-2. 🥗 **Token Diet Engine**: JSONPath masking and automatic JSON-to-Markdown table formatting (reducing payload tokens by 70%+).
-3. 🛡️ **Risk Guardrails**: Automatic risk-tier tagging (`READ_ONLY`, `MUTATION`, `CRITICAL`) with dry-run simulation mode.
-4. 🎨 **Visual Web Studio**: Drag-and-drop OpenAPI workbench with 1-click export to `.cursor/mcp.json` and `claude_desktop_config.json`.
+1. 🔍 **JIT Dynamic Tool Router (`tool_search`)**: Automatically switches to dynamic tool discovery for APIs with > 20 endpoints, preventing context window saturation (<1,500 active tokens).
+2. 🥗 **Token Diet Engine**: Prunes nulls/links/boilerplate and automatically formats object arrays into compact Markdown tables (**reducing payload tokens by 70%+**).
+3. 🛡️ **3-Tier Risk Guardrails**: Tags operations with MCP hints (`readOnlyHint`, `destructiveHint`) and supports `--dry-run` simulation mode.
+4. 🔗 **Composite Macro Tools**: Chained multi-step REST workflows executed in memory in a single tool call.
+5. 🎨 **Visual Web Studio**: Dark-mode local workbench with Live Sandbox (Vercel AI Gateway) and copyable config snippets.
 
 ---
 
 ## 📦 Monorepo Structure
 
-- `packages/core`: Spec parser, Token Diet engine, JIT router, and MCP JSON-RPC protocol server.
-- `packages/cli`: `openmcp` CLI (`openmcp run`, `openmcp studio`, `openmcp export`).
+- `packages/core`: Spec parser, Token Diet engine, JIT router, and MCP SDK v2 protocol server (`@postmcp/core`).
+- `packages/cli`: `postmcp` CLI executable (`postmcp run`, `postmcp studio`, `postmcp export`).
 - `packages/studio`: Next.js local workbench for visual endpoint curation and live sandbox testing.
 - `presets/`: Curated, token-dieted configs for the top 50 developer APIs (GitHub, Linear, Stripe, Supabase, Slack, etc.).
 
@@ -51,4 +69,4 @@ Current naive OpenAPI-to-MCP converters dump 100+ raw endpoints into the LLM con
 
 ## 📄 License
 
-MIT © [OpenMCP Contributors](LICENSE)
+MIT © [PostMCP Contributors](LICENSE)
