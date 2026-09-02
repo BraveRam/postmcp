@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { createCli } from '../src/bin.js';
 import { inspectCommand, estimateSpecTokenSavings } from '../src/commands/inspect.js';
 import { exportCommand } from '../src/commands/export.js';
+import { studioCommand } from '../src/commands/studio.js';
 
 describe('CLI Command Surface & Integration Contract', () => {
   const fixturePath = path.join(__dirname, '..', '..', 'core', 'tests', 'fixtures', 'petstore.json');
@@ -32,7 +33,18 @@ describe('CLI Command Surface & Integration Contract', () => {
     logSpy.mockRestore();
   });
 
-  it('should calculate estimated token savings in inspect command (Finding 3)', () => {
+  it('should support studio command with --no-open flag', async () => {
+    const cli = createCli();
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await expect(
+      cli.parseAsync(['node', 'postmcp', 'studio', '@stripe', '--no-open', '--port', '3005'])
+    ).resolves.toBeDefined();
+
+    logSpy.mockRestore();
+  });
+
+  it('should calculate estimated token savings in inspect command', () => {
     const mockSpec = {
       title: 'Petstore API',
       operations: [
