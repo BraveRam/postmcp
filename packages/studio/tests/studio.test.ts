@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as os from 'node:os';
 import { GET as getPresetsHandler } from '../src/app/api/presets/route.js';
 import { POST as parseHandler } from '../src/app/api/parse/route.js';
 import { POST as tokenDietHandler } from '../src/app/api/token-diet/route.js';
@@ -101,7 +102,10 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
     expect(postmcpObj.fieldMasks['/v1/refunds']).toEqual(['id', 'amount', 'status']);
   });
 
-  it('POST /api/persist should save postmcp.config.json to the workspace disk', async () => {
+  it('POST /api/persist should save postmcp.config.json to the workspace disk respecting POSTMCP_WORKSPACE', async () => {
+    const tempDir = os.tmpdir();
+    process.env.POSTMCP_WORKSPACE = tempDir;
+
     const testConfig = {
       spec: '@stripe',
       tokenDiet: { enabled: true, maxTokens: 2500 },
@@ -117,7 +121,7 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
     const data = await res.json();
 
     expect(data.success).toBe(true);
-    const savedFile = path.join(process.cwd(), 'postmcp.config.json');
+    const savedFile = path.join(tempDir, 'postmcp.config.json');
     expect(fs.existsSync(savedFile)).toBe(true);
 
     const readConfig = JSON.parse(fs.readFileSync(savedFile, 'utf-8'));
@@ -125,6 +129,7 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
 
     // Clean up
     fs.unlinkSync(savedFile);
+    delete process.env.POSTMCP_WORKSPACE;
   });
 
   it('POST /api/sandbox should execute simulated AI agent with dynamic tools and Token Diet output', async () => {
