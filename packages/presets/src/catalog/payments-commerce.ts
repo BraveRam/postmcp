@@ -1,4 +1,5 @@
 import { Preset } from '../types.js';
+import { buildOpenAPISpec } from '../builder.js';
 
 export const PAYMENTS_COMMERCE_PRESETS: Preset[] = [
   {
@@ -34,6 +35,20 @@ export const PAYMENTS_COMMERCE_PRESETS: Preset[] = [
         ],
       },
     ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Stripe API',
+      baseUrl: 'https://api.stripe.com/v1',
+      description: 'Stripe Payments and Subscriptions API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/v1/charges', method: 'get', operationId: 'listCharges', summary: 'List charges', parameters: [{ name: 'customer', in: 'query', schema: { type: 'string' } }, { name: 'limit', in: 'query', schema: { type: 'integer' } }] },
+        { path: '/v1/charges', method: 'post', operationId: 'createCharge', summary: 'Create charge', requestBody: { properties: { amount: { type: 'integer' }, currency: { type: 'string' }, source: { type: 'string' } } } },
+        { path: '/v1/refunds', method: 'get', operationId: 'listRefunds', summary: 'List refunds' },
+        { path: '/v1/refunds', method: 'post', operationId: 'createRefund', summary: 'Create refund', requestBody: { properties: { charge: { type: 'string' }, amount: { type: 'integer' }, reason: { type: 'string' } } } },
+        { path: '/v1/customers', method: 'get', operationId: 'listCustomers', summary: 'List customers', parameters: [{ name: 'email', in: 'query', schema: { type: 'string' } }] },
+        { path: '/v1/customers', method: 'post', operationId: 'createCustomer', summary: 'Create customer', requestBody: { properties: { email: { type: 'string' }, name: { type: 'string' } } } },
+      ],
+    }),
   },
   {
     id: 'shopify',
@@ -44,6 +59,22 @@ export const PAYMENTS_COMMERCE_PRESETS: Preset[] = [
     authEnvVar: 'SHOPIFY_ACCESS_TOKEN',
     defaultBaseUrl: 'https://{shop}.myshopify.com/admin/api/2024-01',
     tags: ['ecommerce', 'products', 'orders', 'inventory', 'storefront'],
+    fieldMasks: [
+      { path: '/products.json', fields: ['products.id', 'products.title', 'products.vendor', 'products.status', 'products.variants'] },
+      { path: '/orders.json', fields: ['orders.id', 'orders.name', 'orders.total_price', 'orders.financial_status', 'orders.created_at'] },
+    ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Shopify Admin API',
+      baseUrl: 'https://example-shop.myshopify.com/admin/api/2024-01',
+      description: 'Shopify Storefront & Admin API',
+      securityScheme: { name: 'shopifyAuth', type: 'apiKey', in: 'header', headerName: 'X-Shopify-Access-Token' },
+      endpoints: [
+        { path: '/products.json', method: 'get', operationId: 'listProducts', summary: 'List store products' },
+        { path: '/products/{id}.json', method: 'get', operationId: 'getProduct', summary: 'Get product details', parameters: [{ name: 'id', in: 'path', schema: { type: 'string' } }] },
+        { path: '/orders.json', method: 'get', operationId: 'listOrders', summary: 'List store orders' },
+        { path: '/customers.json', method: 'get', operationId: 'listCustomers', summary: 'List store customers' },
+      ],
+    }),
   },
   {
     id: 'paypal',
@@ -54,6 +85,20 @@ export const PAYMENTS_COMMERCE_PRESETS: Preset[] = [
     authEnvVar: 'PAYPAL_ACCESS_TOKEN',
     defaultBaseUrl: 'https://api-m.paypal.com',
     tags: ['payments', 'checkout', 'payouts', 'orders'],
+    fieldMasks: [
+      { path: '/v2/checkout/orders/{id}', fields: ['id', 'status', 'intent', 'purchase_units.amount'] },
+    ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'PayPal REST API',
+      baseUrl: 'https://api-m.paypal.com',
+      description: 'PayPal Checkout & Payments API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/v2/checkout/orders', method: 'post', operationId: 'createOrder', summary: 'Create checkout order', requestBody: { properties: { intent: { type: 'string' }, purchase_units: { type: 'array' } } } },
+        { path: '/v2/checkout/orders/{id}', method: 'get', operationId: 'getOrder', summary: 'Get order details', parameters: [{ name: 'id', in: 'path', schema: { type: 'string' } }] },
+        { path: '/v2/checkout/orders/{id}/capture', method: 'post', operationId: 'captureOrder', summary: 'Capture order payment', parameters: [{ name: 'id', in: 'path', schema: { type: 'string' } }] },
+      ],
+    }),
   },
   {
     id: 'square',
@@ -64,6 +109,17 @@ export const PAYMENTS_COMMERCE_PRESETS: Preset[] = [
     authEnvVar: 'SQUARE_ACCESS_TOKEN',
     defaultBaseUrl: 'https://connect.squareup.com/v2',
     tags: ['pos', 'merchant', 'payments', 'catalog', 'inventory'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Square API',
+      baseUrl: 'https://connect.squareup.com/v2',
+      description: 'Square Merchant & Payments API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/locations', method: 'get', operationId: 'listLocations', summary: 'List business locations' },
+        { path: '/payments', method: 'get', operationId: 'listPayments', summary: 'List processed payments' },
+        { path: '/catalog/list', method: 'get', operationId: 'listCatalog', summary: 'List catalog items' },
+      ],
+    }),
   },
   {
     id: 'chargebee',
@@ -74,6 +130,17 @@ export const PAYMENTS_COMMERCE_PRESETS: Preset[] = [
     authEnvVar: 'CHARGEBEE_API_KEY',
     defaultBaseUrl: 'https://{site}.chargebee.com/api/v2',
     tags: ['subscriptions', 'saas', 'billing', 'invoices'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Chargebee API',
+      baseUrl: 'https://example-site.chargebee.com/api/v2',
+      description: 'Chargebee Subscription Management API',
+      securityScheme: { name: 'basicAuth', type: 'http', scheme: 'basic' },
+      endpoints: [
+        { path: '/subscriptions', method: 'get', operationId: 'listSubscriptions', summary: 'List subscriptions' },
+        { path: '/invoices', method: 'get', operationId: 'listInvoices', summary: 'List customer invoices' },
+        { path: '/customers', method: 'get', operationId: 'listCustomers', summary: 'List billing customers' },
+      ],
+    }),
   },
   {
     id: 'paddle',
@@ -84,6 +151,17 @@ export const PAYMENTS_COMMERCE_PRESETS: Preset[] = [
     authEnvVar: 'PADDLE_API_KEY',
     defaultBaseUrl: 'https://api.paddle.com',
     tags: ['mor', 'billing', 'taxes', 'checkout', 'saas'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Paddle Billing API',
+      baseUrl: 'https://api.paddle.com',
+      description: 'Paddle Merchant of Record API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/products', method: 'get', operationId: 'listProducts', summary: 'List catalog products' },
+        { path: '/prices', method: 'get', operationId: 'listPrices', summary: 'List product prices' },
+        { path: '/subscriptions', method: 'get', operationId: 'listSubscriptions', summary: 'List active subscriptions' },
+      ],
+    }),
   },
   {
     id: 'plaid',
@@ -94,6 +172,19 @@ export const PAYMENTS_COMMERCE_PRESETS: Preset[] = [
     authEnvVar: 'PLAID_SECRET',
     defaultBaseUrl: 'https://production.plaid.com',
     tags: ['banking', 'ach', 'transactions', 'fintech', 'balances'],
+    fieldMasks: [
+      { path: '/accounts/balance/get', fields: ['accounts.account_id', 'accounts.name', 'accounts.balances.current', 'accounts.balances.iso_currency_code'] },
+    ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Plaid API',
+      baseUrl: 'https://production.plaid.com',
+      description: 'Plaid Open Banking API',
+      securityScheme: { name: 'plaidAuth', type: 'apiKey', in: 'header', headerName: 'PLAID-SECRET' },
+      endpoints: [
+        { path: '/accounts/balance/get', method: 'post', operationId: 'getBalances', summary: 'Retrieve account balances', requestBody: { properties: { access_token: { type: 'string' } } } },
+        { path: '/transactions/sync', method: 'post', operationId: 'syncTransactions', summary: 'Sync bank transactions', requestBody: { properties: { access_token: { type: 'string' } } } },
+      ],
+    }),
   },
   {
     id: 'brex',
@@ -104,6 +195,17 @@ export const PAYMENTS_COMMERCE_PRESETS: Preset[] = [
     authEnvVar: 'BREX_API_KEY',
     defaultBaseUrl: 'https://platform.brexapis.com/v2',
     tags: ['cards', 'expenses', 'banking', 'fintech'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Brex API',
+      baseUrl: 'https://platform.brexapis.com/v2',
+      description: 'Brex Corporate Spend Management API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/accounts', method: 'get', operationId: 'listAccounts', summary: 'List cash accounts' },
+        { path: '/transactions/card/primary', method: 'get', operationId: 'listCardTransactions', summary: 'List primary card transactions' },
+        { path: '/users/me', method: 'get', operationId: 'getMe', summary: 'Get current user profile' },
+      ],
+    }),
   },
   {
     id: 'ramp',
@@ -114,5 +216,16 @@ export const PAYMENTS_COMMERCE_PRESETS: Preset[] = [
     authEnvVar: 'RAMP_SECRET',
     defaultBaseUrl: 'https://api.ramp.com/developer/v1',
     tags: ['spend-management', 'cards', 'expenses', 'accounting'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Ramp Developer API',
+      baseUrl: 'https://api.ramp.com/developer/v1',
+      description: 'Ramp Corporate Card & Spend API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/users', method: 'get', operationId: 'listUsers', summary: 'List company users' },
+        { path: '/cards', method: 'get', operationId: 'listCards', summary: 'List issued corporate cards' },
+        { path: '/transactions', method: 'get', operationId: 'listTransactions', summary: 'List spend transactions' },
+      ],
+    }),
   },
 ];

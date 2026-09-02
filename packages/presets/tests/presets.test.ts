@@ -32,6 +32,21 @@ describe('Curated Presets Catalog (@postmcp/presets)', () => {
     }
   });
 
+  it('should ensure 100% of presets (60/60) have a valid specUrl or bundledSpec', () => {
+    for (const preset of ALL_PRESETS) {
+      const hasSpec = Boolean(preset.specUrl || preset.bundledSpec);
+      expect(hasSpec).toBe(true);
+
+      if (preset.bundledSpec) {
+        const doc = preset.bundledSpec as any;
+        expect(doc.openapi).toBeTruthy();
+        expect(doc.info?.title).toBeTruthy();
+        expect(doc.paths).toBeDefined();
+        expect(Object.keys(doc.paths).length).toBeGreaterThan(0);
+      }
+    }
+  });
+
   it('should resolve presets by ID with or without @ prefix', () => {
     const github = getPreset('github');
     expect(github).toBeDefined();
@@ -82,7 +97,7 @@ describe('Curated Presets Catalog (@postmcp/presets)', () => {
     expect(categories).toContain('Demo & Testing');
   });
 
-  it('should have valid macro workflows defined in presets', () => {
+  it('should have valid macro workflows defined in key presets', () => {
     const github = getPreset('github');
     expect(github?.macros).toBeDefined();
     expect(github?.macros?.length).toBeGreaterThan(0);
@@ -91,5 +106,13 @@ describe('Curated Presets Catalog (@postmcp/presets)', () => {
     const stripe = getPreset('stripe');
     expect(stripe?.macros).toBeDefined();
     expect(stripe?.macros?.length).toBeGreaterThan(0);
+
+    const linear = getPreset('linear');
+    expect(linear?.macros).toBeDefined();
+    expect(linear?.macros?.length).toBeGreaterThan(0);
+
+    const notion = getPreset('notion');
+    expect(notion?.macros).toBeDefined();
+    expect(notion?.macros?.length).toBeGreaterThan(0);
   });
 });

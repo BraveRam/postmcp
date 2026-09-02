@@ -1,4 +1,5 @@
 import { Preset } from '../types.js';
+import { buildOpenAPISpec } from '../builder.js';
 
 export const COMMUNICATION_AI_PRESETS: Preset[] = [
   {
@@ -14,6 +15,37 @@ export const COMMUNICATION_AI_PRESETS: Preset[] = [
     fieldMasks: [
       { path: '/emails', fields: ['id', 'from', 'to', 'subject', 'created_at'] },
     ],
+    macros: [
+      {
+        name: 'sendTransactionalEmail',
+        description: 'Sends an email and returns the delivery status identifier',
+        parameters: {
+          type: 'object',
+          properties: {
+            from: { type: 'string', description: 'Sender address (e.g. onbording@resend.dev)' },
+            to: { type: 'string', description: 'Recipient email address' },
+            subject: { type: 'string', description: 'Email subject line' },
+            html: { type: 'string', description: 'HTML body content' },
+          },
+          required: ['from', 'to', 'subject', 'html'],
+        },
+        steps: [
+          { id: 'sendEmail', action: 'POST /emails', body: { from: '{{from}}', to: '{{to}}', subject: '{{subject}}', html: '{{html}}' } },
+        ],
+      },
+    ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Resend Email API',
+      baseUrl: 'https://api.resend.com',
+      description: 'Resend Transactional Email REST API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/emails', method: 'post', operationId: 'sendEmail', summary: 'Send email message', requestBody: { properties: { from: { type: 'string' }, to: { type: 'string' }, subject: { type: 'string' }, html: { type: 'string' } } } },
+        { path: '/emails/{id}', method: 'get', operationId: 'getEmail', summary: 'Get sent email status', parameters: [{ name: 'id', in: 'path', schema: { type: 'string' } }] },
+        { path: '/domains', method: 'get', operationId: 'listDomains', summary: 'List verified sending domains' },
+        { path: '/api-keys', method: 'get', operationId: 'listApiKeys', summary: 'List API keys' },
+      ],
+    }),
   },
   {
     id: 'sendgrid',
@@ -24,6 +56,16 @@ export const COMMUNICATION_AI_PRESETS: Preset[] = [
     authEnvVar: 'SENDGRID_API_KEY',
     defaultBaseUrl: 'https://api.sendgrid.com/v3',
     tags: ['email', 'templates', 'marketing', 'deliverability'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'SendGrid API',
+      baseUrl: 'https://api.sendgrid.com/v3',
+      description: 'SendGrid Email API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/mail/send', method: 'post', operationId: 'sendMail', summary: 'Send mail via v3 engine', requestBody: { properties: { personalizations: { type: 'array' }, from: { type: 'object' }, content: { type: 'array' } } } },
+        { path: '/templates', method: 'get', operationId: 'listTemplates', summary: 'List email dynamic templates' },
+      ],
+    }),
   },
   {
     id: 'twilio',
@@ -34,6 +76,16 @@ export const COMMUNICATION_AI_PRESETS: Preset[] = [
     authEnvVar: 'TWILIO_AUTH_TOKEN',
     defaultBaseUrl: 'https://api.twilio.com/2010-04-01',
     tags: ['sms', 'voice', 'whatsapp', '2fa', 'telephony'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Twilio Programmable Messaging API',
+      baseUrl: 'https://api.twilio.com/2010-04-01',
+      description: 'Twilio REST API',
+      securityScheme: { name: 'basicAuth', type: 'http', scheme: 'basic' },
+      endpoints: [
+        { path: '/Accounts/{AccountSid}/Messages.json', method: 'post', operationId: 'sendSms', summary: 'Send SMS message', parameters: [{ name: 'AccountSid', in: 'path', schema: { type: 'string' } }], requestBody: { properties: { To: { type: 'string' }, From: { type: 'string' }, Body: { type: 'string' } } } },
+        { path: '/Accounts/{AccountSid}/Messages.json', method: 'get', operationId: 'listMessages', summary: 'List sent messages', parameters: [{ name: 'AccountSid', in: 'path', schema: { type: 'string' } }] },
+      ],
+    }),
   },
   {
     id: 'postmark',
@@ -44,6 +96,16 @@ export const COMMUNICATION_AI_PRESETS: Preset[] = [
     authEnvVar: 'POSTMARK_SERVER_TOKEN',
     defaultBaseUrl: 'https://api.postmarkapp.com',
     tags: ['email', 'bounces', 'transactional', 'inbound'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Postmark API',
+      baseUrl: 'https://api.postmarkapp.com',
+      description: 'Postmark Transactional Delivery API',
+      securityScheme: { name: 'serverToken', type: 'apiKey', in: 'header', headerName: 'X-Postmark-Server-Token' },
+      endpoints: [
+        { path: '/email', method: 'post', operationId: 'sendSingleEmail', summary: 'Send single email', requestBody: { properties: { From: { type: 'string' }, To: { type: 'string' }, Subject: { type: 'string' }, HtmlBody: { type: 'string' } } } },
+        { path: '/bounces', method: 'get', operationId: 'listBounces', summary: 'List bounced emails' },
+      ],
+    }),
   },
   {
     id: 'openai',
@@ -55,6 +117,17 @@ export const COMMUNICATION_AI_PRESETS: Preset[] = [
     defaultBaseUrl: 'https://api.openai.com/v1',
     specUrl: 'https://raw.githubusercontent.com/openai/openai-openapi/master/openapi.yaml',
     tags: ['llm', 'ai', 'gpt4', 'embeddings', 'whisper', 'vision'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'OpenAI API',
+      baseUrl: 'https://api.openai.com/v1',
+      description: 'OpenAI Model Inference & Embeddings API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/models', method: 'get', operationId: 'listModels', summary: 'List available OpenAI models' },
+        { path: '/chat/completions', method: 'post', operationId: 'createChatCompletion', summary: 'Create chat completion', requestBody: { properties: { model: { type: 'string' }, messages: { type: 'array' } } } },
+        { path: '/embeddings', method: 'post', operationId: 'createEmbedding', summary: 'Create embedding vector', requestBody: { properties: { model: { type: 'string' }, input: { type: 'string' } } } },
+      ],
+    }),
   },
   {
     id: 'anthropic',
@@ -65,6 +138,15 @@ export const COMMUNICATION_AI_PRESETS: Preset[] = [
     authEnvVar: 'ANTHROPIC_API_KEY',
     defaultBaseUrl: 'https://api.anthropic.com/v1',
     tags: ['llm', 'ai', 'claude', 'reasoning', 'coding'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Anthropic Claude API',
+      baseUrl: 'https://api.anthropic.com/v1',
+      description: 'Anthropic Claude Chat & Tool Calling API',
+      securityScheme: { name: 'apiKeyAuth', type: 'apiKey', in: 'header', headerName: 'x-api-key' },
+      endpoints: [
+        { path: '/messages', method: 'post', operationId: 'createMessage', summary: 'Send message to Claude', requestBody: { properties: { model: { type: 'string' }, max_tokens: { type: 'integer' }, messages: { type: 'array' } } } },
+      ],
+    }),
   },
   {
     id: 'mistral',
@@ -75,6 +157,16 @@ export const COMMUNICATION_AI_PRESETS: Preset[] = [
     authEnvVar: 'MISTRAL_API_KEY',
     defaultBaseUrl: 'https://api.mistral.ai/v1',
     tags: ['llm', 'ai', 'mistral', 'codestral', 'open-weights'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Mistral AI API',
+      baseUrl: 'https://api.mistral.ai/v1',
+      description: 'Mistral Foundation Models API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/models', method: 'get', operationId: 'listModels', summary: 'List Mistral models' },
+        { path: '/chat/completions', method: 'post', operationId: 'createChatCompletion', summary: 'Create chat completion', requestBody: { properties: { model: { type: 'string' }, messages: { type: 'array' } } } },
+      ],
+    }),
   },
   {
     id: 'togetherai',
@@ -85,6 +177,16 @@ export const COMMUNICATION_AI_PRESETS: Preset[] = [
     authEnvVar: 'TOGETHER_API_KEY',
     defaultBaseUrl: 'https://api.together.xyz/v1',
     tags: ['llm', 'llama', 'flux', 'inference', 'open-source'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Together AI Inference API',
+      baseUrl: 'https://api.together.xyz/v1',
+      description: 'Together AI Open-Source Model Inference API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/models', method: 'get', operationId: 'listModels', summary: 'List models' },
+        { path: '/chat/completions', method: 'post', operationId: 'createChatCompletion', summary: 'Run chat inference', requestBody: { properties: { model: { type: 'string' }, messages: { type: 'array' } } } },
+      ],
+    }),
   },
   {
     id: 'replicate',
@@ -95,6 +197,16 @@ export const COMMUNICATION_AI_PRESETS: Preset[] = [
     authEnvVar: 'REPLICATE_API_TOKEN',
     defaultBaseUrl: 'https://api.replicate.com/v1',
     tags: ['ml', 'diffusion', 'models', 'gpu', 'ai'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Replicate API',
+      baseUrl: 'https://api.replicate.com/v1',
+      description: 'Replicate Machine Learning API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/predictions', method: 'post', operationId: 'createPrediction', summary: 'Create model prediction', requestBody: { properties: { version: { type: 'string' }, input: { type: 'object' } } } },
+        { path: '/predictions/{prediction_id}', method: 'get', operationId: 'getPrediction', summary: 'Get prediction status', parameters: [{ name: 'prediction_id', in: 'path', schema: { type: 'string' } }] },
+      ],
+    }),
   },
   {
     id: 'elevenlabs',
@@ -105,6 +217,16 @@ export const COMMUNICATION_AI_PRESETS: Preset[] = [
     authEnvVar: 'ELEVENLABS_API_KEY',
     defaultBaseUrl: 'https://api.elevenlabs.io/v1',
     tags: ['tts', 'voice', 'audio', 'speech-synthesis'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'ElevenLabs Voice AI API',
+      baseUrl: 'https://api.elevenlabs.io/v1',
+      description: 'ElevenLabs Voice Synthesis API',
+      securityScheme: { name: 'apiKeyAuth', type: 'apiKey', in: 'header', headerName: 'xi-api-key' },
+      endpoints: [
+        { path: '/voices', method: 'get', operationId: 'listVoices', summary: 'List available voices' },
+        { path: '/text-to-speech/{voice_id}', method: 'post', operationId: 'generateSpeech', summary: 'Generate speech audio', parameters: [{ name: 'voice_id', in: 'path', schema: { type: 'string' } }], requestBody: { properties: { text: { type: 'string' } } } },
+      ],
+    }),
   },
   {
     id: 'deepgram',
@@ -115,5 +237,15 @@ export const COMMUNICATION_AI_PRESETS: Preset[] = [
     authEnvVar: 'DEEPGRAM_API_KEY',
     defaultBaseUrl: 'https://api.deepgram.com/v1',
     tags: ['stt', 'transcription', 'speech', 'audio'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Deepgram Speech-to-Text API',
+      baseUrl: 'https://api.deepgram.com/v1',
+      description: 'Deepgram Audio Transcription API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/listen', method: 'post', operationId: 'transcribeAudio', summary: 'Transcribe audio stream', requestBody: { properties: { url: { type: 'string' } } } },
+        { path: '/projects', method: 'get', operationId: 'listProjects', summary: 'List Deepgram projects' },
+      ],
+    }),
   },
 ];

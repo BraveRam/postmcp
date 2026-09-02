@@ -12,18 +12,20 @@ export interface GenerateCommandOptions {
 }
 
 export async function generateCommand(specArg: string, options: GenerateCommandOptions): Promise<void> {
-  let specPath = specArg;
+  let specPath: string | object = specArg;
   if (!specPath) {
     console.error(pc.red('Error: No OpenAPI spec provided. Usage: postmcp generate <spec-path-or-url-or-@preset>'));
     process.exit(1);
+    return;
   }
 
-  if (specPath.startsWith('@')) {
+  if (typeof specPath === 'string' && specPath.startsWith('@')) {
     try {
       specPath = await resolvePresetSpec(specPath);
     } catch (err: any) {
       console.error(pc.red(`Error resolving preset: ${err.message}`));
       process.exit(1);
+      return;
     }
   }
 

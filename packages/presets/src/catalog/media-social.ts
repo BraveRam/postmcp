@@ -1,4 +1,5 @@
 import { Preset } from '../types.js';
+import { buildOpenAPISpec } from '../builder.js';
 
 export const MEDIA_SOCIAL_PRESETS: Preset[] = [
   {
@@ -10,6 +11,17 @@ export const MEDIA_SOCIAL_PRESETS: Preset[] = [
     authEnvVar: 'TWITTER_BEARER_TOKEN',
     defaultBaseUrl: 'https://api.twitter.com/2',
     tags: ['social', 'tweets', 'posts', 'timeline', 'media'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'X / Twitter API v2',
+      baseUrl: 'https://api.twitter.com/2',
+      description: 'Twitter / X API v2',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/users/me', method: 'get', operationId: 'getMe', summary: 'Get authenticated user profile' },
+        { path: '/tweets', method: 'post', operationId: 'createTweet', summary: 'Post a new tweet', requestBody: { properties: { text: { type: 'string' } } } },
+        { path: '/tweets/search/recent', method: 'get', operationId: 'searchRecentTweets', summary: 'Search recent tweets', parameters: [{ name: 'query', in: 'query', schema: { type: 'string' } }] },
+      ],
+    }),
   },
   {
     id: 'youtube',
@@ -20,6 +32,17 @@ export const MEDIA_SOCIAL_PRESETS: Preset[] = [
     authEnvVar: 'YOUTUBE_API_KEY',
     defaultBaseUrl: 'https://www.googleapis.com/youtube/v3',
     tags: ['video', 'streaming', 'playlists', 'channels', 'media'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'YouTube Data API v3',
+      baseUrl: 'https://www.googleapis.com/youtube/v3',
+      description: 'Google YouTube Data API v3',
+      securityScheme: { name: 'apiKeyAuth', type: 'apiKey', in: 'query', headerName: 'key' },
+      endpoints: [
+        { path: '/search', method: 'get', operationId: 'searchVideos', summary: 'Search YouTube videos', parameters: [{ name: 'q', in: 'query', schema: { type: 'string' } }, { name: 'part', in: 'query', schema: { type: 'string', default: 'snippet' } }] },
+        { path: '/videos', method: 'get', operationId: 'listVideos', summary: 'List video details', parameters: [{ name: 'id', in: 'query', schema: { type: 'string' } }] },
+        { path: '/playlists', method: 'get', operationId: 'listPlaylists', summary: 'List channel playlists' },
+      ],
+    }),
   },
   {
     id: 'spotify',
@@ -30,6 +53,17 @@ export const MEDIA_SOCIAL_PRESETS: Preset[] = [
     authEnvVar: 'SPOTIFY_ACCESS_TOKEN',
     defaultBaseUrl: 'https://api.spotify.com/v1',
     tags: ['music', 'audio', 'playlists', 'tracks', 'playback'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Spotify Web API',
+      baseUrl: 'https://api.spotify.com/v1',
+      description: 'Spotify Music Catalog & Playback API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/me', method: 'get', operationId: 'getCurrentUser', summary: 'Get current user profile' },
+        { path: '/search', method: 'get', operationId: 'searchCatalog', summary: 'Search tracks, artists, albums', parameters: [{ name: 'q', in: 'query', schema: { type: 'string' } }, { name: 'type', in: 'query', schema: { type: 'string' } }] },
+        { path: '/me/player', method: 'get', operationId: 'getPlaybackState', summary: 'Get current playback state' },
+      ],
+    }),
   },
   {
     id: 'cloudinary',
@@ -40,6 +74,16 @@ export const MEDIA_SOCIAL_PRESETS: Preset[] = [
     authEnvVar: 'CLOUDINARY_API_KEY',
     defaultBaseUrl: 'https://api.cloudinary.com/v1_1/{cloud_name}',
     tags: ['images', 'video', 'cdn', 'transformations', 'media-storage'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Cloudinary API',
+      baseUrl: 'https://api.cloudinary.com/v1_1/demo',
+      description: 'Cloudinary Media Management API',
+      securityScheme: { name: 'basicAuth', type: 'http', scheme: 'basic' },
+      endpoints: [
+        { path: '/resources/image', method: 'get', operationId: 'listImages', summary: 'List image resources' },
+        { path: '/image/upload', method: 'post', operationId: 'uploadImage', summary: 'Upload image file', requestBody: { properties: { file: { type: 'string' } } } },
+      ],
+    }),
   },
   {
     id: 'petstore',
@@ -50,5 +94,16 @@ export const MEDIA_SOCIAL_PRESETS: Preset[] = [
     defaultBaseUrl: 'https://petstore.swagger.io/v2',
     specUrl: 'https://petstore.swagger.io/v2/swagger.json',
     tags: ['demo', 'testing', 'pets', 'store', 'reference'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Swagger Petstore',
+      baseUrl: 'https://petstore.swagger.io/v2',
+      description: 'Sample Petstore OpenAPI 3.0 API for testing and demoing MCP capabilities',
+      endpoints: [
+        { path: '/pets', method: 'get', operationId: 'listPets', summary: 'List all pets', parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer' } }] },
+        { path: '/pets', method: 'post', operationId: 'createPets', summary: 'Create a pet', requestBody: { properties: { name: { type: 'string' }, tag: { type: 'string' } } } },
+        { path: '/pets/{petId}', method: 'get', operationId: 'showPetById', summary: 'Info for a specific pet', parameters: [{ name: 'petId', in: 'path', schema: { type: 'string' } }] },
+        { path: '/pets/{petId}', method: 'delete', operationId: 'deletePet', summary: 'Delete a pet', parameters: [{ name: 'petId', in: 'path', schema: { type: 'string' } }] },
+      ],
+    }),
   },
 ];

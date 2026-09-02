@@ -1,5 +1,5 @@
 import { parseOpenAPI } from '@postmcp/core';
-import { resolvePresetSpec } from '../presets/index.js';
+import { resolvePresetSpec, getPreset } from '../presets/index.js';
 import Table from 'cli-table3';
 import pc from 'picocolors';
 
@@ -31,27 +31,35 @@ export function estimateSpecTokenSavings(spec: any): { rawTokens: number; optimi
 }
 
 export async function inspectCommand(specArg: string, options: InspectCommandOptions): Promise<void> {
-  let specPath = specArg;
+  let specPath: string | object = specArg;
   if (!specPath) {
     console.error(pc.red('Error: No OpenAPI spec provided. Usage: postmcp inspect <spec-path-or-url-or-@preset>'));
     process.exit(1);
+    return;
   }
 
-  if (specPath.startsWith('@')) {
+  let preset = undefined;
+  if (typeof specPath === 'string' && specPath.startsWith('@')) {
+    preset = getPreset(specPath);
     try {
       specPath = await resolvePresetSpec(specPath);
     } catch (err: any) {
       console.error(pc.red(`Error resolving preset: ${err.message}`));
       process.exit(1);
+      return;
     }
   }
 
   let spec;
   try {
     spec = await parseOpenAPI(specPath);
+    if (preset && preset.macros && preset.macros.length > 0) {
+      spec.macros = [...(spec.macros || []), ...preset.macros];
+    }
   } catch (err: any) {
     console.error(pc.red(`Failed to parse specification: ${err.message}`));
     process.exit(1);
+    return;
   }
 
   if (options.json) {

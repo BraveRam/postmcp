@@ -1,4 +1,5 @@
 import { Preset } from '../types.js';
+import { buildOpenAPISpec } from '../builder.js';
 
 export const PRODUCTIVITY_SUPPORT_PRESETS: Preset[] = [
   {
@@ -10,6 +11,39 @@ export const PRODUCTIVITY_SUPPORT_PRESETS: Preset[] = [
     authEnvVar: 'NOTION_API_KEY',
     defaultBaseUrl: 'https://api.notion.com/v1',
     tags: ['docs', 'wiki', 'databases', 'pages', 'notes'],
+    fieldMasks: [
+      { path: '/databases/{database_id}/query', fields: ['results.id', 'results.properties', 'results.url'] },
+    ],
+    macros: [
+      {
+        name: 'createDatabasePage',
+        description: 'Creates a page inside a Notion database with properties',
+        parameters: {
+          type: 'object',
+          properties: {
+            database_id: { type: 'string' },
+            title: { type: 'string' },
+          },
+          required: ['database_id', 'title'],
+        },
+        steps: [
+          { id: 'createPage', action: 'POST /pages', body: { parent: { database_id: '{{database_id}}' }, properties: { Name: { title: [{ text: { content: '{{title}}' } }] } } } },
+        ],
+      },
+    ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Notion API',
+      baseUrl: 'https://api.notion.com/v1',
+      description: 'Notion Workspace & Database API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/users/me', method: 'get', operationId: 'getMe', summary: 'Get current bot user' },
+        { path: '/search', method: 'post', operationId: 'searchObjects', summary: 'Search pages and databases', requestBody: { properties: { query: { type: 'string' } } } },
+        { path: '/databases/{database_id}', method: 'get', operationId: 'getDatabase', summary: 'Get database schema', parameters: [{ name: 'database_id', in: 'path', schema: { type: 'string' } }] },
+        { path: '/databases/{database_id}/query', method: 'post', operationId: 'queryDatabase', summary: 'Query database rows', parameters: [{ name: 'database_id', in: 'path', schema: { type: 'string' } }], requestBody: { properties: { filter: { type: 'object' } } } },
+        { path: '/pages', method: 'post', operationId: 'createPage', summary: 'Create new page', requestBody: { properties: { parent: { type: 'object' }, properties: { type: 'object' } } } },
+      ],
+    }),
   },
   {
     id: 'slack',
@@ -38,16 +72,39 @@ export const PRODUCTIVITY_SUPPORT_PRESETS: Preset[] = [
         ],
       },
     ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Slack Web API',
+      baseUrl: 'https://slack.com/api',
+      description: 'Slack Team Messaging API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/auth.test', method: 'post', operationId: 'testAuth', summary: 'Check Slack bot credentials' },
+        { path: '/conversations.list', method: 'get', operationId: 'listConversations', summary: 'List public/private channels' },
+        { path: '/chat.postMessage', method: 'post', operationId: 'postMessage', summary: 'Send message to channel', requestBody: { properties: { channel: { type: 'string' }, text: { type: 'string' } } } },
+        { path: '/users.list', method: 'get', operationId: 'listUsers', summary: 'List workspace users' },
+      ],
+    }),
   },
   {
     id: 'discord',
     name: 'Discord API',
     description: 'Discord bot automation, server administration, voice channels, and rich embedded messages.',
     category: 'Productivity & Support',
-    authType: 'Header (Authorization: Bot ...)',
+    authType: 'Header (Bot ...)',
     authEnvVar: 'DISCORD_BOT_TOKEN',
     defaultBaseUrl: 'https://discord.com/api/v10',
     tags: ['chat', 'gaming', 'community', 'bots', 'guilds'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Discord API',
+      baseUrl: 'https://discord.com/api/v10',
+      description: 'Discord Bot API',
+      securityScheme: { name: 'botAuth', type: 'apiKey', in: 'header', headerName: 'Authorization' },
+      endpoints: [
+        { path: '/users/@me', method: 'get', operationId: 'getCurrentBotUser', summary: 'Get current bot details' },
+        { path: '/channels/{channel_id}/messages', method: 'post', operationId: 'createChannelMessage', summary: 'Send message to Discord channel', parameters: [{ name: 'channel_id', in: 'path', schema: { type: 'string' } }], requestBody: { properties: { content: { type: 'string' } } } },
+        { path: '/guilds/{guild_id}', method: 'get', operationId: 'getGuild', summary: 'Get guild details', parameters: [{ name: 'guild_id', in: 'path', schema: { type: 'string' } }] },
+      ],
+    }),
   },
   {
     id: 'airtable',
@@ -58,6 +115,19 @@ export const PRODUCTIVITY_SUPPORT_PRESETS: Preset[] = [
     authEnvVar: 'AIRTABLE_API_KEY',
     defaultBaseUrl: 'https://api.airtable.com/v0',
     tags: ['spreadsheet', 'database', 'nocode', 'tables', 'records'],
+    fieldMasks: [
+      { path: '/{baseId}/{tableIdOrName}', fields: ['records.id', 'records.fields', 'records.createdTime'] },
+    ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Airtable REST API',
+      baseUrl: 'https://api.airtable.com/v0',
+      description: 'Airtable Database API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/{baseId}/{tableIdOrName}', method: 'get', operationId: 'listRecords', summary: 'List table records', parameters: [{ name: 'baseId', in: 'path', schema: { type: 'string' } }, { name: 'tableIdOrName', in: 'path', schema: { type: 'string' } }] },
+        { path: '/{baseId}/{tableIdOrName}', method: 'post', operationId: 'createRecords', summary: 'Create table records', parameters: [{ name: 'baseId', in: 'path', schema: { type: 'string' } }, { name: 'tableIdOrName', in: 'path', schema: { type: 'string' } }], requestBody: { properties: { records: { type: 'array' } } } },
+      ],
+    }),
   },
   {
     id: 'asana',
@@ -68,6 +138,18 @@ export const PRODUCTIVITY_SUPPORT_PRESETS: Preset[] = [
     authEnvVar: 'ASANA_ACCESS_TOKEN',
     defaultBaseUrl: 'https://app.asana.com/api/1.0',
     tags: ['tasks', 'projects', 'collaboration', 'teams'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Asana API',
+      baseUrl: 'https://app.asana.com/api/1.0',
+      description: 'Asana Task & Project Management API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/users/me', method: 'get', operationId: 'getMe', summary: 'Get current user profile' },
+        { path: '/projects', method: 'get', operationId: 'listProjects', summary: 'List projects' },
+        { path: '/tasks', method: 'get', operationId: 'listTasks', summary: 'List tasks', parameters: [{ name: 'project', in: 'query', schema: { type: 'string' } }] },
+        { path: '/tasks', method: 'post', operationId: 'createTask', summary: 'Create task', requestBody: { properties: { data: { type: 'object' } } } },
+      ],
+    }),
   },
   {
     id: 'monday',
@@ -78,6 +160,16 @@ export const PRODUCTIVITY_SUPPORT_PRESETS: Preset[] = [
     authEnvVar: 'MONDAY_API_TOKEN',
     defaultBaseUrl: 'https://api.monday.com/v2',
     tags: ['work-management', 'boards', 'items', 'teams'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Monday.com API',
+      baseUrl: 'https://api.monday.com/v2',
+      description: 'Monday.com Work OS API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/boards', method: 'get', operationId: 'listBoards', summary: 'List boards' },
+        { path: '/items', method: 'get', operationId: 'listItems', summary: 'List items' },
+      ],
+    }),
   },
   {
     id: 'clickup',
@@ -88,6 +180,17 @@ export const PRODUCTIVITY_SUPPORT_PRESETS: Preset[] = [
     authEnvVar: 'CLICKUP_API_TOKEN',
     defaultBaseUrl: 'https://api.clickup.com/api/v2',
     tags: ['tasks', 'productivity', 'project-management', 'time-tracking'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'ClickUp API',
+      baseUrl: 'https://api.clickup.com/api/v2',
+      description: 'ClickUp Work Management API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/user', method: 'get', operationId: 'getUser', summary: 'Get current user profile' },
+        { path: '/team', method: 'get', operationId: 'getTeams', summary: 'Get workspaces' },
+        { path: '/team/{team_id}/space', method: 'get', operationId: 'getSpaces', summary: 'List spaces in workspace', parameters: [{ name: 'team_id', in: 'path', schema: { type: 'string' } }] },
+      ],
+    }),
   },
   {
     id: 'trello',
@@ -98,6 +201,16 @@ export const PRODUCTIVITY_SUPPORT_PRESETS: Preset[] = [
     authEnvVar: 'TRELLO_TOKEN',
     defaultBaseUrl: 'https://api.trello.com/1',
     tags: ['kanban', 'cards', 'boards', 'collaboration'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Trello REST API',
+      baseUrl: 'https://api.trello.com/1',
+      description: 'Trello Kanban API',
+      endpoints: [
+        { path: '/members/me', method: 'get', operationId: 'getMe', summary: 'Get member details' },
+        { path: '/members/me/boards', method: 'get', operationId: 'listBoards', summary: 'List member boards' },
+        { path: '/cards/{id}', method: 'get', operationId: 'getCard', summary: 'Get card details', parameters: [{ name: 'id', in: 'path', schema: { type: 'string' } }] },
+      ],
+    }),
   },
   {
     id: 'coda',
@@ -108,6 +221,16 @@ export const PRODUCTIVITY_SUPPORT_PRESETS: Preset[] = [
     authEnvVar: 'CODA_API_TOKEN',
     defaultBaseUrl: 'https://coda.io/apis/v1',
     tags: ['docs', 'spreadsheets', 'automation', 'productivity'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Coda API',
+      baseUrl: 'https://coda.io/apis/v1',
+      description: 'Coda Document & Table API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/whoami', method: 'get', operationId: 'whoAmI', summary: 'Get user info' },
+        { path: '/docs', method: 'get', operationId: 'listDocs', summary: 'List docs' },
+      ],
+    }),
   },
   {
     id: 'zoom',
@@ -118,6 +241,17 @@ export const PRODUCTIVITY_SUPPORT_PRESETS: Preset[] = [
     authEnvVar: 'ZOOM_OAUTH_TOKEN',
     defaultBaseUrl: 'https://api.zoom.us/v2',
     tags: ['video', 'meetings', 'webinars', 'recordings'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Zoom Video Communications API',
+      baseUrl: 'https://api.zoom.us/v2',
+      description: 'Zoom Meetings & Video API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/users/me', method: 'get', operationId: 'getMe', summary: 'Get user profile' },
+        { path: '/users/{userId}/meetings', method: 'get', operationId: 'listMeetings', summary: 'List meetings', parameters: [{ name: 'userId', in: 'path', schema: { type: 'string' } }] },
+        { path: '/users/{userId}/meetings', method: 'post', operationId: 'createMeeting', summary: 'Create meeting', parameters: [{ name: 'userId', in: 'path', schema: { type: 'string' } }], requestBody: { properties: { topic: { type: 'string' }, start_time: { type: 'string' } } } },
+      ],
+    }),
   },
   {
     id: 'zendesk',
@@ -128,6 +262,20 @@ export const PRODUCTIVITY_SUPPORT_PRESETS: Preset[] = [
     authEnvVar: 'ZENDESK_API_TOKEN',
     defaultBaseUrl: 'https://{subdomain}.zendesk.com/api/v2',
     tags: ['support', 'helpdesk', 'tickets', 'customer-service'],
+    fieldMasks: [
+      { path: '/tickets.json', fields: ['tickets.id', 'tickets.subject', 'tickets.status', 'tickets.priority', 'tickets.created_at'] },
+    ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Zendesk Support API',
+      baseUrl: 'https://example.zendesk.com/api/v2',
+      description: 'Zendesk Customer Support API',
+      securityScheme: { name: 'basicAuth', type: 'http', scheme: 'basic' },
+      endpoints: [
+        { path: '/users/me.json', method: 'get', operationId: 'getMe', summary: 'Get current user' },
+        { path: '/tickets.json', method: 'get', operationId: 'listTickets', summary: 'List support tickets' },
+        { path: '/tickets.json', method: 'post', operationId: 'createTicket', summary: 'Create support ticket', requestBody: { properties: { ticket: { type: 'object' } } } },
+      ],
+    }),
   },
   {
     id: 'intercom',
@@ -138,6 +286,17 @@ export const PRODUCTIVITY_SUPPORT_PRESETS: Preset[] = [
     authEnvVar: 'INTERCOM_ACCESS_TOKEN',
     defaultBaseUrl: 'https://api.intercom.io',
     tags: ['chat', 'customer-support', 'conversations', 'crm'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Intercom API',
+      baseUrl: 'https://api.intercom.io',
+      description: 'Intercom Customer Communications API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/me', method: 'get', operationId: 'getMe', summary: 'Get admin profile' },
+        { path: '/conversations', method: 'get', operationId: 'listConversations', summary: 'List customer conversations' },
+        { path: '/contacts', method: 'get', operationId: 'listContacts', summary: 'List contacts' },
+      ],
+    }),
   },
   {
     id: 'front',
@@ -148,6 +307,17 @@ export const PRODUCTIVITY_SUPPORT_PRESETS: Preset[] = [
     authEnvVar: 'FRONT_API_TOKEN',
     defaultBaseUrl: 'https://api2.frontapp.com',
     tags: ['shared-inbox', 'email', 'support', 'team-communication'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Front API',
+      baseUrl: 'https://api2.frontapp.com',
+      description: 'Front Shared Inbox API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/me', method: 'get', operationId: 'getMe', summary: 'Get current user' },
+        { path: '/inboxes', method: 'get', operationId: 'listInboxes', summary: 'List team inboxes' },
+        { path: '/conversations', method: 'get', operationId: 'listConversations', summary: 'List conversations' },
+      ],
+    }),
   },
   {
     id: 'helpscout',
@@ -158,5 +328,16 @@ export const PRODUCTIVITY_SUPPORT_PRESETS: Preset[] = [
     authEnvVar: 'HELPSCOUT_ACCESS_TOKEN',
     defaultBaseUrl: 'https://api.helpscout.net/v2',
     tags: ['helpdesk', 'support', 'mailboxes', 'conversations'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Help Scout Mailbox API',
+      baseUrl: 'https://api.helpscout.net/v2',
+      description: 'Help Scout Mailbox API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/users/me', method: 'get', operationId: 'getMe', summary: 'Get current user' },
+        { path: '/mailboxes', method: 'get', operationId: 'listMailboxes', summary: 'List mailboxes' },
+        { path: '/conversations', method: 'get', operationId: 'listConversations', summary: 'List customer conversations' },
+      ],
+    }),
   },
 ];

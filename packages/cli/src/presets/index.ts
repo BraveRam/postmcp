@@ -8,14 +8,26 @@ export { ALL_PRESETS, PRESETS_BY_ID, getPreset, Preset };
 export const BUNDLED_PRESETS = PRESETS_BY_ID;
 
 export function getPresetCacheDir(): string {
-  const dir = path.join(os.homedir(), '.postmcp', 'presets');
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  try {
+    const dir = path.join(os.homedir(), '.postmcp', 'presets');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    return dir;
+  } catch {
+    const fallbackDir = path.join(os.tmpdir(), 'postmcp-presets');
+    if (!fs.existsSync(fallbackDir)) {
+      try {
+        fs.mkdirSync(fallbackDir, { recursive: true });
+      } catch {
+        // Ignore fallback dir creation errors
+      }
+    }
+    return fallbackDir;
   }
-  return dir;
 }
 
-export async function resolvePresetSpec(presetIdOrAlias: string): Promise<string> {
+export async function resolvePresetSpec(presetIdOrAlias: string): Promise<string | object> {
   const cleanId = presetIdOrAlias.replace(/^@/, '').toLowerCase().trim();
   const preset = getPreset(cleanId);
 
@@ -24,24 +36,42 @@ export async function resolvePresetSpec(presetIdOrAlias: string): Promise<string
   }
 
   // Check local cache first
-  const cacheFile = path.join(getPresetCacheDir(), `${cleanId}.json`);
+  const cacheDir = getPresetCacheDir();
+  const cacheFile = path.join(cacheDir, `${cleanId}.json`);
   if (fs.existsSync(cacheFile)) {
     return cacheFile;
   }
 
-  // If remote spec URL exists, fetch and cache it
+  // If remote spec URL exists, try to fetch and cache it
   if (preset.specUrl) {
     try {
-      const res = await axios.get(preset.specUrl, { responseType: 'text' });
-      fs.writeFileSync(cacheFile, res.data, 'utf-8');
-      return cacheFile;
+      const res = await axios.get(preset.specUrl, { timeout: 8000, responseType: 'text' });
+      try {
+        fs.writeFileSync(cacheFile, res.data, 'utf-8');
+        return cacheFile;
+      } catch {
+        return res.data;
+      }
     } catch {
-      // Return remote URL directly as fallback for parser
-      return preset.specUrl;
+      // Remote fetch failed, fall through to bundledSpec
     }
   }
 
-  throw new Error(`Preset '@${cleanId}' does not declare a public specUrl. Please provide the specification path directly.`);
+  // If bundledSpec exists, write to cache and return
+  if (preset.bundledSpec) {
+    try {
+      fs.writeFileSync(cacheFile, JSON.stringify(preset.bundledSpec, null, 2), 'utf-8');
+      return cacheFile;
+    } catch {
+      return preset.bundledSpec;
+    }
+  }
+
+  if (preset.specUrl) {
+    return preset.specUrl;
+  }
+
+  throw new Error(`Preset '@${cleanId}' has no specification available.`);
 }
 
 export async function syncAllPresets(): Promise<string[]> {
@@ -49,15 +79,30 @@ export async function syncAllPresets(): Promise<string[]> {
   const cacheDir = getPresetCacheDir();
 
   for (const preset of ALL_PRESETS) {
+    const filePath = path.join(cacheDir, `${preset.id}.json`);
+    let wrote = false;
+
     if (preset.specUrl) {
       try {
-        const res = await axios.get(preset.specUrl, { timeout: 10000, responseType: 'text' });
-        const filePath = path.join(cacheDir, `${preset.id}.json`);
+        const res = await axios.get(preset.specUrl, { timeout: 8000, responseType: 'text' });
         fs.writeFileSync(filePath, res.data, 'utf-8');
-        synced.push(preset.id);
+        wrote = true;
       } catch {
-        // Skip offline / unreachable preset during batch sync
+        // Fallback to bundled spec
       }
+    }
+
+    if (!wrote && preset.bundledSpec) {
+      try {
+        fs.writeFileSync(filePath, JSON.stringify(preset.bundledSpec, null, 2), 'utf-8');
+        wrote = true;
+      } catch {
+        // Ignore filesystem write error
+      }
+    }
+
+    if (wrote) {
+      synced.push(preset.id);
     }
   }
 

@@ -1,4 +1,5 @@
 import { Preset } from '../types.js';
+import { buildOpenAPISpec } from '../builder.js';
 
 export const CLOUD_DATABASES_PRESETS: Preset[] = [
   {
@@ -11,6 +12,39 @@ export const CLOUD_DATABASES_PRESETS: Preset[] = [
     defaultBaseUrl: 'https://api.supabase.com/v1',
     specUrl: 'https://api.supabase.com/v1/openapi.json',
     tags: ['postgres', 'auth', 'database', 'storage', 'edge-functions', 'baas'],
+    fieldMasks: [
+      { path: '/projects', fields: ['id', 'name', 'region', 'status', 'created_at'] },
+    ],
+    macros: [
+      {
+        name: 'getProjectConfig',
+        description: 'Retrieves project metadata and its database status',
+        parameters: {
+          type: 'object',
+          properties: {
+            ref: { type: 'string', description: 'Supabase project ref' },
+          },
+          required: ['ref'],
+        },
+        steps: [
+          { id: 'getProject', action: 'GET /projects/{{ref}}' },
+          { id: 'getHealth', action: 'GET /projects/{{ref}}/health' },
+        ],
+      },
+    ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Supabase Management API',
+      baseUrl: 'https://api.supabase.com/v1',
+      description: 'Supabase Cloud Management REST API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/projects', method: 'get', operationId: 'getProjects', summary: 'List all Supabase projects' },
+        { path: '/projects/{ref}', method: 'get', operationId: 'getProject', summary: 'Get project details', parameters: [{ name: 'ref', in: 'path', schema: { type: 'string' } }] },
+        { path: '/projects/{ref}/health', method: 'get', operationId: 'getProjectHealth', summary: 'Get database health status', parameters: [{ name: 'ref', in: 'path', schema: { type: 'string' } }] },
+        { path: '/organizations', method: 'get', operationId: 'getOrganizations', summary: 'List organizations' },
+        { path: '/projects/{ref}/functions', method: 'get', operationId: 'getFunctions', summary: 'List Edge Functions', parameters: [{ name: 'ref', in: 'path', schema: { type: 'string' } }] },
+      ],
+    }),
   },
   {
     id: 'cloudflare',
@@ -21,6 +55,22 @@ export const CLOUD_DATABASES_PRESETS: Preset[] = [
     authEnvVar: 'CLOUDFLARE_API_TOKEN',
     defaultBaseUrl: 'https://api.cloudflare.com/client/v4',
     tags: ['cdn', 'dns', 'workers', 'r2', 'kv', 'edge', 'security'],
+    fieldMasks: [
+      { path: '/zones', fields: ['result.id', 'result.name', 'result.status', 'result.name_servers'] },
+      { path: '/zones/{zone_id}/dns_records', fields: ['result.id', 'result.type', 'result.name', 'result.content', 'result.proxied'] },
+    ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Cloudflare API',
+      baseUrl: 'https://api.cloudflare.com/client/v4',
+      description: 'Cloudflare Client v4 API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/user', method: 'get', operationId: 'getUserDetails', summary: 'Get user profile' },
+        { path: '/zones', method: 'get', operationId: 'listZones', summary: 'List DNS zones' },
+        { path: '/zones/{zone_id}/dns_records', method: 'get', operationId: 'listDnsRecords', summary: 'List DNS records for a zone', parameters: [{ name: 'zone_id', in: 'path', schema: { type: 'string' } }] },
+        { path: '/zones/{zone_id}/dns_records', method: 'post', operationId: 'createDnsRecord', summary: 'Create DNS record', parameters: [{ name: 'zone_id', in: 'path', schema: { type: 'string' } }], requestBody: { properties: { type: { type: 'string' }, name: { type: 'string' }, content: { type: 'string' } } } },
+      ],
+    }),
   },
   {
     id: 'flyio',
@@ -31,6 +81,17 @@ export const CLOUD_DATABASES_PRESETS: Preset[] = [
     authEnvVar: 'FLY_API_TOKEN',
     defaultBaseUrl: 'https://api.machines.dev/v1',
     tags: ['vms', 'hosting', 'docker', 'containers', 'edge'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Fly.io Machines API',
+      baseUrl: 'https://api.machines.dev/v1',
+      description: 'Fly.io Micro-VM Machines API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/apps', method: 'get', operationId: 'listApps', summary: 'List Fly apps' },
+        { path: '/apps/{app_name}/machines', method: 'get', operationId: 'listMachines', summary: 'List machines for an app', parameters: [{ name: 'app_name', in: 'path', schema: { type: 'string' } }] },
+        { path: '/apps/{app_name}/machines/{machine_id}', method: 'get', operationId: 'getMachine', summary: 'Get machine details', parameters: [{ name: 'app_name', in: 'path', schema: { type: 'string' } }, { name: 'machine_id', in: 'path', schema: { type: 'string' } }] },
+      ],
+    }),
   },
   {
     id: 'railway',
@@ -41,6 +102,16 @@ export const CLOUD_DATABASES_PRESETS: Preset[] = [
     authEnvVar: 'RAILWAY_API_TOKEN',
     defaultBaseUrl: 'https://backboard.railway.app/graphql/v2',
     tags: ['paas', 'hosting', 'deployments', 'databases'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Railway API',
+      baseUrl: 'https://backboard.railway.app/graphql/v2',
+      description: 'Railway Platform API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/projects', method: 'get', operationId: 'listProjects', summary: 'List Railway projects' },
+        { path: '/deployments', method: 'get', operationId: 'listDeployments', summary: 'List deployments' },
+      ],
+    }),
   },
   {
     id: 'render',
@@ -51,6 +122,17 @@ export const CLOUD_DATABASES_PRESETS: Preset[] = [
     authEnvVar: 'RENDER_API_KEY',
     defaultBaseUrl: 'https://api.render.com/v1',
     tags: ['cloud', 'hosting', 'postgres', 'cron-jobs'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Render API',
+      baseUrl: 'https://api.render.com/v1',
+      description: 'Render Cloud Services API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/services', method: 'get', operationId: 'listServices', summary: 'List Render services' },
+        { path: '/services/{serviceId}', method: 'get', operationId: 'getService', summary: 'Get service details', parameters: [{ name: 'serviceId', in: 'path', schema: { type: 'string' } }] },
+        { path: '/postgres', method: 'get', operationId: 'listPostgresInstances', summary: 'List PostgreSQL databases' },
+      ],
+    }),
   },
   {
     id: 'neon',
@@ -61,6 +143,21 @@ export const CLOUD_DATABASES_PRESETS: Preset[] = [
     authEnvVar: 'NEON_API_KEY',
     defaultBaseUrl: 'https://console.neon.tech/api/v2',
     tags: ['postgres', 'serverless', 'branching', 'sql'],
+    fieldMasks: [
+      { path: '/projects', fields: ['projects.id', 'projects.name', 'projects.region_id', 'projects.created_at'] },
+    ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Neon Serverless Postgres API',
+      baseUrl: 'https://console.neon.tech/api/v2',
+      description: 'Neon Database Branching API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/projects', method: 'get', operationId: 'listProjects', summary: 'List Neon projects' },
+        { path: '/projects/{project_id}', method: 'get', operationId: 'getProject', summary: 'Get project details', parameters: [{ name: 'project_id', in: 'path', schema: { type: 'string' } }] },
+        { path: '/projects/{project_id}/branches', method: 'get', operationId: 'listBranches', summary: 'List database branches', parameters: [{ name: 'project_id', in: 'path', schema: { type: 'string' } }] },
+        { path: '/projects/{project_id}/branches', method: 'post', operationId: 'createBranch', summary: 'Create new database branch', parameters: [{ name: 'project_id', in: 'path', schema: { type: 'string' } }], requestBody: { properties: { branch: { type: 'object' } } } },
+      ],
+    }),
   },
   {
     id: 'upstash',
@@ -71,6 +168,17 @@ export const CLOUD_DATABASES_PRESETS: Preset[] = [
     authEnvVar: 'UPSTASH_API_KEY',
     defaultBaseUrl: 'https://api.upstash.com/v2',
     tags: ['redis', 'vector', 'queue', 'serverless', 'caching'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Upstash Serverless Redis API',
+      baseUrl: 'https://api.upstash.com/v2',
+      description: 'Upstash Serverless Data Platform API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/redis/databases', method: 'get', operationId: 'listRedisDatabases', summary: 'List Redis databases' },
+        { path: '/redis/database/{id}', method: 'get', operationId: 'getRedisDatabase', summary: 'Get database metadata', parameters: [{ name: 'id', in: 'path', schema: { type: 'string' } }] },
+        { path: '/vector/indexes', method: 'get', operationId: 'listVectorIndexes', summary: 'List Vector indexes' },
+      ],
+    }),
   },
   {
     id: 'planetscale',
@@ -81,5 +189,16 @@ export const CLOUD_DATABASES_PRESETS: Preset[] = [
     authEnvVar: 'PLANETSCALE_TOKEN',
     defaultBaseUrl: 'https://api.planetscale.com/v1',
     tags: ['mysql', 'database', 'branching', 'serverless'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'PlanetScale API',
+      baseUrl: 'https://api.planetscale.com/v1',
+      description: 'PlanetScale Serverless MySQL API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/organizations', method: 'get', operationId: 'listOrganizations', summary: 'List organizations' },
+        { path: '/organizations/{organization}/databases', method: 'get', operationId: 'listDatabases', summary: 'List databases', parameters: [{ name: 'organization', in: 'path', schema: { type: 'string' } }] },
+        { path: '/organizations/{organization}/databases/{database}/branches', method: 'get', operationId: 'listDatabaseBranches', summary: 'List database branches', parameters: [{ name: 'organization', in: 'path', schema: { type: 'string' } }, { name: 'database', in: 'path', schema: { type: 'string' } }] },
+      ],
+    }),
   },
 ];

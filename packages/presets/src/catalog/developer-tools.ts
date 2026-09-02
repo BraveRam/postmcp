@@ -1,4 +1,5 @@
 import { Preset } from '../types.js';
+import { buildOpenAPISpec } from '../builder.js';
 
 export const DEVELOPER_TOOLS_PRESETS: Preset[] = [
   {
@@ -36,6 +37,21 @@ export const DEVELOPER_TOOLS_PRESETS: Preset[] = [
         ],
       },
     ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'GitHub REST API',
+      baseUrl: 'https://api.github.com',
+      description: 'GitHub Official REST API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/user', method: 'get', operationId: 'getAuthenticatedUser', summary: 'Get authenticated user' },
+        { path: '/user/repos', method: 'get', operationId: 'listUserRepos', summary: 'List repositories for authenticated user' },
+        { path: '/repos/{owner}/{repo}', method: 'get', operationId: 'getRepo', summary: 'Get repository details', parameters: [{ name: 'owner', in: 'path', schema: { type: 'string' } }, { name: 'repo', in: 'path', schema: { type: 'string' } }] },
+        { path: '/repos/{owner}/{repo}/issues', method: 'get', operationId: 'listIssues', summary: 'List repository issues', parameters: [{ name: 'owner', in: 'path', schema: { type: 'string' } }, { name: 'repo', in: 'path', schema: { type: 'string' } }, { name: 'state', in: 'query', schema: { type: 'string' } }] },
+        { path: '/repos/{owner}/{repo}/issues', method: 'post', operationId: 'createIssue', summary: 'Create issue', parameters: [{ name: 'owner', in: 'path', schema: { type: 'string' } }, { name: 'repo', in: 'path', schema: { type: 'string' } }], requestBody: { properties: { title: { type: 'string' }, body: { type: 'string' } } } },
+        { path: '/repos/{owner}/{repo}/pulls', method: 'get', operationId: 'listPullRequests', summary: 'List pull requests', parameters: [{ name: 'owner', in: 'path', schema: { type: 'string' } }, { name: 'repo', in: 'path', schema: { type: 'string' } }] },
+        { path: '/repos/{owner}/{repo}/issues/{issue_number}/comments', method: 'post', operationId: 'createIssueComment', summary: 'Create issue comment', parameters: [{ name: 'owner', in: 'path', schema: { type: 'string' } }, { name: 'repo', in: 'path', schema: { type: 'string' } }, { name: 'issue_number', in: 'path', schema: { type: 'integer' } }], requestBody: { properties: { body: { type: 'string' } } } },
+      ],
+    }),
   },
   {
     id: 'gitlab',
@@ -46,6 +62,23 @@ export const DEVELOPER_TOOLS_PRESETS: Preset[] = [
     authEnvVar: 'GITLAB_TOKEN',
     defaultBaseUrl: 'https://gitlab.com/api/v4',
     tags: ['git', 'merge-requests', 'pipelines', 'devops'],
+    fieldMasks: [
+      { path: '/projects', fields: ['id', 'name', 'web_url', 'visibility', 'star_count'] },
+      { path: '/projects/{id}/merge_requests', fields: ['id', 'iid', 'title', 'state', 'web_url', 'author.username'] },
+    ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'GitLab REST API',
+      baseUrl: 'https://gitlab.com/api/v4',
+      description: 'GitLab Core API',
+      securityScheme: { name: 'privateToken', type: 'apiKey', in: 'header', headerName: 'PRIVATE-TOKEN' },
+      endpoints: [
+        { path: '/user', method: 'get', operationId: 'getCurrentUser', summary: 'Get current user profile' },
+        { path: '/projects', method: 'get', operationId: 'listProjects', summary: 'List GitLab projects' },
+        { path: '/projects/{id}', method: 'get', operationId: 'getProject', summary: 'Get project details', parameters: [{ name: 'id', in: 'path', schema: { type: 'string' } }] },
+        { path: '/projects/{id}/merge_requests', method: 'get', operationId: 'listMergeRequests', summary: 'List merge requests', parameters: [{ name: 'id', in: 'path', schema: { type: 'string' } }] },
+        { path: '/projects/{id}/pipelines', method: 'get', operationId: 'listPipelines', summary: 'List CI/CD pipelines', parameters: [{ name: 'id', in: 'path', schema: { type: 'string' } }] },
+      ],
+    }),
   },
   {
     id: 'jira',
@@ -56,6 +89,22 @@ export const DEVELOPER_TOOLS_PRESETS: Preset[] = [
     authEnvVar: 'JIRA_API_TOKEN',
     defaultBaseUrl: 'https://your-domain.atlassian.net/rest/api/3',
     tags: ['agile', 'sprints', 'tickets', 'scrum', 'kanban'],
+    fieldMasks: [
+      { path: '/search', fields: ['issues.id', 'issues.key', 'issues.fields.summary', 'issues.fields.status.name'] },
+    ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Jira Software Cloud API',
+      baseUrl: 'https://your-domain.atlassian.net/rest/api/3',
+      description: 'Atlassian Jira Cloud REST API',
+      securityScheme: { name: 'basicAuth', type: 'http', scheme: 'basic' },
+      endpoints: [
+        { path: '/myself', method: 'get', operationId: 'getCurrentUser', summary: 'Get current user profile' },
+        { path: '/project', method: 'get', operationId: 'listProjects', summary: 'List projects' },
+        { path: '/issue/{issueIdOrKey}', method: 'get', operationId: 'getIssue', summary: 'Get Jira issue details', parameters: [{ name: 'issueIdOrKey', in: 'path', schema: { type: 'string' } }] },
+        { path: '/issue', method: 'post', operationId: 'createIssue', summary: 'Create new Jira issue', requestBody: { properties: { fields: { type: 'object' } } } },
+        { path: '/search', method: 'get', operationId: 'searchIssuesJql', summary: 'Search issues using JQL', parameters: [{ name: 'jql', in: 'query', schema: { type: 'string' } }] },
+      ],
+    }),
   },
   {
     id: 'linear',
@@ -66,6 +115,41 @@ export const DEVELOPER_TOOLS_PRESETS: Preset[] = [
     authEnvVar: 'LINEAR_API_KEY',
     defaultBaseUrl: 'https://api.linear.app',
     tags: ['issues', 'roadmap', 'cycles', 'product'],
+    fieldMasks: [
+      { path: '/issues', fields: ['data.id', 'data.title', 'data.state.name', 'data.priority', 'data.assignee.name'] },
+    ],
+    macros: [
+      {
+        name: 'createTeamIssue',
+        description: 'Creates a new issue in a team and assigns priority',
+        parameters: {
+          type: 'object',
+          properties: {
+            teamId: { type: 'string' },
+            title: { type: 'string' },
+            description: { type: 'string' },
+            priority: { type: 'integer' },
+          },
+          required: ['teamId', 'title'],
+        },
+        steps: [
+          { id: 'createIssue', action: 'POST /issues', body: { teamId: '{{teamId}}', title: '{{title}}', description: '{{description}}', priority: '{{priority}}' } },
+        ],
+      },
+    ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Linear API',
+      baseUrl: 'https://api.linear.app',
+      description: 'Linear Issue Tracking REST API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/viewer', method: 'get', operationId: 'getViewer', summary: 'Get current user profile' },
+        { path: '/teams', method: 'get', operationId: 'listTeams', summary: 'List all teams' },
+        { path: '/issues', method: 'get', operationId: 'listIssues', summary: 'List recent issues', parameters: [{ name: 'teamId', in: 'query', schema: { type: 'string' } }] },
+        { path: '/issues', method: 'post', operationId: 'createIssue', summary: 'Create issue', requestBody: { properties: { teamId: { type: 'string' }, title: { type: 'string' }, description: { type: 'string' } } } },
+        { path: '/projects', method: 'get', operationId: 'listProjects', summary: 'List roadmap projects' },
+      ],
+    }),
   },
   {
     id: 'sentry',
@@ -76,6 +160,21 @@ export const DEVELOPER_TOOLS_PRESETS: Preset[] = [
     authEnvVar: 'SENTRY_AUTH_TOKEN',
     defaultBaseUrl: 'https://sentry.io/api/0',
     tags: ['errors', 'crash-reporting', 'performance', 'alerts'],
+    fieldMasks: [
+      { path: '/projects/{organization_slug}/{project_slug}/issues/', fields: ['id', 'title', 'culprit', 'count', 'lastSeen', 'status'] },
+    ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Sentry API',
+      baseUrl: 'https://sentry.io/api/0',
+      description: 'Sentry Error & Performance Telemetry API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/organizations/', method: 'get', operationId: 'listOrganizations', summary: 'List organizations' },
+        { path: '/projects/', method: 'get', operationId: 'listProjects', summary: 'List projects' },
+        { path: '/projects/{organization_slug}/{project_slug}/issues/', method: 'get', operationId: 'listProjectIssues', summary: 'List project issues', parameters: [{ name: 'organization_slug', in: 'path', schema: { type: 'string' } }, { name: 'project_slug', in: 'path', schema: { type: 'string' } }] },
+        { path: '/issues/{issue_id}/', method: 'get', operationId: 'getIssueDetails', summary: 'Get error issue details', parameters: [{ name: 'issue_id', in: 'path', schema: { type: 'string' } }] },
+      ],
+    }),
   },
   {
     id: 'datadog',
@@ -86,6 +185,17 @@ export const DEVELOPER_TOOLS_PRESETS: Preset[] = [
     authEnvVar: 'DATADOG_API_KEY',
     defaultBaseUrl: 'https://api.datadoghq.com/api/v2',
     tags: ['metrics', 'traces', 'logs', 'observability'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Datadog API',
+      baseUrl: 'https://api.datadoghq.com/api/v2',
+      description: 'Datadog Metrics & Telemetry API',
+      securityScheme: { name: 'apiKeyAuth', type: 'apiKey', in: 'header', headerName: 'DD-API-KEY' },
+      endpoints: [
+        { path: '/metrics', method: 'get', operationId: 'listMetrics', summary: 'List metrics' },
+        { path: '/logs/events/search', method: 'post', operationId: 'searchLogs', summary: 'Search log events', requestBody: { properties: { filter: { type: 'object' } } } },
+        { path: '/monitors', method: 'get', operationId: 'listMonitors', summary: 'List monitors' },
+      ],
+    }),
   },
   {
     id: 'postman',
@@ -96,6 +206,18 @@ export const DEVELOPER_TOOLS_PRESETS: Preset[] = [
     authEnvVar: 'POSTMAN_API_KEY',
     defaultBaseUrl: 'https://api.getpostman.com',
     tags: ['api-testing', 'collections', 'documentation', 'mocks'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Postman API',
+      baseUrl: 'https://api.getpostman.com',
+      description: 'Postman Workspaces & Collections API',
+      securityScheme: { name: 'apiKeyAuth', type: 'apiKey', in: 'header', headerName: 'X-Api-Key' },
+      endpoints: [
+        { path: '/me', method: 'get', operationId: 'getMe', summary: 'Get authenticated user' },
+        { path: '/workspaces', method: 'get', operationId: 'listWorkspaces', summary: 'List workspaces' },
+        { path: '/collections', method: 'get', operationId: 'listCollections', summary: 'List collections' },
+        { path: '/collections/{collection_uid}', method: 'get', operationId: 'getCollection', summary: 'Get collection details', parameters: [{ name: 'collection_uid', in: 'path', schema: { type: 'string' } }] },
+      ],
+    }),
   },
   {
     id: 'vercel',
@@ -107,6 +229,21 @@ export const DEVELOPER_TOOLS_PRESETS: Preset[] = [
     defaultBaseUrl: 'https://api.vercel.com',
     specUrl: 'https://raw.githubusercontent.com/vercel/openapi/main/openapi.json',
     tags: ['hosting', 'deployments', 'domains', 'serverless', 'nextjs'],
+    fieldMasks: [
+      { path: '/v6/deployments', fields: ['deployments.uid', 'deployments.name', 'deployments.url', 'deployments.state', 'deployments.created'] },
+    ],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Vercel API',
+      baseUrl: 'https://api.vercel.com',
+      description: 'Vercel Platform API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/v2/user', method: 'get', operationId: 'getUser', summary: 'Get current user profile' },
+        { path: '/v9/projects', method: 'get', operationId: 'listProjects', summary: 'List Vercel projects' },
+        { path: '/v6/deployments', method: 'get', operationId: 'listDeployments', summary: 'List recent deployments', parameters: [{ name: 'projectId', in: 'query', schema: { type: 'string' } }] },
+        { path: '/v13/deployments', method: 'post', operationId: 'createDeployment', summary: 'Create new deployment', requestBody: { properties: { name: { type: 'string' } } } },
+      ],
+    }),
   },
   {
     id: 'docker',
@@ -117,6 +254,17 @@ export const DEVELOPER_TOOLS_PRESETS: Preset[] = [
     authEnvVar: 'DOCKER_ACCESS_TOKEN',
     defaultBaseUrl: 'https://hub.docker.com/v2',
     tags: ['containers', 'images', 'registries', 'devops'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Docker Hub API',
+      baseUrl: 'https://hub.docker.com/v2',
+      description: 'Docker Hub Registry API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/user', method: 'get', operationId: 'getUser', summary: 'Get current user profile' },
+        { path: '/repositories/{username}', method: 'get', operationId: 'listRepositories', summary: 'List repositories', parameters: [{ name: 'username', in: 'path', schema: { type: 'string' } }] },
+        { path: '/repositories/{username}/{repository}/tags', method: 'get', operationId: 'listTags', summary: 'List repository tags', parameters: [{ name: 'username', in: 'path', schema: { type: 'string' } }, { name: 'repository', in: 'path', schema: { type: 'string' } }] },
+      ],
+    }),
   },
   {
     id: 'npm',
@@ -127,16 +275,36 @@ export const DEVELOPER_TOOLS_PRESETS: Preset[] = [
     authEnvVar: 'NPM_TOKEN',
     defaultBaseUrl: 'https://registry.npmjs.org',
     tags: ['packages', 'javascript', 'typescript', 'modules'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'NPM Registry API',
+      baseUrl: 'https://registry.npmjs.org',
+      description: 'NPM Package Registry API',
+      endpoints: [
+        { path: '/{package}', method: 'get', operationId: 'getPackageInfo', summary: 'Get package metadata', parameters: [{ name: 'package', in: 'path', schema: { type: 'string' } }] },
+        { path: '/{package}/{version}', method: 'get', operationId: 'getPackageVersion', summary: 'Get package version metadata', parameters: [{ name: 'package', in: 'path', schema: { type: 'string' } }, { name: 'version', in: 'path', schema: { type: 'string' } }] },
+      ],
+    }),
   },
   {
     id: 'pagerduty',
     name: 'PagerDuty API',
     description: 'Incident response, on-call scheduling, escalations, and service health alerting.',
     category: 'Developer Tools',
-    authType: 'Header (Authorization: Token token=...)',
+    authType: 'Header (Token token=...)',
     authEnvVar: 'PAGERDUTY_TOKEN',
     defaultBaseUrl: 'https://api.pagerduty.com',
     tags: ['incidents', 'on-call', 'alerts', 'devops'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'PagerDuty API',
+      baseUrl: 'https://api.pagerduty.com',
+      description: 'PagerDuty Incidents & On-call API',
+      securityScheme: { name: 'tokenAuth', type: 'apiKey', in: 'header', headerName: 'Authorization' },
+      endpoints: [
+        { path: '/incidents', method: 'get', operationId: 'listIncidents', summary: 'List incidents', parameters: [{ name: 'statuses', in: 'query', schema: { type: 'string' } }] },
+        { path: '/services', method: 'get', operationId: 'listServices', summary: 'List services' },
+        { path: '/oncalls', method: 'get', operationId: 'listOnCalls', summary: 'List on-call schedules' },
+      ],
+    }),
   },
   {
     id: 'grafana',
@@ -147,6 +315,17 @@ export const DEVELOPER_TOOLS_PRESETS: Preset[] = [
     authEnvVar: 'GRAFANA_TOKEN',
     defaultBaseUrl: 'https://grafana.example.com/api',
     tags: ['dashboards', 'monitoring', 'visualization', 'datasources'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'Grafana HTTP API',
+      baseUrl: 'https://grafana.example.com/api',
+      description: 'Grafana Dashboards & Metrics API',
+      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
+      endpoints: [
+        { path: '/search', method: 'get', operationId: 'searchDashboards', summary: 'Search dashboards and folders', parameters: [{ name: 'query', in: 'query', schema: { type: 'string' } }] },
+        { path: '/datasources', method: 'get', operationId: 'listDataSources', summary: 'List data sources' },
+        { path: '/dashboards/uid/{uid}', method: 'get', operationId: 'getDashboardByUid', summary: 'Get dashboard by UID', parameters: [{ name: 'uid', in: 'path', schema: { type: 'string' } }] },
+      ],
+    }),
   },
   {
     id: 'opsgenie',
@@ -157,5 +336,16 @@ export const DEVELOPER_TOOLS_PRESETS: Preset[] = [
     authEnvVar: 'OPSGENIE_KEY',
     defaultBaseUrl: 'https://api.opsgenie.com/v2',
     tags: ['incidents', 'escalation', 'alerts', 'oncall'],
+    bundledSpec: buildOpenAPISpec({
+      title: 'OpsGenie API',
+      baseUrl: 'https://api.opsgenie.com/v2',
+      description: 'OpsGenie Alerts & Incidents API',
+      securityScheme: { name: 'genieKeyAuth', type: 'apiKey', in: 'header', headerName: 'Authorization' },
+      endpoints: [
+        { path: '/alerts', method: 'get', operationId: 'listAlerts', summary: 'List alerts' },
+        { path: '/alerts', method: 'post', operationId: 'createAlert', summary: 'Create new alert', requestBody: { properties: { message: { type: 'string' }, priority: { type: 'string' } } } },
+        { path: '/teams', method: 'get', operationId: 'listTeams', summary: 'List teams' },
+      ],
+    }),
   },
 ];
