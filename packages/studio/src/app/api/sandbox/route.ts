@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { generateText, tool, jsonSchema } from 'ai';
+import { generateText, streamText, tool, jsonSchema } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { applyTokenDiet, ResilientHttpClient } from '@postmcp/core';
 import { NormalizedSpec, NormalizedOperation } from '@postmcp/types';
 
@@ -57,7 +55,7 @@ async function executeMcpOperation(
     op.riskTier === 'MUTATION' ||
     op.riskTier === 'CRITICAL';
 
-  // Safeguard: In Sandbox, mutations (POST, PUT, DELETE, PATCH) or dryRun=true are NEVER dispatched destructively to live production APIs
+  // Safeguard: In Sandbox, mutations or dryRun=true are NEVER dispatched destructively to live production APIs
   if (dryRun || isMutation) {
     const mockItem: Record<string, any> = {
       id: args?.id || 'res_' + Math.floor(Math.random() * 100000),
@@ -98,7 +96,7 @@ async function executeMcpOperation(
       return {
         operationId: op.id,
         status: 403,
-        result: `🛡️ **[SSRF Safeguard Blocked]**: Live GET requests to private or loopback host (${baseUrl}) are restricted in Web Studio.`,
+        result: `Access blocked by SSRF Safeguard: Private/Internal Host (${baseUrl}) is disallowed.`,
         savings: 0,
       };
     }
@@ -107,30 +105,20 @@ async function executeMcpOperation(
       const client = new ResilientHttpClient({
         baseUrl,
         auth: authConfig,
-        specSecuritySchemes: spec.securitySchemes,
         timeout: 10000,
-        maxRetries: 1,
       });
 
-      let pathUrl = op.path;
-      const queryParams: Record<string, any> = {};
-
-      if (op.parameters) {
-        for (const p of op.parameters) {
-          if (args[p.name] !== undefined) {
-            if (p.in === 'path') {
-              pathUrl = pathUrl.replace(`{${p.name}}`, encodeURIComponent(String(args[p.name])));
-            } else if (p.in === 'query') {
-              queryParams[p.name] = args[p.name];
-            }
-          }
+      let targetUrl = op.path;
+      if (args) {
+        for (const [k, v] of Object.entries(args)) {
+          targetUrl = targetUrl.replace(`{${k}}`, encodeURIComponent(String(v)));
         }
       }
 
       const res = await client.request({
-        url: pathUrl,
+        url: targetUrl,
         method: 'GET',
-        params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
+        params: args,
       });
 
       const diet = applyTokenDiet(res.data, {
@@ -177,41 +165,35 @@ async function executeMcpOperation(
   };
 }
 
-function resolveModelProvider(model: string, apiKey?: string): any {
-  if (model.startsWith('claude')) {
-    const key = apiKey || process.env.ANTHROPIC_API_KEY;
-    if (!key) return null;
-    const anthropic = createAnthropic({ apiKey: key });
-    const modelId = model === 'claude-3-5-sonnet' ? 'claude-3-5-sonnet-latest' : model;
-    return anthropic(modelId);
-  }
-
-  if (model.startsWith('gemini')) {
-    const key = apiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
-    if (!key) return null;
-    const google = createGoogleGenerativeAI({ apiKey: key });
-    const modelId = model === 'gemini-2-flash' ? 'gemini-2.0-flash-exp' : model;
-    return google(modelId);
-  }
-
-  // Default to OpenAI provider
-  const key = apiKey || process.env.OPENAI_API_KEY || process.env.AI_GATEWAY_TOKEN;
+/**
+ * Resolves the language model strictly through Vercel AI Gateway.
+ */
+function resolveVercelAiGatewayModel(model: string, apiKey?: string, customGatewayUrl?: string) {
+  const key = apiKey || process.env.AI_GATEWAY_API_KEY || process.env.AI_GATEWAY_TOKEN || process.env.OPENAI_API_KEY;
   if (!key) return null;
-  const openai = createOpenAI({ apiKey: key });
-  const modelId = model === 'gpt-4o' ? 'gpt-4o' : model === 'gpt-4o-mini' ? 'gpt-4o-mini' : 'gpt-4o';
-  return openai(modelId);
+
+  const baseURL = (customGatewayUrl || process.env.AI_GATEWAY_URL || 'https://ai-gateway.vercel.app/v1').replace(/\/$/, '');
+
+  const gateway = createOpenAI({
+    baseURL,
+    apiKey: key,
+  });
+
+  return gateway(model);
 }
 
 export async function POST(request: Request) {
   try {
     const {
       messages,
-      model = 'gpt-4o',
+      model = 'openai/gpt-4o',
       apiKey,
+      gatewayUrl,
       spec,
       selectedOperationId,
       authConfig,
       dryRun = true,
+      stream = false,
     } = await request.json();
 
     if (!spec || !Array.isArray(spec.operations)) {
@@ -223,7 +205,7 @@ export async function POST(request: Request) {
 
     // Dynamically mount tools for active operations
     const dynamicTools: Record<string, any> = {};
-    const operationsToMount: NormalizedOperation[] = spec.operations.slice(0, 15);
+    const operationsToMount: NormalizedOperation[] = spec.operations.slice(0, 20);
 
     let executedToolCall: { name: string; args: any } | undefined = undefined;
     let executedToolResult: { text: string; savings?: number } | undefined = undefined;
@@ -241,12 +223,21 @@ export async function POST(request: Request) {
       } as any);
     }
 
-    // 1. Live LLM Generation via Vercel AI SDK if provider credentials exist
-    const selectedLanguageModel = resolveModelProvider(model, apiKey);
+    // 1. Live LLM Generation via Vercel AI Gateway if gateway key is available
+    const gatewayModel = resolveVercelAiGatewayModel(model, apiKey, gatewayUrl);
 
-    if (selectedLanguageModel) {
+    if (gatewayModel) {
+      if (stream) {
+        const streamResult = streamText({
+          model: gatewayModel,
+          messages,
+          tools: dynamicTools,
+        });
+        return streamResult.toTextStreamResponse();
+      }
+
       const result = await generateText({
-        model: selectedLanguageModel,
+        model: gatewayModel,
         messages,
         tools: dynamicTools,
       });
@@ -254,7 +245,7 @@ export async function POST(request: Request) {
       const toolName = (executedToolCall as any)?.name;
       return NextResponse.json({
         role: 'assistant',
-        content: result.text || `Executed tool **${toolName || 'operation'}** successfully with ${model}.`,
+        content: result.text || `Executed tool **${toolName || 'operation'}** via Vercel AI Gateway (${model}).`,
         toolCall: executedToolCall,
         result: executedToolResult,
       });
@@ -282,7 +273,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       role: 'assistant',
-      content: `I analyzed your request "${lastUserMessage}" and dispatched tool **\`${targetOp.id}\`** on the **${spec.title}** MCP server with Token Diet active.`,
+      content: `Dispatched tool **${targetOp.id}** for query: _"${lastUserMessage}"_.\n\nSimulated through Vercel AI Gateway runner with **Token Diet** output optimization.`,
       toolCall: {
         name: targetOp.id,
         args: mockArgs,
@@ -292,9 +283,9 @@ export async function POST(request: Request) {
         savings: execRes.savings,
       },
     });
-  } catch (err: any) {
+  } catch (error: any) {
     return NextResponse.json(
-      { error: err.message || 'Sandbox execution failed.' },
+      { error: error.message || 'Sandbox execution error' },
       { status: 500 }
     );
   }
