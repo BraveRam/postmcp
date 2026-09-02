@@ -271,4 +271,41 @@ describe('Resilient HTTP, Auth, and Parameter Serialization', () => {
     expect(headers4['Cookie']).toBeUndefined();
     expect(query4['api_token']).toBeUndefined();
   });
+
+  it('should reject credential injection across different protocols or ports (Strict Origin)', () => {
+    const baseUrl = 'https://api.example.com';
+    const httpMismatch = 'http://api.example.com/data';
+    const portMismatch = 'https://api.example.com:8080/data';
+
+    expect(isSameOriginOrAllowed(httpMismatch, baseUrl)).toBe(false);
+    expect(isSameOriginOrAllowed(portMismatch, baseUrl)).toBe(false);
+
+    const headers: Record<string, string> = {};
+    applyAuth(headers, {}, { bearerToken: 'token123' }, httpMismatch, baseUrl);
+    expect(headers.Authorization).toBeUndefined();
+  });
+
+  it('should throw error when required security scheme is unsatisfied', () => {
+    const specSecuritySchemes: any = {
+      BearerAuth: { type: 'http', scheme: 'bearer' },
+    };
+
+    const targetUrl = 'https://api.example.com/protected';
+    const baseUrl = 'https://api.example.com';
+
+    // Required security but empty/undefined config -> throws error
+    expect(() => {
+      applyAuth({}, {}, undefined, targetUrl, baseUrl, [{ BearerAuth: [] }], specSecuritySchemes);
+    }).toThrow('Authentication Error: Operation requires security scheme [BearerAuth]');
+
+    // Required security but wrong credential provided -> throws error
+    expect(() => {
+      applyAuth({}, {}, { securitySchemes: { OtherAuth: '123' } }, targetUrl, baseUrl, [{ BearerAuth: [] }], specSecuritySchemes);
+    }).toThrow('Authentication Error: Operation requires security scheme [BearerAuth]');
+
+    // Optional security (contains `{}`) -> does not throw error
+    expect(() => {
+      applyAuth({}, {}, undefined, targetUrl, baseUrl, [{ BearerAuth: [] }, {}], specSecuritySchemes);
+    }).not.toThrow();
+  });
 });

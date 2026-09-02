@@ -32,12 +32,15 @@ export function isSameOriginOrAllowed(targetUrl: string, baseUrl: string, allowe
   }
 
   try {
-    const targetHost = new URL(targetUrl).hostname.toLowerCase();
-    const baseHost = new URL(baseUrl).hostname.toLowerCase();
+    const targetUrlObj = new URL(targetUrl);
+    const baseUrlObj = new URL(baseUrl);
 
-    if (targetHost === baseHost) return true;
+    // Strict origin match: protocol + hostname + port
+    if (targetUrlObj.origin.toLowerCase() === baseUrlObj.origin.toLowerCase()) {
+      return true;
+    }
 
-    if (allowedHosts && allowedHosts.some((h) => h.toLowerCase() === targetHost)) {
+    if (allowedHosts && allowedHosts.some((h) => h.toLowerCase() === targetUrlObj.hostname.toLowerCase())) {
       return true;
     }
   } catch {
@@ -118,7 +121,25 @@ export function applyAuth(
   securityRequirement?: Array<Record<string, string[]>>,
   specSecuritySchemes?: Record<string, SecurityScheme>
 ): void {
-  if (!config) return;
+  // If the operation explicitly declares empty security ([]), it's public: no auth should be injected
+  if (Array.isArray(securityRequirement) && securityRequirement.length === 0) {
+    return;
+  }
+
+  // Check if authentication is optional (contains empty object `{}`)
+  const isAuthOptional =
+    !Array.isArray(securityRequirement) ||
+    securityRequirement.some((req) => Object.keys(req).length === 0);
+
+  if (!config) {
+    if (!isAuthOptional && Array.isArray(securityRequirement)) {
+      const requiredNames = securityRequirement.map((req) => Object.keys(req).join(' & ')).join(', ');
+      throw new Error(
+        `Authentication Error: Operation requires security scheme [${requiredNames}], but no authentication credentials were provided.`
+      );
+    }
+    return;
+  }
 
   // SSRF & Credential Leakage Protection (Finding 3):
   // Do NOT inject sensitive credentials into cross-origin URLs unless explicitly permitted.
@@ -135,11 +156,6 @@ export function applyAuth(
     for (const [k, v] of Object.entries(config.headers)) {
       headers[k] = substituteEnvVars(v);
     }
-  }
-
-  // If the operation explicitly declares empty security ([]), it's public: no auth should be injected
-  if (Array.isArray(securityRequirement) && securityRequirement.length === 0) {
-    return;
   }
 
   // Helper to apply a single named scheme from spec and config
@@ -278,10 +294,17 @@ export function applyAuth(
     }
 
     if (!satisfied) {
+      // If none of the security requirement alternatives were satisfied and auth is not optional, throw error
+      if (!isAuthOptional) {
+        const requiredNames = securityRequirement.map((req) => Object.keys(req).join(' & ')).join(', ');
+        throw new Error(
+          `Authentication Error: Operation requires security scheme [${requiredNames}], but no matching credentials were provided in configuration.`
+        );
+      }
       applyGeneralAuth(headers, queryParams, config);
     }
   } else {
-    // No specific security requirement or global default: apply all configured auth schemes
+    // No specific security requirement: apply all configured auth schemes
     if (config.securitySchemes) {
       for (const schemeName of Object.keys(config.securitySchemes)) {
         applySingleScheme(schemeName);
