@@ -75,6 +75,11 @@ export async function parseOpenAPI(input: string | object, basePath?: string): P
     throw new Error('Invalid OpenAPI spec input. Must be a string (URL, file path, JSON/YAML) or an object.');
   }
 
+  // If the document is already a NormalizedSpec, return directly
+  if (rawDoc && typeof rawDoc === 'object' && Array.isArray(rawDoc.operations) && !rawDoc.paths) {
+    return rawDoc as NormalizedSpec;
+  }
+
   const dereferenced = await dereferenceSpec(rawDoc, detectedBasePath);
   return normalizeSpec(dereferenced);
 }

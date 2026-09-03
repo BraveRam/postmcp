@@ -5,7 +5,7 @@ import YAML from 'yaml';
 
 /**
  * Safe RFC 6901 JSON Schema / OpenAPI $ref dereferencer with circular reference protection,
- * memoized reference caching, remote HTTP $ref fetching, and relative nested file resolution.
+ * memoized reference caching, bounded expansion depth, remote HTTP $ref fetching, and relative file resolution.
  */
 
 function decodeJsonPointerPart(part: string): string {
@@ -109,7 +109,7 @@ export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<a
       return node;
     }
 
-    if (depth > 20) {
+    if (depth > 30) {
       return { type: 'object', additionalProperties: true };
     }
 
