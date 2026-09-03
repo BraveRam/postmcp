@@ -187,10 +187,10 @@ Deploy configurations or generate standalone production services:
 * **Standalone Code Generation**: Generate a self-contained TypeScript (`@modelcontextprotocol/sdk`) or Python FastMCP project complete with tests, dependencies, and Dockerfile:
   ```bash
   # Generate standalone TypeScript server
-  postmcp generate ./stripe.postmcp.json --lang ts -o ./my-stripe-mcp
+  npx @postmcp/cli generate @stripe --lang ts -o ./my-stripe-mcp
 
   # Generate standalone Python FastMCP server
-  postmcp generate ./stripe.postmcp.json --lang py -o ./my-stripe-mcp-py
+  npx @postmcp/cli generate @stripe --lang py -o ./my-stripe-mcp-py
   ```
 
 ### 7. 60+ Curated API Presets
