@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![MCP Compliant](https://img.shields.io/badge/MCP-100%25-green.svg)](https://modelcontextprotocol.io/)
-[![npm package](https://img.shields.io/badge/npm-postmcp-red.svg)](https://www.npmjs.com/package/postmcp)
+[![npm package](https://img.shields.io/badge/npm-@postmcp/cli-red.svg)](https://www.npmjs.com/package/@postmcp/cli)
 
 ---
 
@@ -45,7 +45,7 @@ Run any OpenAPI spec or pre-configured preset on the fly:
 
 ```bash
 # Run any public OpenAPI spec with Token Diet and JIT tool search
-npx postmcp run https://api.stripe.com/openapi.json \
+npx @postmcp/cli run https://api.stripe.com/openapi.json \
   --header "Authorization: Bearer $STRIPE_SECRET_KEY" \
   --token-diet \
   --jit
@@ -54,7 +54,7 @@ npx postmcp run https://api.stripe.com/openapi.json \
 ### Launch the Visual Web Studio
 
 ```bash
-npx postmcp studio
+npx @postmcp/cli studio
 ```
 
 Open `http://localhost:3000` to visually inspect endpoints, curate field masks, chain macros, test prompts in the live sandbox, and export client configurations.
@@ -86,7 +86,7 @@ Open `http://localhost:3000` to visually inspect endpoints, curate field masks, 
                                   |                                                                      |
 +---------------------------+     |  +-------------------------------+  +-----------------------------+  |     +---------------------------+
 |     OpenAPI Specs         |     |  |       Visual Web Studio       |  |        CLI Interface        |  |     |       Target Clients      |
-|  - OpenAPI 3.0 / 3.1      |---->|  |     (Next.js + Turbopack)     |  |     `npx postmcp <cmd>`     |  |---->|  - Cursor (.cursor/mcp)   |
+|  - OpenAPI 3.0 / 3.1      |---->|  |     (Next.js + Turbopack)     |  |     `npx @postmcp/cli <cmd>`     |  |---->|  - Cursor (.cursor/mcp)   |
 |  - Swagger 2.0            |     |  |  - Visual Spec Curator        |  |     (run, studio, inspect,  |  |     |  - Claude Desktop Config  |
 |  - Local file / Live URL  |     |  |  - Live LLM Test Sandbox      |  |      generate, presets,     |  |     |  - Antigravity / Windsurf |
 |  - Presets (60+ APIs)     |     |  |    (Vercel AI Gateway)        |  |      export)                |  |     |  - Custom Python/TS Agents|
