@@ -27,6 +27,8 @@ export default function StudioPage() {
   const [isIngestOpen, setIsIngestOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(320);
+  const [isDraggingSidebar, setIsDraggingSidebar] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load initial preset (Stripe) on mount
@@ -132,6 +134,47 @@ export default function StudioPage() {
     initSpec();
   }, []);
 
+  // Restore saved sidebar width
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('postmcp_sidebar_width');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 220 && parsed <= 800) {
+          setSidebarWidth(parsed);
+        }
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  // Global mouse move and up listeners for resizing
+  useEffect(() => {
+    if (!isDraggingSidebar) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.max(220, Math.min(800, e.clientX));
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingSidebar(false);
+      try {
+        localStorage.setItem('postmcp_sidebar_width', sidebarWidth.toString());
+      } catch {
+        // Ignore localStorage errors
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingSidebar, sidebarWidth]);
+
   const handleToggleOperation = (id: string, enabled: boolean) => {
     setEnabledOperations((prev) => ({ ...prev, [id]: enabled }));
   };
@@ -158,7 +201,11 @@ export default function StudioPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-black text-zinc-100">
+    <div
+      className={`flex flex-col h-screen overflow-hidden bg-black text-zinc-100 font-sans ${
+        isDraggingSidebar ? 'select-none cursor-col-resize' : ''
+      }`}
+    >
       {/* Top Header */}
       <Header
         spec={spec}
@@ -188,8 +235,11 @@ export default function StudioPage() {
         </div>
       ) : (
         <div className="flex-1 flex overflow-hidden relative">
-          {/* Desktop Left Panel: API Explorer */}
-          <div className="hidden md:block shrink-0">
+          {/* Desktop Left Panel: API Explorer with Drag Resizer */}
+          <div
+            className="hidden md:block shrink-0 h-full relative"
+            style={{ width: `${sidebarWidth}px` }}
+          >
             <ApiExplorer
               operations={spec.operations}
               selectedOperationId={selectedOperation?.id || null}
@@ -198,6 +248,24 @@ export default function StudioPage() {
               onToggleOperation={handleToggleOperation}
               onToggleAll={handleToggleAll}
             />
+
+            {/* Draggable vertical resize divider */}
+            <div
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setIsDraggingSidebar(true);
+              }}
+              className={`absolute top-0 -right-1 w-2.5 h-full cursor-col-resize z-30 group flex items-center justify-center transition-colors select-none ${
+                isDraggingSidebar ? 'bg-zinc-700/60' : 'hover:bg-zinc-800/80'
+              }`}
+              title="Drag horizontally to resize sidebar"
+            >
+              <div
+                className={`w-0.5 h-7 rounded-full transition-colors ${
+                  isDraggingSidebar ? 'bg-white scale-y-125' : 'bg-zinc-700 group-hover:bg-zinc-300'
+                }`}
+              />
+            </div>
           </div>
 
           {/* Mobile Drawer Left Panel: API Explorer */}
