@@ -78,7 +78,7 @@ export async function exportCommand(specArg: string, options: ExportCommandOptio
     }
   }
 
-  const selectedTarget = (options.target || options.client || 'all').toLowerCase();
+  const selectedTarget = (options.client || options.target || 'all').toLowerCase();
   const clientsToExport: Array<'cursor' | 'claude' | 'windsurf'> =
     selectedTarget === 'all'
       ? ['cursor', 'claude', 'windsurf']

@@ -55,7 +55,7 @@ export function createCli(): Command {
   program
     .command('generate <spec>')
     .description('Generate a complete standalone TypeScript or Python MCP server project')
-    .option('-t, --target <language>', 'Target language: typescript (ts) or python (py)', 'typescript')
+    .option('-t, --target <language>', 'Target language: typescript (ts) or python (py)')
     .option('-l, --lang <language>', 'Alias for --target')
     .option('-o, --out <directory>', 'Output directory for the generated project')
     .action((spec, opts) => {
@@ -69,7 +69,7 @@ export function createCli(): Command {
   program
     .command('export <spec>')
     .description('1-Click configuration exporter for Cursor, Claude Desktop, and Windsurf')
-    .option('-t, --target <name>', 'Target client: cursor, claude, windsurf, or all (default: all)', 'all')
+    .option('-t, --target <name>', 'Target client: cursor, claude, windsurf, or all')
     .option('--client <name>', 'Alias for --target')
     .option('-w, --write', 'Automatically merge and write configuration directly to the client config file on disk')
     .option('--bearer <token>', 'Bearer token for client configuration environment')

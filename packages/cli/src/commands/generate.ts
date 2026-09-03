@@ -34,7 +34,7 @@ export async function generateCommand(specArg: string, options: GenerateCommandO
     return;
   }
 
-  const targetLang = (options.target || options.lang || 'typescript').toLowerCase();
+  const targetLang = (options.lang || options.target || 'typescript').toLowerCase();
   const outDir = path.resolve(options.out || `./${spec.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}-mcp`);
 
   console.log(pc.cyan(`⚡ Generating standalone ${pc.bold(targetLang.toUpperCase())} MCP server for '${spec.title}'...`));
