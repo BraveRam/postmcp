@@ -40,10 +40,31 @@ export async function parseOpenAPI(input: string | object, basePath?: string): P
         rawDoc = YAML.parse(trimmed);
       }
     } else {
-      // Local file path
-      const resolvedPath = path.resolve(trimmed);
-      detectedBasePath = path.dirname(resolvedPath);
-      const content = await fs.readFile(resolvedPath, 'utf-8');
+      // Local file path resolution with workspace fallback
+      const candidates = [
+        basePath ? path.resolve(basePath, trimmed) : null,
+        path.resolve(process.cwd(), trimmed),
+        process.env.POSTMCP_WORKSPACE ? path.resolve(process.env.POSTMCP_WORKSPACE, trimmed) : null,
+        path.resolve(trimmed),
+      ].filter(Boolean) as string[];
+
+      let foundPath: string | null = null;
+      for (const cand of candidates) {
+        try {
+          await fs.access(cand);
+          foundPath = cand;
+          break;
+        } catch {
+          // Continue search
+        }
+      }
+
+      if (!foundPath) {
+        throw new Error(`OpenAPI specification file not found: '${trimmed}'`);
+      }
+
+      detectedBasePath = path.dirname(foundPath);
+      const content = await fs.readFile(foundPath, 'utf-8');
       try {
         rawDoc = JSON.parse(content);
       } catch {

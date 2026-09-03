@@ -26,9 +26,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No spec, presetId, or url provided.' }, { status: 400 });
     }
 
-    const parsed = await parseOpenAPI(targetSpec);
+    const workspaceRoot = process.env.POSTMCP_WORKSPACE || process.env.WORKSPACE_CWD || process.cwd();
+    const parsed = await parseOpenAPI(targetSpec, workspaceRoot);
 
-    // If preset provided, attach its declared macros & field masks (Finding 6)
+    // If preset provided, attach its declared macros & field masks
     if (presetId) {
       const preset = getPreset(presetId);
       if (preset?.macros && preset.macros.length > 0) {

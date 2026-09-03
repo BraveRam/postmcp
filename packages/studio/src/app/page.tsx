@@ -87,6 +87,8 @@ export default function StudioPage() {
       } else {
         throw new Error(data.error || 'Failed to parse spec.');
       }
+    } catch (err: any) {
+      console.error('Failed to parse spec:', err);
     } finally {
       setIsLoading(false);
     }
