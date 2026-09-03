@@ -12,7 +12,7 @@ export async function startHttpServer(
   options: HttpServerOptions
 ): Promise<{ server: PostMcpServer; httpServer: http.Server; url: string }> {
   const postMcpServer = new PostMcpServer(options);
-  const port = options.port || 3000;
+  const port = options.port !== undefined ? options.port : 3000;
   const host = options.host || 'localhost';
   const endpointPath = options.endpointPath || '/mcp';
 
@@ -33,7 +33,8 @@ export async function startHttpServer(
       return;
     }
 
-    const url = new URL(req.url || '', `http://${host}:${port}`);
+    const currentPort = (httpServer.address() as any)?.port || port;
+    const url = new URL(req.url || '', `http://${host}:${currentPort}`);
 
     if (url.pathname === endpointPath) {
       await transport.handleRequest(req, res);
@@ -53,9 +54,11 @@ export async function startHttpServer(
     });
   });
 
+  const actualPort = (httpServer.address() as any)?.port || port;
+
   return {
     server: postMcpServer,
     httpServer,
-    url: `http://${host}:${port}${endpointPath}`,
+    url: `http://${host}:${actualPort}${endpointPath}`,
   };
 }

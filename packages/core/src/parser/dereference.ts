@@ -5,7 +5,7 @@ import YAML from 'yaml';
 
 /**
  * Safe RFC 6901 JSON Schema / OpenAPI $ref dereferencer with circular reference protection,
- * remote HTTP $ref fetching, and relative nested file resolution.
+ * memoized reference caching, remote HTTP $ref fetching, and relative nested file resolution.
  */
 
 function decodeJsonPointerPart(part: string): string {
@@ -36,12 +36,13 @@ export function resolvePointer(root: any, pointer: string): any {
 }
 
 export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<any> {
-  const root = JSON.parse(JSON.stringify(rawDoc)); // Clone
-  const visitedPaths = new Map<string, number>();
+  if (!rawDoc || typeof rawDoc !== 'object') return rawDoc;
+
   const docCache = new Map<string, { doc: any; base: string }>();
+  const resolvedCache = new Map<string, any>();
+  const activeStack = new Set<string>();
 
   async function loadDoc(uriOrPath: string, currentBase?: string): Promise<{ doc: any; base: string }> {
-    // Check if remote URL
     const isRemote =
       uriOrPath.startsWith('http://') ||
       uriOrPath.startsWith('https://') ||
@@ -75,7 +76,6 @@ export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<a
       return result;
     }
 
-    // Local file path
     const resolvedPath = currentBase ? path.resolve(currentBase, uriOrPath) : path.resolve(uriOrPath);
     if (docCache.has(resolvedPath)) {
       return docCache.get(resolvedPath)!;
@@ -99,28 +99,50 @@ export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<a
     return result;
   }
 
-  async function walk(node: any, currentDocRoot: any, currentBase?: string, currentPath: string = '#'): Promise<any> {
+  async function walk(
+    node: any,
+    currentDocRoot: any,
+    currentBase?: string,
+    depth: number = 0
+  ): Promise<any> {
     if (node === null || typeof node !== 'object') {
       return node;
     }
 
+    if (depth > 20) {
+      return { type: 'object', additionalProperties: true };
+    }
+
     if (Array.isArray(node)) {
-      return Promise.all(node.map((item, index) => walk(item, currentDocRoot, currentBase, `${currentPath}/${index}`)));
+      return Promise.all(node.map((item) => walk(item, currentDocRoot, currentBase, depth + 1)));
     }
 
     // Handle $ref
     if (typeof node.$ref === 'string') {
       const ref = node.$ref;
       const scopedRefKey = `${currentBase || 'root'}::${ref}`;
-      const visits = visitedPaths.get(scopedRefKey) || 0;
 
-      // Circular reference protection: terminate at depth 2
-      if (visits >= 2) {
+      // Circular reference protection: Break cycle if currently in call stack
+      if (activeStack.has(scopedRefKey)) {
         return {
           type: 'object',
           description: `Recursive self-reference to ${ref}`,
           additionalProperties: true,
         };
+      }
+
+      // Memoization: Return previously resolved schema
+      if (resolvedCache.has(scopedRefKey)) {
+        const cached = resolvedCache.get(scopedRefKey);
+        const { $ref: _, ...rest } = node;
+        if (Object.keys(rest).length === 0) {
+          return cached;
+        }
+        const restResolved = await walk(rest, currentDocRoot, currentBase, depth + 1);
+        if (typeof cached === 'object' && cached !== null && !Array.isArray(cached)) {
+          return { ...cached, ...restResolved };
+        }
+        return cached;
       }
 
       let target: any = null;
@@ -141,7 +163,6 @@ export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<a
           throw new Error(`Failed to dereference external $ref '${ref}': ${err.message}`);
         }
       } else {
-        // Entire document reference
         try {
           const loaded = await loadDoc(ref, currentBase);
           target = loaded.doc;
@@ -156,16 +177,19 @@ export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<a
         throw new Error(`Unresolvable $ref pointer: '${ref}'`);
       }
 
-      visitedPaths.set(scopedRefKey, visits + 1);
-      const resolved = await walk(target, targetDocRoot, targetBase, ref);
-      visitedPaths.set(scopedRefKey, visits); // backtrack
+      activeStack.add(scopedRefKey);
+      const resolved = await walk(target, targetDocRoot, targetBase, depth + 1);
+      activeStack.delete(scopedRefKey);
 
-      // Merge remaining sibling properties alongside $ref if resolved is an object
+      // Cache the fully resolved schema
+      resolvedCache.set(scopedRefKey, resolved);
+
+      // Merge remaining sibling properties alongside $ref
       const { $ref: _, ...rest } = node;
       if (Object.keys(rest).length === 0) {
         return resolved;
       }
-      const restResolved = await walk(rest, currentDocRoot, currentBase, currentPath);
+      const restResolved = await walk(rest, currentDocRoot, currentBase, depth + 1);
       if (typeof resolved === 'object' && resolved !== null && !Array.isArray(resolved)) {
         return { ...resolved, ...restResolved };
       }
@@ -175,10 +199,10 @@ export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<a
     // Handle object properties
     const result: Record<string, any> = {};
     for (const [key, value] of Object.entries(node)) {
-      result[key] = await walk(value, currentDocRoot, currentBase, `${currentPath}/${key}`);
+      result[key] = await walk(value, currentDocRoot, currentBase, depth + 1);
     }
     return result;
   }
 
-  return walk(root, root, basePath);
+  return walk(rawDoc, rawDoc, basePath, 0);
 }
