@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createOpenAI } from '@ai-sdk/openai';
-import { generateText, streamText, tool, jsonSchema } from 'ai';
+import { generateText, streamText, tool, jsonSchema, stepCountIs } from 'ai';
 import { NormalizedSpec, NormalizedOperation } from '@postmcp/types';
 import { applyTokenDiet } from '@postmcp/core';
 import { ResilientHttpClient } from '@postmcp/core';
@@ -222,6 +222,7 @@ export async function POST(request: Request) {
             model: gatewayModel,
             messages,
             tools: dynamicTools,
+            stopWhen: stepCountIs(5),
           });
           return streamResult.toTextStreamResponse();
         }
@@ -230,6 +231,7 @@ export async function POST(request: Request) {
           model: gatewayModel,
           messages,
           tools: dynamicTools,
+          stopWhen: stepCountIs(5),
         });
 
         return NextResponse.json({
