@@ -50,6 +50,11 @@ interface SandboxMessage {
   content: string;
   toolCall?: { name: string; args: any };
   result?: { text: string; savings?: number };
+  toolCalls?: Array<{
+    name: string;
+    args: any;
+    result?: { text: string; savings?: number };
+  }>;
 }
 
 export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
@@ -135,7 +140,7 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
       });
 
       const data = await res.json();
-      if (data.content || data.toolCall) {
+      if (data.content || data.toolCall || (data.toolCalls && data.toolCalls.length > 0)) {
         setMessages((prev) => [
           ...prev,
           {
@@ -144,6 +149,7 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
             content: data.content,
             toolCall: data.toolCall,
             result: data.result,
+            toolCalls: data.toolCalls,
           },
         ]);
       } else if (data.error) {
@@ -201,29 +207,43 @@ export function LiveSandbox({ spec, selectedOperation }: LiveSandboxProps) {
                   <MessageContent from={m.role}>
                     <MessageResponse>{m.content}</MessageResponse>
 
-                    {/* AI Elements: Tool Component for MCP Tool Calls */}
-                    {m.toolCall && (
-                      <div className="mt-3">
-                        <Tool status="complete">
-                          <ToolHeader
-                            name={m.toolCall.name}
-                            status="complete"
-                            badge="MCP Tool Call"
-                            isOpen={toolCardOpen[m.id] !== false}
-                            onToggle={() => toggleToolCard(m.id)}
-                          />
-                          <ToolContent isOpen={toolCardOpen[m.id] !== false}>
-                            <ToolInput input={m.toolCall.args} />
-                            {m.result && (
-                              <ToolOutput
-                                output={m.result.text}
-                                savings={m.result.savings}
-                              />
-                            )}
-                          </ToolContent>
-                        </Tool>
-                      </div>
-                    )}
+                    {/* AI Elements: Tool Components for all MCP Tool Calls */}
+                    {(
+                      m.toolCalls && m.toolCalls.length > 0
+                        ? m.toolCalls
+                        : m.toolCall
+                        ? [{ name: m.toolCall.name, args: m.toolCall.args, result: m.result }]
+                        : []
+                    ).map((tc, idx) => {
+                      const cardKey = `${m.id}_tool_${idx}`;
+                      const isMulti = Boolean(m.toolCalls && m.toolCalls.length > 1);
+                      return (
+                        <div key={cardKey} className="mt-3">
+                          <Tool status="complete">
+                            <ToolHeader
+                              name={tc.name}
+                              status="complete"
+                              badge={
+                                isMulti
+                                  ? `Step ${idx + 1} of ${m.toolCalls!.length}`
+                                  : 'MCP Tool Call'
+                              }
+                              isOpen={toolCardOpen[cardKey] !== false}
+                              onToggle={() => toggleToolCard(cardKey)}
+                            />
+                            <ToolContent isOpen={toolCardOpen[cardKey] !== false}>
+                              <ToolInput input={tc.args} />
+                              {tc.result && (
+                                <ToolOutput
+                                  output={tc.result.text}
+                                  savings={tc.result.savings}
+                                />
+                              )}
+                            </ToolContent>
+                          </Tool>
+                        </div>
+                      );
+                    })}
                   </MessageContent>
                 </Message>
               ))

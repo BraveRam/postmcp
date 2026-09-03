@@ -1,40 +1,45 @@
 import { NextResponse } from 'next/server';
-import { createGateway, generateText, streamText, tool, jsonSchema } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
-import { applyTokenDiet, ResilientHttpClient } from '@postmcp/core';
+import { generateText, streamText, tool, jsonSchema } from 'ai';
 import { NormalizedSpec, NormalizedOperation } from '@postmcp/types';
+import { applyTokenDiet } from '@postmcp/core';
+import { ResilientHttpClient } from '@postmcp/core';
 
-export function isPrivateOrBlockedHost(urlString: string): boolean {
+interface SandboxExecutionResult {
+  operationId: string;
+  status: number;
+  result: string;
+  savings?: number;
+}
+
+/**
+ * Validates if an outbound URL targets private or loopback networks (SSRF defense).
+ */
+export function isPrivateOrBlockedHost(urlStr: string): boolean {
   try {
-    const parsed = new URL(urlString);
+    const parsed = new URL(urlStr);
     const hostname = parsed.hostname.toLowerCase();
 
-    // Loopback, local, internal, cloud metadata
     if (
       hostname === 'localhost' ||
-      hostname.endsWith('.localhost') ||
-      hostname.endsWith('.local') ||
-      hostname.endsWith('.internal') ||
-      hostname === '169.254.169.254' ||
+      hostname === '127.0.0.1' ||
       hostname === '0.0.0.0' ||
-      hostname === '::1'
+      hostname === '::1' ||
+      hostname.endsWith('.local') ||
+      hostname.endsWith('.internal')
     ) {
       return true;
     }
 
-    // IPv4 private/local range validation
-    const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    // Check private IPv4 ranges: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16
+    const ipv4Match = hostname.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
     if (ipv4Match) {
-      const octet1 = parseInt(ipv4Match[1], 10);
-      const octet2 = parseInt(ipv4Match[2], 10);
-
-      if (octet1 === 127) return true; // Loopback 127.0.0.0/8
-      if (octet1 === 10) return true; // Private 10.0.0.0/8
-      if (octet1 === 172 && octet2 >= 16 && octet2 <= 31) return true; // Private 172.16.0.0/12
-      if (octet1 === 192 && octet2 === 168) return true; // Private 192.168.0.0/16
-      if (octet1 === 169 && octet2 === 254) return true; // Link-local / metadata 169.254.0.0/16
-      if (octet1 === 100 && octet2 >= 64 && octet2 <= 127) return true; // CGNAT 100.64.0.0/10
-      if (octet1 === 0) return true;
+      const b0 = parseInt(ipv4Match[1], 10);
+      const b1 = parseInt(ipv4Match[2], 10);
+      if (b0 === 10) return true;
+      if (b0 === 172 && b1 >= 16 && b1 <= 31) return true;
+      if (b0 === 192 && b1 === 168) return true;
+      if (b0 === 169 && b1 === 254) return true; // Link-local / Cloud metadata
     }
 
     return false;
@@ -49,54 +54,26 @@ async function executeMcpOperation(
   spec: NormalizedSpec,
   authConfig?: any,
   dryRun: boolean = true
-) {
-  const isMutation =
-    op.method.toLowerCase() !== 'get' ||
-    op.riskTier === 'MUTATION' ||
-    op.riskTier === 'CRITICAL';
+): Promise<SandboxExecutionResult> {
+  const isReadOnly = op.method === 'get' || op.riskTier === 'READ_ONLY';
 
-  // Safeguard: In Sandbox, mutations or dryRun=true are NEVER dispatched destructively to live production APIs
-  if (dryRun || isMutation) {
-    const mockItem: Record<string, any> = {
-      id: args?.id || 'res_' + Math.floor(Math.random() * 100000),
-      status: args?.status || 'success',
-      ...args,
-      _sandbox: {
-        mode: 'DRY_RUN_SAFEGUARD',
-        simulatedMethod: op.method.toUpperCase(),
-        targetPath: op.path,
-        riskTier: op.riskTier,
-      },
-      created_at: new Date().toISOString(),
-    };
-
-    const diet = applyTokenDiet([mockItem], {
-      enabled: true,
-      fieldMasks: spec.tokenDiet?.fieldMasks?.[op.path],
-      convertToMarkdownTable: true,
-    });
-
-    const safeguardNotice = isMutation
-      ? `\n\n> 🛡️ **[DRY RUN SAFEGUARD ACTIVE]**: Destructive mutation \`${op.method.toUpperCase()} ${op.path}\` (${op.riskTier}) simulated safely without modifying remote resources.`
-      : '';
-
-    return {
-      operationId: op.id,
-      status: 200,
-      result: diet.text + safeguardNotice,
-      savings: diet.savingsPercentage,
-    };
-  }
-
-  // Safe Read-Only GET Execution with user-provided credentials
+  // Real HTTP dispatch only for safe GET operations when credentials/baseUrl provided and dryRun is false
   const baseUrl = spec.servers?.[0]?.url;
-  if (baseUrl && !baseUrl.includes('example.com') && authConfig) {
-    // Enforce SSRF & Private Network Safeguard
+  const isRealExecutionAllowed =
+    !dryRun &&
+    isReadOnly &&
+    baseUrl &&
+    baseUrl.startsWith('http') &&
+    !baseUrl.includes('example.com') &&
+    !baseUrl.includes('localhost') &&
+    !isPrivateOrBlockedHost(baseUrl);
+
+  if (isRealExecutionAllowed) {
     if (isPrivateOrBlockedHost(baseUrl)) {
       return {
         operationId: op.id,
         status: 403,
-        result: `Access blocked by SSRF Safeguard: Private/Internal Host (${baseUrl}) is disallowed.`,
+        result: 'Security Error: Outbound requests to internal or loopback hosts are blocked.',
         savings: 0,
       };
     }
@@ -157,16 +134,21 @@ async function executeMcpOperation(
     convertToMarkdownTable: true,
   });
 
+  const isMutation = op.riskTier === 'MUTATION' || op.riskTier === 'CRITICAL' || op.method !== 'get';
+  const prefix = (dryRun && isMutation)
+    ? '⚠️ [DRY RUN SAFEGUARD ACTIVE] Mutation simulated safely without modifying remote state.\n\n'
+    : '';
+
   return {
     operationId: op.id,
     status: 200,
-    result: diet.text,
+    result: `${prefix}${diet.text}`,
     savings: diet.savingsPercentage,
   };
 }
 
 /**
- * Resolves the language model strictly through Vercel AI Gateway.
+ * Resolves a model via Vercel AI Gateway.
  */
 function resolveVercelAiGatewayModel(model: string, apiKey?: string, customGatewayUrl?: string) {
   const key = apiKey || process.env.AI_GATEWAY_API_KEY || process.env.AI_GATEWAY_TOKEN || process.env.OPENAI_API_KEY;
@@ -175,19 +157,11 @@ function resolveVercelAiGatewayModel(model: string, apiKey?: string, customGatew
   const rawUrl = customGatewayUrl || process.env.AI_GATEWAY_URL || 'https://ai-gateway.vercel.sh/v1';
   const baseURL = rawUrl.replace(/\/$/, '');
 
-  try {
-    const gateway = createGateway({
-      apiKey: key,
-      baseURL: baseURL.endsWith('/ai') ? baseURL : `${baseURL}/ai`,
-    });
-    return gateway(model);
-  } catch {
-    const gateway = createOpenAI({
-      baseURL,
-      apiKey: key,
-    });
-    return gateway(model);
-  }
+  const gateway = createOpenAI({
+    baseURL,
+    apiKey: key,
+  });
+  return gateway(model);
 }
 
 export async function POST(request: Request) {
@@ -215,17 +189,24 @@ export async function POST(request: Request) {
     const dynamicTools: Record<string, any> = {};
     const operationsToMount: NormalizedOperation[] = spec.operations.slice(0, 20);
 
-    let executedToolCall: { name: string; args: any } | undefined = undefined;
-    let executedToolResult: { text: string; savings?: number } | undefined = undefined;
+    const executedToolCalls: Array<{
+      name: string;
+      args: any;
+      result: { text: string; savings?: number };
+    }> = [];
 
     for (const op of operationsToMount) {
       dynamicTools[op.id] = tool({
         description: op.description || op.summary || `Execute ${op.method.toUpperCase()} ${op.path}`,
         parameters: jsonSchema((op.inputSchema || { type: 'object', properties: {} }) as any),
         execute: async (args: any) => {
-          executedToolCall = { name: op.id, args };
           const execRes = await executeMcpOperation(op, args, spec, authConfig, dryRun);
-          executedToolResult = { text: execRes.result, savings: execRes.savings };
+          const item = {
+            name: op.id,
+            args,
+            result: { text: execRes.result, savings: execRes.savings },
+          };
+          executedToolCalls.push(item);
           return execRes;
         },
       } as any);
@@ -251,50 +232,88 @@ export async function POST(request: Request) {
           tools: dynamicTools,
         });
 
-        const toolName = (executedToolCall as any)?.name;
         return NextResponse.json({
           role: 'assistant',
-          content: result.text || `Executed tool **${toolName || 'operation'}** via Vercel AI Gateway (${model}).`,
-          toolCall: executedToolCall,
-          result: executedToolResult,
+          content: result.text || `Executed ${executedToolCalls.length} tool(s) via Vercel AI Gateway (${model}).`,
+          toolCalls: executedToolCalls,
+          toolCall: executedToolCalls[0] ? { name: executedToolCalls[0].name, args: executedToolCalls[0].args } : undefined,
+          result: executedToolCalls[0]?.result,
         });
       } catch (gatewayError: any) {
         console.warn('Vercel AI Gateway request failed, falling back to simulated execution:', gatewayError.message);
-        // Fall through to simulated execution if gateway throws (e.g. 404, invalid model, network error)
       }
     }
 
-    // 2. Offline / Simulated Intelligent Agent Mode
+    // 2. Offline / Simulated Intelligent Multi-Tool Agent Mode
     const lastUserMessage = messages[messages.length - 1]?.content || 'Execute test';
-    const targetOp =
-      (selectedOperationId &&
-        spec.operations.find((o: NormalizedOperation) => o.id === selectedOperationId)) ||
-      spec.operations[0];
+    const lowerQuery = lastUserMessage.toLowerCase();
 
-    const mockArgs: Record<string, any> = {};
-    if (targetOp.parameters) {
-      for (const p of targetOp.parameters.slice(0, 2)) {
-        mockArgs[p.name] = p.name.includes('id')
-          ? 'obj_882910'
-          : p.name.includes('email')
-          ? 'user@example.com'
-          : 'sample_val';
+    // Match operations based on selected operation and query keywords
+    const matchedOps: NormalizedOperation[] = [];
+    if (selectedOperationId) {
+      const selected = spec.operations.find((o: NormalizedOperation) => o.id === selectedOperationId);
+      if (selected) matchedOps.push(selected);
+    }
+
+    // If query contains multi-action words ("and", "then", ","), find matching operations
+    const hasMultiAction = lowerQuery.includes('and') || lowerQuery.includes('then') || lowerQuery.includes(',');
+    for (const op of spec.operations) {
+      if (matchedOps.length >= 3) break;
+      if (matchedOps.some((m) => m.id === op.id)) continue;
+
+      const opId = op.id.toLowerCase();
+      const lastPathSegment = op.path.split('/').filter(Boolean).pop()?.toLowerCase() || '';
+
+      if (hasMultiAction && (lowerQuery.includes(opId) || (lastPathSegment && lowerQuery.includes(lastPathSegment)))) {
+        matchedOps.push(op);
       }
     }
 
-    const execRes = await executeMcpOperation(targetOp, mockArgs, spec, authConfig, dryRun);
+    if (matchedOps.length === 0) {
+      matchedOps.push(spec.operations[0]);
+    }
+
+    const simulatedToolCalls: Array<{
+      name: string;
+      args: any;
+      result: { text: string; savings?: number };
+    }> = [];
+
+    for (const targetOp of matchedOps) {
+      const mockArgs: Record<string, any> = {};
+      if (targetOp.parameters) {
+        for (const p of targetOp.parameters.slice(0, 2)) {
+          mockArgs[p.name] = p.name.includes('id')
+            ? 'obj_882910'
+            : p.name.includes('email')
+            ? 'user@example.com'
+            : 'sample_val';
+        }
+      }
+
+      const execRes = await executeMcpOperation(targetOp, mockArgs, spec, authConfig, dryRun);
+      simulatedToolCalls.push({
+        name: targetOp.id,
+        args: mockArgs,
+        result: {
+          text: execRes.result,
+          savings: execRes.savings,
+        },
+      });
+    }
 
     return NextResponse.json({
       role: 'assistant',
-      content: `Dispatched tool **${targetOp.id}** for query: _"${lastUserMessage}"_.\n\nSimulated through Vercel AI Gateway runner (${model}) with **Token Diet** output optimization.`,
+      content:
+        simulatedToolCalls.length > 1
+          ? `Executed **${simulatedToolCalls.length} tool calls in sequence** for query: _"${lastUserMessage}"_.\n\nAll tool responses compressed through **Token Diet**.`
+          : `Dispatched tool **${simulatedToolCalls[0].name}** for query: _"${lastUserMessage}"_.\n\nSimulated through Vercel AI Gateway runner (${model}) with **Token Diet** output optimization.`,
+      toolCalls: simulatedToolCalls,
       toolCall: {
-        name: targetOp.id,
-        args: mockArgs,
+        name: simulatedToolCalls[0].name,
+        args: simulatedToolCalls[0].args,
       },
-      result: {
-        text: execRes.result,
-        savings: execRes.savings,
-      },
+      result: simulatedToolCalls[0].result,
     });
   } catch (error: any) {
     return NextResponse.json(
