@@ -8,16 +8,72 @@
 
 ---
 
-## The Problem with Naive OpenAPI-to-MCP Converters
+## What is PostMCP?
 
-Connecting AI coding assistants (Cursor, Claude Desktop, Antigravity, Windsurf) to external REST APIs breaks down when using naive 1-to-1 OpenAPI-to-MCP converters:
+PostMCP turns any REST API into native tools for AI coding assistants and agents (Cursor, Claude Desktop, Antigravity, Windsurf, LangChain).
 
-1. **Context Window Saturation**: Converting a 200+ endpoint REST spec (e.g., Stripe, GitHub, Jira) injects 30,000+ tokens of raw tool schemas on every single LLM turn, degrading reasoning and causing severe tool hallucinations.
-2. **Token Drowning**: Raw REST responses contain 50KB+ of redundant JSON metadata (HATEOAS links, audit timestamps, internal IDs, null values), consuming context without providing signal.
+Instead of writing hundreds of lines of custom MCP server boilerplate, hand-crafting JSON schemas, or dealing with context window bloat, PostMCP takes an OpenAPI/Swagger URL or file and automatically produces an optimized, ready-to-run MCP server.
+
+### What It Does
+
+* **Instant Zero-Code Connectivity**: Run any public or private API directly in your AI assistant over stdio or Streamable HTTP.
+* **Context Optimization (Token Diet)**: Strips metadata, nulls, and boilerplate from API responses, automatically converting object arrays into compact Markdown tables to cut token usage by 70% to 95%.
+* **Scales to Massive APIs (JIT Dynamic Routing)**: Replaces 600+ static tool definitions with an on-demand `tool_search` router, keeping active prompt context under 1,500 tokens.
+* **Safety Circuit Breaker (Dry-Run)**: Classifies operations into read-only vs. destructive tiers and intercepts mutations before they touch production databases.
+* **Atomic Multi-Step Macros**: Chains multi-step REST sequences (e.g., lookup -> create -> notify) into a single atomic tool executed in server memory.
+* **Visual Web Studio**: An interactive dark-mode workbench (Next.js 16 + Turbopack) to test endpoints, configure field masks, and preview token savings in a live AI sandbox.
+* **1-Click Export & Code Generation**: Generates configurations for Cursor, Claude Desktop, and Windsurf, or scaffolds complete standalone TypeScript (`@modelcontextprotocol/sdk`) or Python FastMCP repositories.
+
+---
+
+## Quickstart
+
+Run any OpenAPI spec or pre-configured preset on the fly:
+
+```bash
+# Run any public OpenAPI spec with Token Diet and JIT tool search
+npx postmcp run https://api.stripe.com/openapi.json \
+  --header "Authorization: Bearer $STRIPE_SECRET_KEY" \
+  --token-diet \
+  --jit
+```
+
+### Launch the Visual Web Studio
+
+```bash
+npx postmcp studio
+```
+
+Open `http://localhost:3000` to visually inspect endpoints, curate field masks, chain macros, test prompts in the live sandbox, and export client configurations.
+
+### 1-Click Cursor Setup (`.cursor/mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "linear": {
+      "command": "npx",
+      "args": ["-y", "postmcp", "run", "https://api.linear.app/openapi.json", "--token-diet", "--jit"],
+      "env": {
+        "LINEAR_API_KEY": "${env:LINEAR_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+---
+
+## The Problems PostMCP Solves
+
+Connecting AI coding assistants to raw REST APIs with naive 1-to-1 converters creates four major roadblocks:
+
+1. **Context Window Saturation**: Converting a 200+ endpoint REST spec (e.g., Stripe, GitHub, Jira) injects 30,000+ tokens of static tool schemas on every turn, degrading reasoning and causing tool hallucinations.
+2. **Token Drowning**: Raw REST responses return 50KB+ of redundant JSON metadata (HATEOAS links, audit timestamps, internal IDs, null values), consuming context without providing signal.
 3. **The CRUD Mismatch**: An AI agent often must make 3 to 5 slow, sequential round trips to satisfy a single user prompt (e.g., lookup user -> fetch orders -> cancel order).
 4. **Blind Mutation Risk**: Destructive endpoints (`DELETE /database`, `POST /billing/charge`) are exposed alongside read endpoints with no distinction or dry-run protection.
 
-PostMCP solves these problems by providing an intelligent compilation and runtime layer between OpenAPI and the Model Context Protocol.
+PostMCP acts as the intelligent compilation and runtime layer that eliminates these issues before requests reach your LLM.
 
 ---
 
@@ -64,45 +120,7 @@ PostMCP solves these problems by providing an intelligent compilation and runtim
 
 ---
 
-## Quickstart
-
-Run any OpenAPI spec or pre-configured preset on the fly:
-
-```bash
-# Run any public OpenAPI spec with Token Diet and JIT tool search
-npx postmcp run https://api.stripe.com/openapi.json \
-  --header "Authorization: Bearer $STRIPE_SECRET_KEY" \
-  --token-diet \
-  --jit
-```
-
-### Launch the Visual Web Studio
-
-```bash
-npx postmcp studio
-```
-
-Open `http://localhost:3000` to visually inspect endpoints, curate field masks, chain macros, test prompts in the live sandbox, and export client configurations.
-
-### 1-Click Cursor Setup (`.cursor/mcp.json`)
-
-```json
-{
-  "mcpServers": {
-    "linear": {
-      "command": "npx",
-      "args": ["-y", "postmcp", "run", "https://api.linear.app/openapi.json", "--token-diet", "--jit"],
-      "env": {
-        "LINEAR_API_KEY": "${env:LINEAR_API_KEY}"
-      }
-    }
-  }
-}
-```
-
----
-
-## Core Pillars & Capabilities
+## Core Capabilities & Deep Dive
 
 ### 1. JIT Dynamic Tool Router (`tool_search`)
 For APIs with hundreds or thousands of endpoints (e.g., Stripe with 620+ endpoints, GitHub with 1,000+), mounting every tool statically exceeds context windows.
