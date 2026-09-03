@@ -39,3 +39,8 @@ env/
 # Test coverage
 coverage/
 .turbo/
+
+# AI Agents, Claude & Skills (local only, never push)
+.agents/
+.claude/
+skills-lock.json
