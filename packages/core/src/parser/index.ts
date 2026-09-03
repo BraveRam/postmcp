@@ -20,7 +20,10 @@ export async function parseOpenAPI(input: string | object, basePath?: string): P
     const trimmed = input.trim();
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
       const response = await axios.get(trimmed, {
-        headers: { Accept: 'application/json, application/yaml, text/yaml, */*' },
+        headers: {
+          'Accept': 'application/json, application/yaml, text/yaml, */*',
+          'User-Agent': 'PostMCP/0.1.0 (https://github.com/BraveRam/postmcp)',
+        },
         responseType: 'text',
       });
       try {

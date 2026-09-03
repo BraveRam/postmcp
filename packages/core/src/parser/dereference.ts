@@ -59,7 +59,10 @@ export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<a
       }
 
       const res = await axios.get(fullUrl, {
-        headers: { Accept: 'application/json, application/yaml, text/yaml, */*' },
+        headers: {
+          'Accept': 'application/json, application/yaml, text/yaml, */*',
+          'User-Agent': 'PostMCP/0.1.0 (https://github.com/BraveRam/postmcp)',
+        },
         responseType: 'text',
       });
 
