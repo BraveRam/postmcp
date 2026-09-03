@@ -189,25 +189,12 @@ export async function POST(request: Request) {
     const dynamicTools: Record<string, any> = {};
     const operationsToMount: NormalizedOperation[] = spec.operations.slice(0, 20);
 
-    const executedToolCalls: Array<{
-      name: string;
-      args: any;
-      result: { text: string; savings?: number };
-    }> = [];
-
     for (const op of operationsToMount) {
       dynamicTools[op.id] = tool({
         description: op.description || op.summary || `Execute ${op.method.toUpperCase()} ${op.path}`,
         parameters: jsonSchema((op.inputSchema || { type: 'object', properties: {} }) as any),
         execute: async (args: any) => {
-          const execRes = await executeMcpOperation(op, args, spec, authConfig, dryRun);
-          const item = {
-            name: op.id,
-            args,
-            result: { text: execRes.result, savings: execRes.savings },
-          };
-          executedToolCalls.push(item);
-          return execRes;
+          return await executeMcpOperation(op, args, spec, authConfig, dryRun);
         },
       } as any);
     }
@@ -234,12 +221,22 @@ export async function POST(request: Request) {
           stopWhen: stepCountIs(5),
         });
 
+        // Use AI SDK's native toolResults collection
+        const sdkToolCalls = (result.toolResults || []).map((tr: any) => ({
+          name: tr.toolName,
+          args: tr.args,
+          result: {
+            text: tr.result?.result || (typeof tr.result === 'string' ? tr.result : JSON.stringify(tr.result)),
+            savings: tr.result?.savings,
+          },
+        }));
+
         return NextResponse.json({
           role: 'assistant',
-          content: result.text || `Executed ${executedToolCalls.length} tool(s) via Vercel AI Gateway (${model}).`,
-          toolCalls: executedToolCalls,
-          toolCall: executedToolCalls[0] ? { name: executedToolCalls[0].name, args: executedToolCalls[0].args } : undefined,
-          result: executedToolCalls[0]?.result,
+          content: result.text || `Executed ${sdkToolCalls.length} tool(s) via Vercel AI Gateway (${model}).`,
+          toolCalls: sdkToolCalls,
+          toolCall: sdkToolCalls[0] ? { name: sdkToolCalls[0].name, args: sdkToolCalls[0].args } : undefined,
+          result: sdkToolCalls[0]?.result,
         });
       } catch (gatewayError: any) {
         console.warn('Vercel AI Gateway request failed, falling back to simulated execution:', gatewayError.message);
