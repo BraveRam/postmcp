@@ -63,7 +63,23 @@ export function TokenDietCurator({
           ? '2026-09-02T12:00:00Z'
           : `sample_${f}_value`;
     }
-    return [item, { ...item, id: `${item.id}_2` }, { ...item, id: `${item.id}_3` }];
+
+    const isArrayResponse =
+      operation.responseSchema?.type === 'array' ||
+      Boolean(operation.responseSchema?.items) ||
+      Boolean(operation.responseSchema?.properties?.data?.type === 'array') ||
+      Boolean(operation.responseSchema?.properties?.items) ||
+      (operation.path.endsWith('s') && !operation.path.includes('{'));
+
+    if (isArrayResponse) {
+      return [
+        { ...item, id: `${item.id || 'item'}_1` },
+        { ...item, id: `${item.id || 'item'}_2` },
+        { ...item, id: `${item.id || 'item'}_3` },
+      ];
+    }
+
+    return item;
   };
 
   const calculateDiet = () => {
