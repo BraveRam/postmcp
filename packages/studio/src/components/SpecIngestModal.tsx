@@ -83,14 +83,28 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
         if (!isLoading && !open) onClose();
       }}
     >
-      <DialogContent className="max-w-xl bg-zinc-950 border-zinc-800 text-white">
+      <DialogContent
+        hideCloseButton={isLoading}
+        onPointerDownOutside={(e) => {
+          if (isLoading) e.preventDefault();
+        }}
+        onEscapeKeyDown={(e) => {
+          if (isLoading) e.preventDefault();
+        }}
+        onInteractOutside={(e) => {
+          if (isLoading) e.preventDefault();
+        }}
+        className="max-w-xl bg-zinc-950 border-zinc-800 text-white"
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-4 w-4 text-white" />
             Import OpenAPI Specification
           </DialogTitle>
           <DialogDescription>
-            Ingest local files, remote URLs, or pasted schemas into the Studio workbench.
+            {isLoading
+              ? 'Fetching, dereferencing schemas, and building MCP tool AST...'
+              : 'Ingest local files, remote URLs, or pasted schemas into the Studio workbench.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -210,7 +224,7 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
             </Button>
             <Button type="submit" variant="default" disabled={isLoading} className="gap-2">
               {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              {isLoading ? 'Ingesting...' : 'Ingest Specification'}
+              {isLoading ? 'Ingesting Specification...' : 'Ingest Specification'}
             </Button>
           </div>
         </form>
