@@ -26,7 +26,7 @@ describe('1-Click Client Configuration Exporter', () => {
 
     const config = snippet.mcpServers['github-api'];
     expect(config.command).toBe('npx');
-    expect(config.args).toEqual(['-y', 'postmcp', 'run', 'https://api.github.com/openapi.json']);
+    expect(config.args).toEqual(['-y', '@postmcp/cli', 'run', 'https://api.github.com/openapi.json']);
     expect(config.env['API_KEY']).toBe('ghp_secret_token_123');
     expect(config.env['BASE_URL']).toBe('https://api.github.com');
     expect(config.env['CUSTOM_VAR']).toBe('value_1');

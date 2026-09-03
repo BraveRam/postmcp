@@ -52,7 +52,7 @@ export function buildClientConfigSnippet(
     mcpServers: {
       [serverKey]: {
         command: 'npx',
-        args: ['-y', 'postmcp', 'run', specPath],
+        args: ['-y', '@postmcp/cli', 'run', specPath],
         env: Object.keys(env).length > 0 ? env : undefined,
       },
     },

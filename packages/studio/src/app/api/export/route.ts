@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       mcpServers: {
         [serverKey]: {
           command: 'npx',
-          args: ['-y', 'postmcp', ...args],
+          args: ['-y', '@postmcp/cli', ...args],
           env: envMap,
         },
       },
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       mcpServers: {
         [serverKey]: {
           command: 'npx',
-          args: ['-y', 'postmcp', ...args],
+          args: ['-y', '@postmcp/cli', ...args],
           env: envMap,
         },
       },
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       mcpServers: {
         [serverKey]: {
           command: 'npx',
-          args: ['-y', 'postmcp', ...args],
+          args: ['-y', '@postmcp/cli', ...args],
           env: envMap,
         },
       },

@@ -39,6 +39,23 @@ PostMCP acts as the intelligent compilation and runtime layer that eliminates th
 
 ---
 
+## Installation
+
+Run directly with zero install using `npx`:
+
+```bash
+npx @postmcp/cli <command> [options]
+```
+
+Or install globally to use the `postmcp` command anywhere:
+
+```bash
+npm install -g @postmcp/cli
+postmcp --help
+```
+
+---
+
 ## Quickstart
 
 Run any OpenAPI spec or pre-configured preset on the fly:
@@ -66,7 +83,7 @@ Open `http://localhost:3000` to visually inspect endpoints, curate field masks, 
   "mcpServers": {
     "linear": {
       "command": "npx",
-      "args": ["-y", "postmcp", "run", "https://api.linear.app/openapi.json", "--token-diet", "--jit"],
+      "args": ["-y", "@postmcp/cli", "run", "https://api.linear.app/openapi.json", "--token-diet", "--jit"],
       "env": {
         "LINEAR_API_KEY": "${env:LINEAR_API_KEY}"
       }
