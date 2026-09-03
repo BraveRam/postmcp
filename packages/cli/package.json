@@ -1,6 +1,6 @@
 {
   "name": "@postmcp/cli",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "The Postman for MCP. Turn any OpenAPI spec into a context-optimized MCP server in seconds.",
   "publishConfig": {
     "access": "public"
@@ -30,10 +30,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@postmcp/core": "^0.1.2",
-    "@postmcp/presets": "^0.1.2",
-    "@postmcp/studio": "^0.1.2",
-    "@postmcp/types": "^0.1.2",
+    "@postmcp/core": "^0.1.3",
+    "@postmcp/presets": "^0.1.3",
+    "@postmcp/studio": "^0.1.3",
+    "@postmcp/types": "^0.1.3",
     "axios": "^1.20.0",
     "cli-table3": "^0.6.5",
     "commander": "^13.1.0",
@@ -46,5 +46,24 @@
     "tsup": "^8.4.0",
     "typescript": "^5.7.3",
     "vitest": "^3.0.7"
-  }
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "postmcp",
+    "openapi",
+    "swagger",
+    "mcp-server",
+    "ai-agents",
+    "cursor",
+    "claude",
+    "windsurf",
+    "llm",
+    "cli",
+    "rest-api",
+    "token-optimization",
+    "token-diet",
+    "ai-tools",
+    "developer-tools"
+  ]
 }
