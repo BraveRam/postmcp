@@ -34,21 +34,25 @@ export async function generateCommand(specArg: string, options: GenerateCommandO
     return;
   }
 
-  const targetLang = (options.lang || options.target || 'typescript').toLowerCase();
+  const rawLang = (options.lang || options.target || 'ts').toLowerCase();
+  let targetLang: 'ts' | 'py';
+  if (rawLang === 'ts' || rawLang === 'typescript') {
+    targetLang = 'ts';
+  } else if (rawLang === 'py' || rawLang === 'python') {
+    targetLang = 'py';
+  } else {
+    console.error(pc.red(`Unsupported language '${rawLang}'. Supported languages: 'ts', 'py'.`));
+    process.exit(1);
+    return;
+  }
+
   const outDir = path.resolve(options.out || `./${spec.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}-mcp`);
 
   console.log(pc.cyan(`⚡ Generating standalone ${pc.bold(targetLang.toUpperCase())} MCP server for '${spec.title}'...`));
 
-  let project;
-  if (targetLang === 'ts' || targetLang === 'typescript') {
-    project = generateTypeScriptProject(spec);
-  } else if (targetLang === 'py' || targetLang === 'python') {
-    project = generatePythonProject(spec);
-  } else {
-    console.error(pc.red(`Unsupported target '${targetLang}'. Supported targets: 'typescript' ('ts'), 'python' ('py').`));
-    process.exit(1);
-    return;
-  }
+  const project = targetLang === 'ts'
+    ? generateTypeScriptProject(spec)
+    : generatePythonProject(spec);
 
   // Write files to target directory
   if (!fs.existsSync(outDir)) {
@@ -70,7 +74,7 @@ export async function generateCommand(specArg: string, options: GenerateCommandO
   console.log(`  ${pc.bold(outDir)}`);
   console.log();
   console.log(pc.dim('Next steps:'));
-  if (targetLang === 'ts' || targetLang === 'typescript') {
+  if (targetLang === 'ts') {
     console.log(`  cd ${path.relative(process.cwd(), outDir) || '.'}`);
     console.log('  npm install');
     console.log('  npm run build');

@@ -54,8 +54,8 @@ export function createCli(): Command {
   // 3. Generate Command
   program
     .command('generate <spec>')
-    .description('Generate a complete standalone TypeScript or Python MCP server project')
-    .option('-t, --target <language>', 'Target language: typescript (ts) or python (py)')
+    .description('Generate a complete standalone TS or PY MCP server project')
+    .option('-t, --target <language>', 'Target language: ts or py (default: ts)')
     .option('-l, --lang <language>', 'Alias for --target')
     .option('-o, --out <directory>', 'Output directory for the generated project')
     .action((spec, opts) => {
