@@ -7,7 +7,8 @@
     "build": "turbo build",
     "test": "turbo test",
     "dev": "turbo dev",
-    "lint": "turbo lint"
+    "lint": "turbo lint",
+    "postmcp": "node packages/cli/dist/bin.js"
   },
   "devDependencies": {
     "turbo": "^2.4.4",
