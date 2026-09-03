@@ -5,7 +5,14 @@
     "access": "public"
   },
   "files": [
-    ".next",
+    ".next/server",
+    ".next/static",
+    ".next/BUILD_ID",
+    ".next/build-manifest.json",
+    ".next/app-path-routes-manifest.json",
+    ".next/prerender-manifest.json",
+    ".next/routes-manifest.json",
+    ".next/required-server-files.json",
     "src",
     "public",
     "next.config.mjs",

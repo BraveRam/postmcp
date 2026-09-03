@@ -2,6 +2,9 @@
   "name": "@postmcp/presets",
   "version": "0.1.0",
   "description": "50+ Curated, context-optimized API presets for PostMCP",
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",

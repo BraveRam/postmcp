@@ -2,6 +2,12 @@
   "name": "@postmcp/core",
   "version": "0.1.0",
   "description": "PostMCP core engine - OpenAPI parser, Token Diet, JIT router, and MCP protocol server",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
