@@ -127,7 +127,7 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
       host,
     });
 
-    console.log(pc.green(`✔ PostMCP Streamable HTTP server listening at: ${pc.bold(url)}`));
+    console.log(pc.green(`PostMCP Streamable HTTP server listening at: ${pc.bold(url)}`));
     console.log(pc.dim(`  Service: ${parsedSpec.title} (v${parsedSpec.version}) | Endpoints: ${parsedSpec.operations.length}`));
     if (isDryRun) {
       console.log(pc.yellow(`  Mode: DRY-RUN SIMULATION (Mutations simulated, no real side effects)`));

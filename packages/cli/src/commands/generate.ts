@@ -48,7 +48,7 @@ export async function generateCommand(specArg: string, options: GenerateCommandO
 
   const outDir = path.resolve(options.out || `./${spec.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}-mcp`);
 
-  console.log(pc.cyan(`⚡ Generating standalone ${pc.bold(targetLang.toUpperCase())} MCP server for '${spec.title}'...`));
+  console.log(pc.cyan(`Generating standalone ${pc.bold(targetLang.toUpperCase())} MCP server for '${spec.title}'...`));
 
   const project = targetLang === 'ts'
     ? generateTypeScriptProject(spec)
@@ -70,7 +70,7 @@ export async function generateCommand(specArg: string, options: GenerateCommandO
   }
 
   console.log();
-  console.log(pc.green(`✔ Standalone MCP server successfully generated at:`));
+  console.log(pc.green(`Standalone MCP server successfully generated at:`));
   console.log(`  ${pc.bold(outDir)}`);
   console.log();
   console.log(pc.dim('Next steps:'));

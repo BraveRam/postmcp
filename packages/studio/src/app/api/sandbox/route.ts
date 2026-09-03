@@ -136,7 +136,7 @@ async function executeMcpOperation(
 
   const isMutation = op.riskTier === 'MUTATION' || op.riskTier === 'CRITICAL' || op.method !== 'get';
   const prefix = (dryRun && isMutation)
-    ? '⚠️ [DRY RUN SAFEGUARD ACTIVE] Mutation simulated safely without modifying remote state.\n\n'
+    ? '[DRY RUN SAFEGUARD ACTIVE] Mutation simulated safely without modifying remote state.\n\n'
     : '';
 
   return {

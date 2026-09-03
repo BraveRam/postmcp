@@ -71,7 +71,7 @@ export async function inspectCommand(specArg: string, options: InspectCommandOpt
 
   // Header Banner
   console.log();
-  console.log(pc.bold(pc.cyan(`⚡ PostMCP API Inspection: ${spec.title} (v${spec.version})`)));
+  console.log(pc.bold(pc.cyan(`PostMCP API Inspection: ${spec.title} (v${spec.version})`)));
   if (spec.description) {
     console.log(pc.dim(spec.description.slice(0, 120) + (spec.description.length > 120 ? '...' : '')));
   }
@@ -116,21 +116,21 @@ export async function inspectCommand(specArg: string, options: InspectCommandOpt
   console.log();
 
   // 2. Token Diet & Context Optimization Preview
-  console.log(pc.bold('⚡ Token Diet & Context Optimization Preview:'));
+  console.log(pc.bold('Token Diet & Context Optimization Preview:'));
   console.log(`  ● Full Static Tool Declarations: ~${tokenMetrics.rawTokens.toLocaleString()} tokens`);
   console.log(`  ● PostMCP JIT + Token Diet:      ~${tokenMetrics.optimizedTokens.toLocaleString()} tokens`);
   console.log(`  ● Context Window Savings:        ${pc.bold(pc.green(`~${tokenMetrics.savingsPct}% saved`))}`);
   console.log();
 
   // 3. Risk Tiers Breakdown
-  console.log(pc.bold('🛡️ Safety & Risk Tier Breakdown:'));
+  console.log(pc.bold('Safety & Risk Tier Breakdown:'));
   console.log(`  ${pc.green('● READ_ONLY')}:  ${riskCounts.READ_ONLY} endpoints (Safe for autonomous exploration)`);
   console.log(`  ${pc.yellow('● MUTATION')}:   ${riskCounts.MUTATION} endpoints (Creates or updates data)`);
   console.log(`  ${pc.red('● CRITICAL')}:   ${riskCounts.CRITICAL} endpoints (Destructive actions / simulated in dry-run)`);
   console.log();
 
   // 4. Sample Endpoints List
-  console.log(pc.bold(`📋 Operations List (Showing first 10 of ${totalOps}):`));
+  console.log(pc.bold(`Operations List (Showing first 10 of ${totalOps}):`));
   const opTable = new Table({
     head: [pc.bold('Tool Name (ID)'), pc.bold('Method'), pc.bold('Path'), pc.bold('Risk Tier')],
     colWidths: [22, 10, 32, 14],

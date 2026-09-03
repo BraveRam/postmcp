@@ -84,7 +84,7 @@ export async function exportCommand(specArg: string, options: ExportCommandOptio
       ? ['cursor', 'claude', 'windsurf']
       : [selectedTarget as 'cursor' | 'claude' | 'windsurf'];
 
-  console.log(pc.bold(pc.cyan(`⚡ PostMCP 1-Click Client Configuration Exporter`)));
+  console.log(pc.bold(pc.cyan(`PostMCP 1-Click Client Configuration Exporter`)));
   console.log();
 
   for (const c of clientsToExport) {
@@ -115,9 +115,9 @@ export async function exportCommand(specArg: string, options: ExportCommandOptio
         }
 
         fs.writeFileSync(configPath, JSON.stringify(existingConfig, null, 2), 'utf-8');
-        console.log(pc.green(`  ✔ Successfully merged and written to ${configPath}`));
+        console.log(pc.green(`  Successfully merged and written to ${configPath}`));
       } catch (err: any) {
-        console.error(pc.red(`  ✖ Failed to write to ${configPath}: ${err.message}`));
+        console.error(pc.red(`  Failed to write to ${configPath}: ${err.message}`));
       }
       console.log();
     }

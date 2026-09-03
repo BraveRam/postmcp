@@ -1,4 +1,4 @@
-# PostMCP 📮⚡
+# PostMCP
 
 > **The "Postman for MCP"** — Turn any OpenAPI / Swagger spec into a context-optimized, safe, type-safe Model Context Protocol (MCP) server in under 60 seconds.
 
@@ -8,7 +8,7 @@
 
 ---
 
-## ⚡ Quickstart (Zero Code)
+## Quickstart (Zero Code)
 
 Connect any REST API directly to **Claude Desktop**, **Cursor**, **Antigravity**, or **Windsurf**:
 
@@ -44,21 +44,21 @@ npx postmcp studio
 
 ---
 
-## 🌟 Why PostMCP?
+## Why PostMCP?
 
 Standard naive OpenAPI-to-MCP converters dump 100+ raw endpoints into the LLM context window and return 50KB JSON payloads, causing context overflows and hallucinated tool calls. 
 
 **PostMCP solves this with 5 core pillars:**
 
-1. 🔍 **JIT Dynamic Tool Router (`tool_search`)**: Automatically switches to dynamic tool discovery for APIs with > 20 endpoints, preventing context window saturation (<1,500 active tokens).
-2. 🥗 **Token Diet Engine**: Prunes nulls/links/boilerplate and automatically formats object arrays into compact Markdown tables (**reducing payload tokens by 70%+**).
-3. 🛡️ **3-Tier Risk Guardrails**: Tags operations with MCP hints (`readOnlyHint`, `destructiveHint`) and supports `--dry-run` simulation mode.
-4. 🔗 **Composite Macro Tools**: Chained multi-step REST workflows executed in memory in a single tool call.
-5. 🎨 **Visual Web Studio**: Dark-mode Next.js 16 + shadcn/ui workbench with Live Sandbox (Vercel AI Gateway) and copyable config snippets.
+1. **JIT Dynamic Tool Router (`tool_search`)**: Automatically switches to dynamic tool discovery for APIs with > 20 endpoints, preventing context window saturation (<1,500 active tokens).
+2. **Token Diet Engine**: Prunes nulls/links/boilerplate and automatically formats object arrays into compact Markdown tables (**reducing payload tokens by 70%+**).
+3. **3-Tier Risk Guardrails**: Tags operations with MCP hints (`readOnlyHint`, `destructiveHint`) and supports `--dry-run` simulation mode.
+4. **Composite Macro Tools**: Chained multi-step REST workflows executed in memory in a single tool call.
+5. **Visual Web Studio**: Dark-mode Next.js 16 + shadcn/ui workbench with Live Sandbox (Vercel AI Gateway) and copyable config snippets.
 
 ---
 
-## 📦 Monorepo Structure
+## Monorepo Structure
 
 - `packages/core`: Spec parser, Token Diet engine, JIT router, and MCP SDK v2 protocol server (`@postmcp/core`).
 - `packages/cli`: `postmcp` CLI executable (`postmcp run`, `postmcp studio`, `postmcp export`).
@@ -67,6 +67,6 @@ Standard naive OpenAPI-to-MCP converters dump 100+ raw endpoints into the LLM co
 
 ---
 
-## 📄 License
+## License
 
 MIT © [PostMCP Contributors](LICENSE)

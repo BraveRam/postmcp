@@ -62,7 +62,7 @@ export async function studioCommand(specArg?: string, options: StudioCommandOpti
   const studioDir = findStudioDir();
 
   console.log();
-  console.log(pc.bold(pc.cyan(`⚡ Starting PostMCP Visual Web Studio...`)));
+  console.log(pc.bold(pc.cyan(`Starting PostMCP Visual Web Studio...`)));
   console.log(`  Port: ${pc.bold(pc.green(port))}`);
   console.log(`  Studio Dir: ${pc.dim(studioDir)}`);
   if (specArg) {
@@ -122,7 +122,7 @@ export async function studioCommand(specArg?: string, options: StudioCommandOpti
   const isReady = await waitForServer(baseUrl, 15000);
 
   if (isReady) {
-    console.log(pc.green(`✔ PostMCP Visual Web Studio ready at: ${pc.bold(targetUrl)}`));
+    console.log(pc.green(`PostMCP Visual Web Studio ready at: ${pc.bold(targetUrl)}`));
   } else {
     console.log(pc.dim(`  Studio server starting at: ${targetUrl}`));
   }
