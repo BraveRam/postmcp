@@ -26,6 +26,19 @@ Instead of writing hundreds of lines of custom MCP server boilerplate, hand-craf
 
 ---
 
+## The Problems PostMCP Solves
+
+Connecting AI coding assistants to raw REST APIs with naive 1-to-1 converters creates four major roadblocks:
+
+1. **Context Window Saturation**: Converting a 200+ endpoint REST spec (e.g., Stripe, GitHub, Jira) injects 30,000+ tokens of static tool schemas on every turn, degrading reasoning and causing tool hallucinations.
+2. **Token Drowning**: Raw REST responses return 50KB+ of redundant JSON metadata (HATEOAS links, audit timestamps, internal IDs, null values), consuming context without providing signal.
+3. **The CRUD Mismatch**: An AI agent often must make 3 to 5 slow, sequential round trips to satisfy a single user prompt (e.g., lookup user -> fetch orders -> cancel order).
+4. **Blind Mutation Risk**: Destructive endpoints (`DELETE /database`, `POST /billing/charge`) are exposed alongside read endpoints with no distinction or dry-run protection.
+
+PostMCP acts as the intelligent compilation and runtime layer that eliminates these issues before requests reach your LLM.
+
+---
+
 ## Quickstart
 
 Run any OpenAPI spec or pre-configured preset on the fly:
@@ -61,19 +74,6 @@ Open `http://localhost:3000` to visually inspect endpoints, curate field masks, 
   }
 }
 ```
-
----
-
-## The Problems PostMCP Solves
-
-Connecting AI coding assistants to raw REST APIs with naive 1-to-1 converters creates four major roadblocks:
-
-1. **Context Window Saturation**: Converting a 200+ endpoint REST spec (e.g., Stripe, GitHub, Jira) injects 30,000+ tokens of static tool schemas on every turn, degrading reasoning and causing tool hallucinations.
-2. **Token Drowning**: Raw REST responses return 50KB+ of redundant JSON metadata (HATEOAS links, audit timestamps, internal IDs, null values), consuming context without providing signal.
-3. **The CRUD Mismatch**: An AI agent often must make 3 to 5 slow, sequential round trips to satisfy a single user prompt (e.g., lookup user -> fetch orders -> cancel order).
-4. **Blind Mutation Risk**: Destructive endpoints (`DELETE /database`, `POST /billing/charge`) are exposed alongside read endpoints with no distinction or dry-run protection.
-
-PostMCP acts as the intelligent compilation and runtime layer that eliminates these issues before requests reach your LLM.
 
 ---
 
