@@ -11,12 +11,12 @@ export async function listPresetsCommand(categoryOrQuery?: string): Promise<void
   let displayedPresets = ALL_PRESETS;
   if (categoryOrQuery) {
     const q = categoryOrQuery.toLowerCase().trim();
-    displayedPresets = ALL_PRESETS.filter((p) => {
+    displayedPresets = ALL_PRESETS.filter((p: any) => {
       return (
         p.id.toLowerCase().includes(q) ||
         p.name.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q) ||
-        (p.tags && p.tags.some((t) => t.toLowerCase().includes(q)))
+        (p.tags && p.tags.some((t: string) => t.toLowerCase().includes(q)))
       );
     });
   }

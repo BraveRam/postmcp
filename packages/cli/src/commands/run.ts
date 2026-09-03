@@ -51,7 +51,7 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
   // If config defines enabledOperations, filter out disabled operations (Finding 5)
   if (fileConfig.enabledOperations && Object.keys(fileConfig.enabledOperations).length > 0) {
     parsedSpec.operations = parsedSpec.operations.filter(
-      (op) => fileConfig.enabledOperations![op.id] !== false
+      (op: any) => fileConfig.enabledOperations![op.id] !== false
     );
   }
 

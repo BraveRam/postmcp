@@ -1,6 +1,6 @@
 {
   "name": "@postmcp/cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "The Postman for MCP. Turn any OpenAPI spec into a context-optimized MCP server in seconds.",
   "publishConfig": {
     "access": "public"
@@ -30,10 +30,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@postmcp/core": "^0.1.0",
-    "@postmcp/presets": "^0.1.0",
-    "@postmcp/studio": "^0.1.0",
-    "@postmcp/types": "^0.1.0",
+    "@postmcp/core": "^0.1.2",
+    "@postmcp/presets": "^0.1.2",
+    "@postmcp/studio": "^0.1.2",
+    "@postmcp/types": "^0.1.2",
     "axios": "^1.20.0",
     "cli-table3": "^0.6.5",
     "commander": "^13.1.0",

@@ -1,6 +1,6 @@
 {
   "name": "@postmcp/presets",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "50+ Curated, context-optimized API presets for PostMCP",
   "publishConfig": {
     "access": "public"
@@ -26,7 +26,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@postmcp/types": "workspace:*"
+    "@postmcp/types": "^0.1.2"
   },
   "devDependencies": {
     "@types/node": "^22.13.5",
