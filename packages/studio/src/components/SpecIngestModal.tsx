@@ -5,7 +5,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/Dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
-import { Upload, Globe, FileCode, FileUp, CheckCircle2 } from 'lucide-react';
+import { Upload, Globe, FileCode, FileUp, CheckCircle2, Loader2 } from 'lucide-react';
 
 interface SpecIngestModalProps {
   isOpen: boolean;
@@ -77,7 +77,12 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!isLoading && !open) onClose();
+      }}
+    >
       <DialogContent className="max-w-xl bg-zinc-950 border-zinc-800 text-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -98,15 +103,15 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
 
           <Tabs value={activeTab} onValueChange={(val: any) => setActiveTab(val)}>
             <TabsList className="grid grid-cols-3 w-full bg-black border-zinc-800">
-              <TabsTrigger value="file" className="flex items-center gap-1.5">
+              <TabsTrigger value="file" disabled={isLoading} className="flex items-center gap-1.5">
                 <FileUp className="h-3.5 w-3.5" />
                 File Upload
               </TabsTrigger>
-              <TabsTrigger value="url" className="flex items-center gap-1.5">
+              <TabsTrigger value="url" disabled={isLoading} className="flex items-center gap-1.5">
                 <Globe className="h-3.5 w-3.5" />
                 Remote URL
               </TabsTrigger>
-              <TabsTrigger value="paste" className="flex items-center gap-1.5">
+              <TabsTrigger value="paste" disabled={isLoading} className="flex items-center gap-1.5">
                 <FileCode className="h-3.5 w-3.5" />
                 Paste Schema
               </TabsTrigger>
@@ -115,13 +120,21 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
             <TabsContent value="file" className="pt-3">
               <div
                 onDragOver={(e) => {
+                  if (isLoading) return;
                   e.preventDefault();
                   setIsDragging(true);
                 }}
                 onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${
+                onDrop={(e) => {
+                  if (isLoading) return;
+                  handleDrop(e);
+                }}
+                onClick={() => {
+                  if (!isLoading) fileInputRef.current?.click();
+                }}
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-all flex flex-col items-center justify-center gap-2 ${
+                  isLoading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+                } ${
                   isDragging
                     ? 'border-white bg-zinc-900'
                     : selectedFileName
@@ -134,6 +147,7 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
                   type="file"
                   accept=".json,.yaml,.yml"
                   onChange={handleFileChange}
+                  disabled={isLoading}
                   className="hidden"
                 />
                 {selectedFileName ? (
@@ -163,6 +177,7 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
               <Input
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
+                disabled={isLoading}
                 placeholder="https://api.example.com/openapi.json"
                 className="bg-black"
               />
@@ -176,18 +191,25 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
               <textarea
                 value={rawSpec}
                 onChange={(e) => setRawSpec(e.target.value)}
+                disabled={isLoading}
                 placeholder="Paste JSON or YAML OpenAPI definition..."
                 rows={8}
-                className="w-full rounded-md border border-zinc-800 bg-black p-3 text-xs font-sans text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-400"
+                className="w-full rounded-md border border-zinc-800 bg-black p-3 text-xs font-sans text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-400 disabled:opacity-50"
               />
             </TabsContent>
           </Tabs>
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">
-            <Button type="button" variant="ghost" onClick={onClose}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onClose}
+              disabled={isLoading}
+            >
               Cancel
             </Button>
-            <Button type="submit" variant="default" disabled={isLoading}>
+            <Button type="submit" variant="default" disabled={isLoading} className="gap-2">
+              {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {isLoading ? 'Ingesting...' : 'Ingest Specification'}
             </Button>
           </div>

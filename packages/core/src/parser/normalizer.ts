@@ -63,6 +63,30 @@ function classifyRiskTier(method: HttpMethod, path: string, summary: string): Ri
   return 'MUTATION';
 }
 
+function sanitizeSchema(schema: any, maxDepth = 4, currentDepth = 0): any {
+  if (!schema || typeof schema !== 'object') return schema;
+  if (currentDepth >= maxDepth) {
+    return { type: schema.type || 'object' };
+  }
+
+  if (Array.isArray(schema)) {
+    return schema.slice(0, 30).map((item) => sanitizeSchema(item, maxDepth, currentDepth + 1));
+  }
+
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(schema)) {
+    if (key === 'example' || key === 'examples' || key === 'xml' || key === 'externalDocs') {
+      continue;
+    }
+    if (typeof value === 'object' && value !== null) {
+      result[key] = sanitizeSchema(value, maxDepth, currentDepth + 1);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
 function buildUnifiedInputSchema(
   parameters: NormalizedParameter[],
   requestBodySchema?: JSONSchemaObject
@@ -154,19 +178,19 @@ export function normalizeSpec(spec: any): NormalizedSpec {
   } else if (isSwagger2 && spec.securityDefinitions) {
     for (const [key, sec] of Object.entries<any>(spec.securityDefinitions)) {
       securitySchemes[key] = {
-        type: sec.type === 'basic' ? 'http' : sec.type,
-        scheme: sec.type === 'basic' ? 'basic' : undefined,
+        type: sec.type === 'basic' ? 'http' : sec.type === 'apiKey' ? 'apiKey' : 'oauth2',
         description: sec.description,
         name: sec.name,
         in: sec.in,
+        scheme: sec.type === 'basic' ? 'basic' : undefined,
       };
     }
   }
 
   // Extract Operations
   const operations: NormalizedOperation[] = [];
-  const paths = spec.paths || {};
   const usedOperationIds = new Set<string>();
+  const paths = spec.paths || {};
 
   const httpMethods: HttpMethod[] = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options'];
 
@@ -189,7 +213,9 @@ export function normalizeSpec(spec: any): NormalizedSpec {
       usedOperationIds.add(uniqueId);
 
       const summary = op.summary || `${method.toUpperCase()} ${pathKey}`;
-      const desc = op.description || summary;
+      const desc = op.description
+        ? (op.description.length > 500 ? op.description.slice(0, 500) + '...' : op.description)
+        : summary;
       const tags = Array.isArray(op.tags) ? op.tags : ['default'];
       const riskTier = classifyRiskTier(method, pathKey, summary + ' ' + desc);
 
@@ -212,12 +238,12 @@ export function normalizeSpec(spec: any): NormalizedSpec {
             in: param.in,
             description: param.description,
             required: Boolean(param.required),
-            schema: param.schema || {
+            schema: sanitizeSchema(param.schema || {
               type: param.type || 'string',
               format: param.format,
               enum: param.enum,
               default: param.default,
-            },
+            }, 3),
             style: param.style,
             explode: param.explode,
           });
@@ -245,12 +271,13 @@ export function normalizeSpec(spec: any): NormalizedSpec {
         }
       }
 
-      const inputSchema = buildUnifiedInputSchema(normalizedParams, requestBodySchema);
+      const inputSchema = sanitizeSchema(buildUnifiedInputSchema(normalizedParams, requestBodySchema), 5);
 
       // Extract 200/201 response schema if available
       const successResponse = op.responses?.['200'] || op.responses?.['201'] || op.responses?.['default'];
-      const responseSchema =
+      const rawResponseSchema =
         successResponse?.content?.['application/json']?.schema || successResponse?.schema;
+      const responseSchema = rawResponseSchema ? sanitizeSchema(rawResponseSchema, 3) : undefined;
 
       operations.push({
         id: uniqueId,
@@ -270,7 +297,7 @@ export function normalizeSpec(spec: any): NormalizedSpec {
     }
   }
 
-  // Extract Macros (Finding 22)
+  // Extract Macros
   const rawMacros = spec.macros || spec['x-macros'] || spec['x-postmcp-macros'] || [];
   const macros: MacroDefinition[] = Array.isArray(rawMacros) ? rawMacros : [];
 
