@@ -1,7 +1,7 @@
 import { parseOpenAPI, startStdioServer, startHttpServer, AuthConfig, NormalizedSpec } from '@postmcp/core';
 import type { RunCommandOptions } from '@postmcp/types';
 import { loadEnvFile, loadConfigFile, parseHeaderFlags, parseApiKeyFlag } from '../config/loader.js';
-import { resolvePresetSpec, getPreset, buildPresetAuthConfig, Preset } from '../presets/index.js';
+import { resolvePresetSpec, getPreset, buildPresetAuthConfig, ALL_PRESETS, Preset } from '../presets/index.js';
 import pc from 'picocolors';
 
 export type { RunCommandOptions };
@@ -28,6 +28,13 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
       process.exit(1);
       return;
     }
+  } else if (typeof specPath === 'string') {
+    const lower = specPath.toLowerCase();
+    preset = ALL_PRESETS.find(
+      (p) =>
+        (p.specUrl && lower.includes(p.specUrl.toLowerCase())) ||
+        (p.id && (lower.includes(`/${p.id}/`) || lower.includes(`/${p.id}.`) || lower.includes(`/${p.id}-`) || lower.includes(`${p.id}.tech`)))
+    );
   }
 
   // 2. Parse OpenAPI Specification

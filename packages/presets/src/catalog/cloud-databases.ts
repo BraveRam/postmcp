@@ -142,6 +142,7 @@ export const CLOUD_DATABASES_PRESETS: Preset[] = [
     authType: 'Bearer (NEON_API_KEY)',
     authEnvVar: 'NEON_API_KEY',
     defaultBaseUrl: 'https://console.neon.tech/api/v2',
+    specUrl: 'https://neon.tech/api_spec/release/v2.json',
     tags: ['postgres', 'serverless', 'branching', 'sql'],
     fieldMasks: [
       { path: '/projects', fields: ['projects.id', 'projects.name', 'projects.region_id', 'projects.created_at'] },

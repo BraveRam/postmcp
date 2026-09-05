@@ -7,7 +7,8 @@ interface IndexDoc {
 }
 
 function tokenize(text: string): string[] {
-  return text
+  const withCamelSplit = text.replace(/([a-z])([A-Z])/g, '$1 $2');
+  return withCamelSplit
     .toLowerCase()
     .replace(/[^a-z0-9_]/g, ' ')
     .split(/\s+/)
@@ -76,19 +77,28 @@ export class BM25ToolIndex {
   }
 
   public search(query: string, tag?: string, limit: number = 5): NormalizedOperation[] {
+    const cleanQuery = query.toLowerCase().trim();
     const queryTokens = tokenize(query);
     if (queryTokens.length === 0) {
       return this.docs.slice(0, limit).map((d) => d.operation);
     }
 
+    const normTag = tag ? tag.toLowerCase().replace(/s$/, '') : undefined;
     const scores: Array<{ operation: NormalizedOperation; score: number }> = [];
 
     for (const doc of this.docs) {
-      if (tag && !doc.operation.tags.some((t) => t.toLowerCase() === tag.toLowerCase())) {
-        continue;
+      if (normTag) {
+        const matchesTag = doc.operation.tags.some((t) => {
+          const tNorm = t.toLowerCase().replace(/s$/, '');
+          return tNorm === normTag || tNorm.includes(normTag) || normTag.includes(tNorm);
+        });
+        if (!matchesTag) {
+          continue;
+        }
       }
 
       let score = 0;
+      let matchedTokenCount = 0;
       const termFreqs = new Map<string, number>();
       for (const token of doc.tokens) {
         termFreqs.set(token, (termFreqs.get(token) || 0) + 1);
@@ -113,11 +123,12 @@ export class BM25ToolIndex {
 
         // Exact match boost for operationId and method/path
         let boost = 1.0;
-        if (doc.operation.id.toLowerCase().includes(qToken)) boost += 1.5;
-        if (doc.operation.path.toLowerCase().includes(qToken)) boost += 1.2;
-        if (doc.operation.summary.toLowerCase().includes(qToken)) boost += 1.3;
+        if (doc.operation.id.toLowerCase().includes(qToken)) boost += 2.0;
+        if (doc.operation.path.toLowerCase().includes(qToken)) boost += 1.5;
+        if (doc.operation.summary.toLowerCase().includes(qToken)) boost += 1.5;
 
         if (tf > 0) {
+          matchedTokenCount++;
           const numerator = tf * (this.k1 + 1) * boost;
           const denominator = tf + this.k1 * (1 - this.b + this.b * (doc.docLength / this.avgDocLength));
           score += idf * (numerator / (denominator || 1));
@@ -125,6 +136,33 @@ export class BM25ToolIndex {
       }
 
       if (score > 0) {
+        // Coordination factor: reward operations matching all or most query tokens
+        const coordFactor = matchedTokenCount / queryTokens.length;
+        score *= Math.pow(1 + coordFactor, 2);
+
+        // Exact ID, summary, and root collection path boosts
+        const opIdLower = doc.operation.id.toLowerCase();
+        const opPathLower = doc.operation.path.toLowerCase();
+        const opSummaryLower = doc.operation.summary.toLowerCase();
+        const queryNoSpaces = cleanQuery.replace(/\s+/g, '');
+
+        if (opIdLower === queryNoSpaces) {
+          score += 50; // Direct exact ID match
+        }
+        if (opSummaryLower === cleanQuery) {
+          score += 40; // Direct exact summary match
+        }
+        if (
+          opPathLower === '/' + queryTokens[queryTokens.length - 1] ||
+          opPathLower === '/' + queryTokens[0]
+        ) {
+          score += 30; // Root endpoint match (e.g. /projects)
+        }
+        const pathSegments = opPathLower.split('/').filter(Boolean);
+        if (pathSegments.length === 1) {
+          score += 15; // Clean collection endpoints get priority over deeply nested paths
+        }
+
         scores.push({ operation: doc.operation, score });
       }
     }

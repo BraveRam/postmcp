@@ -13,7 +13,7 @@ export function createCli(): Command {
   program
     .name('postmcp')
     .description('The Postman for MCP. Turn any OpenAPI spec into a context-optimized MCP server in seconds.')
-    .version('0.1.3');
+    .version('0.1.4');
 
   // 1. Run Command
   program
@@ -28,6 +28,7 @@ export function createCli(): Command {
     .option('--jit', 'Force Just-In-Time dynamic tool routing')
     .option('--no-jit', 'Disable JIT mode and expose all tools statically')
     .option('--dry-run', 'Simulate mutation & critical requests without real API execution')
+    .option('--token-diet', 'Enable Token Diet response optimization (enabled by default)')
     .option('--no-token-diet', 'Disable Token Diet payload pruning & markdown tables')
     .option('--max-tokens <number>', 'Token ceiling per tool response', '2500')
     .option('--env-file <path>', 'Custom .env file path to load')
