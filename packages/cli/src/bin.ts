@@ -13,7 +13,7 @@ export function createCli(): Command {
   program
     .name('postmcp')
     .description('The Postman for MCP. Turn any OpenAPI spec into a context-optimized MCP server in seconds.')
-    .version('0.1.4');
+    .version('0.1.6');
 
   // 1. Run Command
   program
