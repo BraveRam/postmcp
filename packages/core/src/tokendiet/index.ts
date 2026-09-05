@@ -62,17 +62,21 @@ export function applyTokenDiet(data: any, options: TokenDietOptions = {}): Token
   let textOutput = '';
   let isTruncated = false;
 
+  // Detect primary array property (e.g. data, items, projects, charges, issues, results)
+  let primaryArrayKey: string | null = null;
+  if (processed && typeof processed === 'object' && !Array.isArray(processed)) {
+    for (const [k, v] of Object.entries(processed)) {
+      if (Array.isArray(v) && v.length > 0 && isHomogeneousObjectArray(v)) {
+        primaryArrayKey = k;
+        break;
+      }
+    }
+  }
+
   if (Array.isArray(processed) && convertToMarkdown && isHomogeneousObjectArray(processed)) {
     textOutput = arrayToMarkdownTable(processed);
-  } else if (
-    processed &&
-    typeof processed === 'object' &&
-    Array.isArray(processed.data) &&
-    convertToMarkdown &&
-    isHomogeneousObjectArray(processed.data)
-  ) {
-    // Common REST pattern: { data: [...], total: 100 }
-    const { data: list, ...rest } = processed;
+  } else if (primaryArrayKey && convertToMarkdown) {
+    const { [primaryArrayKey]: list, ...rest } = processed;
     const header = Object.keys(rest).length > 0 ? `**Metadata:** ${JSON.stringify(rest)}\n\n` : '';
     textOutput = header + arrayToMarkdownTable(list);
   } else {

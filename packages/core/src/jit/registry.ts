@@ -38,7 +38,40 @@ export class ToolRegistry {
         this.activeOperations.set(op.id, op);
         this.mountedOrder.push(op.id);
       }
+    } else {
+      // Hybrid JIT: Pre-mount top root collection read operations ("Hot Tools") on startup
+      const hotTools = this.identifyHotTools(operations);
+      for (const op of hotTools) {
+        this.activeOperations.set(op.id, op);
+        this.mountedOrder.push(op.id);
+      }
     }
+  }
+
+  private identifyHotTools(operations: NormalizedOperation[]): NormalizedOperation[] {
+    const candidates = operations.filter((op) => {
+      if (op.method !== 'get') return false;
+      if (op.riskTier === 'CRITICAL') return false;
+      // Exclude paths with path parameters like /projects/{id}
+      if (op.path.includes('{')) return false;
+      // Path segments <= 2 (e.g. /projects, /users/me, /databases)
+      const segments = op.path.split('/').filter(Boolean);
+      if (segments.length > 2) return false;
+      return true;
+    });
+
+    const scored = candidates.map((op) => {
+      let priority = 0;
+      const lower = (op.id + ' ' + op.path + ' ' + op.summary).toLowerCase();
+      if (lower.includes('project') || lower.includes('repo') || lower.includes('issue') || lower.includes('charge')) priority += 25;
+      if (lower.includes('user') || lower.includes('me') || lower.includes('account') || lower.includes('org')) priority += 20;
+      if (lower.includes('list') || lower.includes('get')) priority += 15;
+      if (op.path.split('/').filter(Boolean).length === 1) priority += 10;
+      return { op, priority };
+    });
+
+    scored.sort((a, b) => b.priority - a.priority);
+    return scored.slice(0, 6).map((s) => s.op);
   }
 
   public getIsJIT(): boolean {
@@ -50,7 +83,7 @@ export class ToolRegistry {
   }
 
   public getActiveOperations(): NormalizedOperation[] {
-    return Array.from(this.activeOperations.values());
+    return this.mountedOrder.map((id) => this.activeOperations.get(id)!).filter(Boolean);
   }
 
   private promoteTool(id: string): void {
@@ -58,6 +91,11 @@ export class ToolRegistry {
     if (idx !== -1) {
       this.mountedOrder.splice(idx, 1);
       this.mountedOrder.push(id);
+    }
+    const op = this.activeOperations.get(id);
+    if (op) {
+      this.activeOperations.delete(id);
+      this.activeOperations.set(id, op);
     }
   }
 

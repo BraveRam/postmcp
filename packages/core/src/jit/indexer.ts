@@ -35,10 +35,10 @@ export class BM25ToolIndex {
         op.id,
         op.method,
         op.path,
-        op.summary,
-        op.description,
-        ...op.tags,
-        ...op.parameters.map((p) => `${p.name} ${p.description || ''}`),
+        op.summary || '',
+        op.description || '',
+        ...(op.tags || []),
+        ...(op.parameters || []).map((p) => `${p.name} ${p.description || ''}`),
       ].join(' ');
 
       const tokens = tokenize(docText);

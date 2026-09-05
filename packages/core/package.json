@@ -1,6 +1,6 @@
 {
   "name": "@postmcp/core",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "PostMCP core engine - OpenAPI parser, Token Diet, JIT router, and MCP protocol server",
   "publishConfig": {
     "access": "public"
@@ -29,7 +29,7 @@
     "@modelcontextprotocol/node": "^2.0.0",
     "@modelcontextprotocol/sdk": "^1.6.1",
     "@modelcontextprotocol/server": "^2.0.0",
-    "@postmcp/types": "^0.1.4",
+    "@postmcp/types": "^0.1.5",
     "@types/dotenv": "^8.2.3",
     "axios": "^1.7.9",
     "csv-parse": "^7.0.2",

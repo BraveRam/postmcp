@@ -31,7 +31,7 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
   } else if (typeof specPath === 'string') {
     const lower = specPath.toLowerCase();
     preset = ALL_PRESETS.find(
-      (p) =>
+      (p: Preset) =>
         (p.specUrl && lower.includes(p.specUrl.toLowerCase())) ||
         (p.id && (lower.includes(`/${p.id}/`) || lower.includes(`/${p.id}.`) || lower.includes(`/${p.id}-`) || lower.includes(`${p.id}.tech`)))
     );

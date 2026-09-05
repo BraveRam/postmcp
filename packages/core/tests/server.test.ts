@@ -201,4 +201,220 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
       await new Promise<void>((resolve) => httpServer.close(() => resolve()));
     }
   });
+
+  it('should auto-inject tenant ID from environment when omitted or passed dummy value', async () => {
+    process.env.NEON_ORG_ID = 'org-auto-12345';
+
+    const tenantSpec: NormalizedSpec = {
+      title: 'Tenant Service',
+      version: '1.0.0',
+      servers: [{ url: 'https://api.example.com' }],
+      operations: [
+        {
+          id: 'listProjects',
+          method: 'get',
+          path: '/projects',
+          summary: 'List projects',
+          parameters: [
+            { name: 'org_id', in: 'query', schema: { type: 'string' } },
+          ],
+          inputSchema: {
+            type: 'object',
+            properties: {
+              org_id: { type: 'string' },
+            },
+          },
+          riskTier: 'READ_ONLY',
+        },
+      ],
+      securitySchemes: {},
+    };
+
+    const postServer = new PostMcpServer({ spec: tenantSpec, jit: false });
+    let capturedParams: any = null;
+    (postServer as any).httpClient.request = async (options: any) => {
+      capturedParams = options.params;
+      return {
+        isError: false,
+        status: 200,
+        data: { projects: [{ id: 'proj_1', name: 'Alpha' }] },
+      };
+    };
+
+    const mcpServer = postServer.getServerInstance();
+    const callHandler = (mcpServer as any)._requestHandlers?.get('tools/call');
+
+    // Case A: omitted org_id
+    const resA = await callHandler({
+      method: 'tools/call',
+      params: { name: 'listProjects', arguments: {} },
+    });
+    expect(resA.isError).toBeFalsy();
+    expect(capturedParams.org_id).toBe('org-auto-12345');
+
+    // Case B: dummy org-unknown
+    const resB = await callHandler({
+      method: 'tools/call',
+      params: { name: 'listProjects', arguments: { org_id: 'org-unknown' } },
+    });
+    expect(resB.isError).toBeFalsy();
+    expect(capturedParams.org_id).toBe('org-auto-12345');
+
+    delete process.env.NEON_ORG_ID;
+  });
+
+  it('should perform multi-tenant fallback when primary organization returns empty', async () => {
+    const multiTenantSpec: NormalizedSpec = {
+      title: 'Multi-Tenant Service',
+      version: '1.0.0',
+      servers: [{ url: 'https://api.example.com' }],
+      operations: [
+        {
+          id: 'getOrganizations',
+          method: 'get',
+          path: '/users/me/organizations',
+          summary: 'List user organizations',
+          parameters: [],
+          inputSchema: { type: 'object' },
+          riskTier: 'READ_ONLY',
+        },
+        {
+          id: 'listProjects',
+          method: 'get',
+          path: '/projects',
+          summary: 'List projects',
+          parameters: [
+            { name: 'org_id', in: 'query', schema: { type: 'string' } },
+          ],
+          inputSchema: {
+            type: 'object',
+            properties: {
+              org_id: { type: 'string' },
+            },
+          },
+          riskTier: 'READ_ONLY',
+        },
+      ],
+      securitySchemes: {},
+    };
+
+    const postServer = new PostMcpServer({ spec: multiTenantSpec, jit: false });
+    (postServer as any).httpClient.request = async (options: any) => {
+      if (options.url === '/users/me/organizations') {
+        return {
+          isError: false,
+          status: 200,
+          data: {
+            organizations: [
+              { id: 'org-empty-default' },
+              { id: 'org-active-projects' },
+            ],
+          },
+        };
+      }
+      if (options.url === '/projects') {
+        if (options.params?.org_id === 'org-empty-default') {
+          return {
+            isError: false,
+            status: 200,
+            data: { projects: [] },
+          };
+        }
+        if (options.params?.org_id === 'org-active-projects') {
+          return {
+            isError: false,
+            status: 200,
+            data: {
+              projects: [
+                { id: 'proj_100', name: 'Real Project' },
+              ],
+            },
+          };
+        }
+      }
+      return { isError: true, status: 404 };
+    };
+
+    const mcpServer = postServer.getServerInstance();
+    const callHandler = (mcpServer as any)._requestHandlers?.get('tools/call');
+
+    const res = await callHandler({
+      method: 'tools/call',
+      params: { name: 'listProjects', arguments: {} },
+    });
+
+    expect(res.isError).toBeFalsy();
+    expect(res.content[0].text).toContain('Real Project');
+  });
+
+  it('should auto-paginate and consolidate up to 3 pages internally', async () => {
+    const paginateSpec: NormalizedSpec = {
+      title: 'Paginated Service',
+      version: '1.0.0',
+      servers: [{ url: 'https://api.example.com' }],
+      operations: [
+        {
+          id: 'listProjects',
+          method: 'get',
+          path: '/projects',
+          summary: 'List projects',
+          parameters: [
+            { name: 'cursor', in: 'query', schema: { type: 'string' } },
+          ],
+          inputSchema: { type: 'object' },
+          riskTier: 'READ_ONLY',
+        },
+      ],
+      securitySchemes: {},
+    };
+
+    const postServer = new PostMcpServer({ spec: paginateSpec, jit: false });
+    (postServer as any).httpClient.request = async (options: any) => {
+      const cursor = options.params?.cursor;
+      if (!cursor) {
+        return {
+          isError: false,
+          status: 200,
+          data: {
+            projects: [{ id: 'p1', name: 'Project 1' }],
+            pagination: { cursor: 'cursor-page-2' },
+          },
+        };
+      }
+      if (cursor === 'cursor-page-2') {
+        return {
+          isError: false,
+          status: 200,
+          data: {
+            projects: [{ id: 'p2', name: 'Project 2' }],
+            pagination: { cursor: 'cursor-page-3' },
+          },
+        };
+      }
+      if (cursor === 'cursor-page-3') {
+        return {
+          isError: false,
+          status: 200,
+          data: {
+            projects: [{ id: 'p3', name: 'Project 3' }],
+            pagination: { cursor: null },
+          },
+        };
+      }
+      return { isError: true };
+    };
+
+    const mcpServer = postServer.getServerInstance();
+    const callHandler = (mcpServer as any)._requestHandlers?.get('tools/call');
+
+    const res = await callHandler({
+      method: 'tools/call',
+      params: { name: 'listProjects', arguments: {} },
+    });
+
+    expect(res.isError).toBeFalsy();
+    expect(res.content[0].text).toContain('Project 1');
+    expect(res.content[0].text).toContain('Project 2');
+    expect(res.content[0].text).toContain('Project 3');
+  });
 });

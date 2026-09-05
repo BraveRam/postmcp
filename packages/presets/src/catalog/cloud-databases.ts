@@ -153,7 +153,19 @@ export const CLOUD_DATABASES_PRESETS: Preset[] = [
       description: 'Neon Database Branching API',
       securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
       endpoints: [
-        { path: '/projects', method: 'get', operationId: 'listProjects', summary: 'List Neon projects' },
+        { path: '/users/me/organizations', method: 'get', operationId: 'getCurrentUserOrganizations', summary: 'List organizations for the current user' },
+        {
+          path: '/projects',
+          method: 'get',
+          operationId: 'listProjects',
+          summary: 'List Neon projects',
+          parameters: [
+            { name: 'org_id', in: 'query', schema: { type: 'string' }, description: 'Neon Organization ID' },
+            { name: 'limit', in: 'query', schema: { type: 'integer' }, description: 'The maximum number of projects to return' },
+            { name: 'cursor', in: 'query', schema: { type: 'string' }, description: 'Pagination cursor' },
+            { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Search query to filter projects by name' },
+          ],
+        },
         { path: '/projects/{project_id}', method: 'get', operationId: 'getProject', summary: 'Get project details', parameters: [{ name: 'project_id', in: 'path', schema: { type: 'string' } }] },
         { path: '/projects/{project_id}/branches', method: 'get', operationId: 'listBranches', summary: 'List database branches', parameters: [{ name: 'project_id', in: 'path', schema: { type: 'string' } }] },
         { path: '/projects/{project_id}/branches', method: 'post', operationId: 'createBranch', summary: 'Create new database branch', parameters: [{ name: 'project_id', in: 'path', schema: { type: 'string' } }], requestBody: { properties: { branch: { type: 'object' } } } },
