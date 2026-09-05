@@ -286,8 +286,14 @@ export function serializeParameters(
   const cookieParams: Record<string, string> = {};
 
   for (const param of parameters) {
-    const val = args[param.name];
-    if (val === undefined || val === null) continue;
+    let val = args[param.name];
+    if (val === undefined || val === null) {
+      if (param.schema && (param.schema as any).default !== undefined) {
+        val = (param.schema as any).default;
+      } else {
+        continue;
+      }
+    }
 
     if (param.in === 'path') {
       const encoded = encodeURIComponent(String(val));

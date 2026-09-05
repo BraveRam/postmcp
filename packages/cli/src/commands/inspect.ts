@@ -98,7 +98,17 @@ export async function inspectCommand(specArg: string, options: InspectCommandOpt
     .join(' | ');
 
   const defaultUrl = spec.servers.length > 0 ? spec.servers[0].url : 'None declared';
-  const secSchemes = Object.keys(spec.securitySchemes).join(', ') || 'None declared';
+  const secSchemeEntries = Object.entries<any>(spec.securitySchemes || {});
+  let secSchemesDisplay = 'None declared';
+  if (secSchemeEntries.length > 0) {
+    secSchemesDisplay = secSchemeEntries
+      .map(([name, s]) => {
+        if (s.type === 'http') return `${name} (HTTP ${s.scheme || 'bearer'})`;
+        if (s.type === 'apiKey') return `${name} (API key in ${s.in || 'header'}: ${s.name || name})`;
+        return `${name} (${s.type || 'custom'})`;
+      })
+      .join(', ');
+  }
   const recommendedJit = totalOps > 20 ? pc.green('Yes (Dynamic JIT routing recommended)') : pc.blue('No (Static direct tools)');
   const savingsDisplay = pc.green(`~${tokenMetrics.savingsPct}% (${tokenMetrics.rawTokens.toLocaleString()} → ${tokenMetrics.optimizedTokens.toLocaleString()} tokens)`);
 
@@ -106,7 +116,7 @@ export async function inspectCommand(specArg: string, options: InspectCommandOpt
     ['Total Endpoints', `${totalOps} operations`],
     ['HTTP Methods', methodsStr],
     ['Base URL', defaultUrl],
-    ['Security Schemes', secSchemes],
+    ['Security Schemes', secSchemesDisplay],
     ['JIT Router Mode', recommendedJit],
     ['Est. Token Savings', savingsDisplay],
     ['Macros / Workflows', `${spec.macros?.length || 0} composite macros`]
@@ -122,7 +132,36 @@ export async function inspectCommand(specArg: string, options: InspectCommandOpt
   console.log(`  ● Context Window Savings:        ${pc.bold(pc.green(`~${tokenMetrics.savingsPct}% saved`))}`);
   console.log();
 
-  // 3. Risk Tiers Breakdown
+  // 3. Authentication Guide
+  if (secSchemeEntries.length > 0) {
+    console.log(pc.bold('Authentication Guide:'));
+    for (const [name, scheme] of secSchemeEntries) {
+      if (scheme.type === 'http' && scheme.scheme?.toLowerCase() === 'bearer') {
+        console.log(`  ● ${pc.cyan(name)}: HTTP Bearer Token`);
+        console.log(`    Header:      Authorization: Bearer <token>`);
+        console.log(`    CLI Option:  --bearer <token> (e.g. --bearer $MY_API_KEY)`);
+        console.log(`    Environment: BEARER_TOKEN or API_KEY`);
+      } else if (scheme.type === 'apiKey') {
+        const loc = scheme.in || 'header';
+        const keyName = scheme.name || name;
+        console.log(`  ● ${pc.cyan(name)}: API Key in ${loc} (${pc.bold(keyName)})`);
+        if (loc === 'header') {
+          console.log(`    CLI Option:  --api-key "${keyName}=<token>" or -H "${keyName}: <token>"`);
+        } else if (loc === 'query') {
+          console.log(`    CLI Option:  --api-key "query:${keyName}=<token>"`);
+        }
+        console.log(`    Environment: Set via custom header / config`);
+      } else if (scheme.type === 'http' && scheme.scheme?.toLowerCase() === 'basic') {
+        console.log(`  ● ${pc.cyan(name)}: HTTP Basic Auth`);
+        console.log(`    CLI Option:  -H "Authorization: Basic <base64>"`);
+      } else {
+        console.log(`  ● ${pc.cyan(name)}: ${scheme.type || 'Custom'}`);
+      }
+    }
+    console.log();
+  }
+
+  // 4. Risk Tiers Breakdown
   console.log(pc.bold('Safety & Risk Tier Breakdown:'));
   console.log(`  ${pc.green('● READ_ONLY')}:  ${riskCounts.READ_ONLY} endpoints (Safe for autonomous exploration)`);
   console.log(`  ${pc.yellow('● MUTATION')}:   ${riskCounts.MUTATION} endpoints (Creates or updates data)`);

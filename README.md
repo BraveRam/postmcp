@@ -1,6 +1,6 @@
 # PostMCP
 
-> **The "Postman for MCP"** - Turn any OpenAPI or Swagger specification into a context-optimized, safe, type-safe Model Context Protocol (MCP) server in seconds.
+Turn any OpenAPI or Swagger specification into a fast, context-optimized, safe Model Context Protocol (MCP) server for your AI coding agents.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![MCP Compliant](https://img.shields.io/badge/MCP-100%25-green.svg)](https://modelcontextprotocol.io/)
@@ -8,84 +8,185 @@
 
 ---
 
-## What is PostMCP?
+## Why PostMCP?
 
-PostMCP turns any REST API into native tools for AI coding assistants and agents (Cursor, Claude Desktop, Antigravity, Windsurf, LangChain).
+AI coding assistants (OpenCode, Cursor, Claude Desktop, Windsurf) are great at writing code, but giving them direct access to external APIs usually means writing hundreds of lines of custom MCP server boilerplate by hand.
 
-Instead of writing hundreds of lines of custom MCP server boilerplate, hand-crafting JSON schemas, or dealing with context window bloat, PostMCP takes an OpenAPI/Swagger URL or file and automatically produces an optimized, ready-to-run MCP server.
+Even if you auto-convert an OpenAPI spec naively, you hit immediate problems:
+* **Context Bloat**: A 200-endpoint API injects tens of thousands of tokens into every turn, exhausting context limits and causing hallucinations.
+* **Token Drowning**: Raw API responses return massive JSON payloads full of nulls, URLs, and internal metadata your LLM does not need.
+* **Auth Confusion**: Every API has different credential headers, query formats, and auth schemes.
 
-### What It Does
-
-* **Instant Zero-Code Connectivity**: Run any public or private API directly in your AI assistant over stdio or Streamable HTTP.
-* **Context Optimization (Token Diet)**: Strips metadata, nulls, and boilerplate from API responses, automatically converting object arrays into compact Markdown tables to cut token usage by 70% to 95%.
-* **Scales to Massive APIs (JIT Dynamic Routing)**: Replaces 600+ static tool definitions with an on-demand `tool_search` router, keeping active prompt context under 1,500 tokens.
-* **Safety Circuit Breaker (Dry-Run)**: Classifies operations into read-only vs. destructive tiers and intercepts mutations before they touch production databases.
-* **Atomic Multi-Step Macros**: Chains multi-step REST sequences (e.g., lookup -> create -> notify) into a single atomic tool executed in server memory.
-* **Visual Web Studio**: An interactive dark-mode workbench (Next.js 16 + Turbopack) to test endpoints, configure field masks, and preview token savings in a live AI sandbox.
-* **1-Click Export & Code Generation**: Generates configurations for Cursor, Claude Desktop, and Windsurf, or scaffolds complete standalone TypeScript (`@modelcontextprotocol/sdk`) or Python FastMCP repositories.
-
----
-
-## The Problems PostMCP Solves
-
-Connecting AI coding assistants to raw REST APIs with naive 1-to-1 converters creates four major roadblocks:
-
-1. **Context Window Saturation**: Converting a 200+ endpoint REST spec (e.g., Stripe, GitHub, Jira) injects 30,000+ tokens of static tool schemas on every turn, degrading reasoning and causing tool hallucinations.
-2. **Token Drowning**: Raw REST responses return 50KB+ of redundant JSON metadata (HATEOAS links, audit timestamps, internal IDs, null values), consuming context without providing signal.
-3. **The CRUD Mismatch**: An AI agent often must make 3 to 5 slow, sequential round trips to satisfy a single user prompt (e.g., lookup user -> fetch orders -> cancel order).
-4. **Blind Mutation Risk**: Destructive endpoints (`DELETE /database`, `POST /billing/charge`) are exposed alongside read endpoints with no distinction or dry-run protection.
-
-PostMCP acts as the intelligent compilation and runtime layer that eliminates these issues before requests reach your LLM.
+PostMCP solves this out of the box:
+1. **Inspect any API in seconds**: Point to any OpenAPI URL, file, or preset to instantly see its endpoints, risk levels, and exact authentication requirements.
+2. **Zero-Code Execution**: Run an in-memory MCP server over standard stdio or Streamable HTTP.
+3. **Token Diet**: Automatically strips boilerplate and turns large JSON arrays into concise Markdown tables, cutting token consumption by 70% to 95%.
+4. **Adaptive JIT Routing**: Scales to massive specs (e.g. Stripe, GitHub) by keeping tool definitions under 1,500 active tokens and loading endpoints on demand.
+5. **Dry-Run Protection**: Intercepts destructive mutations (POST, PUT, DELETE) before they touch production systems.
 
 ---
 
-## Installation
+## Quickstart in 3 Steps
 
-Run directly with zero install using `npx`:
+### Step 1: Inspect the API
 
-```bash
-npx @postmcp/cli <command> [options]
-```
-
-Or install globally to use the `postmcp` command anywhere:
+Before connecting an API to your agent, inspect it to verify its endpoints and authentication requirements:
 
 ```bash
-npm install -g @postmcp/cli
-postmcp --help
+npx @postmcp/cli inspect https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
 ```
+
+Or inspect one of the 60+ built-in presets:
+
+```bash
+npx @postmcp/cli inspect @stripe
+```
+
+The output gives you an immediate summary:
+* Total operations and HTTP methods.
+* Base API URL.
+* Security schemes and exact credential requirements.
+* Estimated token savings with Token Diet.
 
 ---
 
-## Quickstart
+### Step 2: Understand Authentication (How to Pass Keys)
 
-Run any OpenAPI spec or pre-configured preset on the fly:
+Every API authenticates differently. PostMCP makes it easy to know what to pass. When you run `postmcp inspect`, check the **Security Schemes** and **Authentication Guide** in the output.
 
-```bash
-# Run any public OpenAPI spec with Token Diet and JIT tool search
-npx @postmcp/cli run https://api.stripe.com/openapi.json \
-  --header "Authorization: Bearer $STRIPE_SECRET_KEY" \
-  --token-diet \
-  --jit
+There are three common authentication patterns:
+
+#### Pattern A: Bearer Token (`bearerAuth` or `HTTP bearer`)
+Common services: Firecrawl, Stripe, GitHub, OpenAI, Supabase, Neon.
+
+* **What it means**: The API expects an HTTP `Authorization: Bearer <token>` header.
+* **How to pass via CLI**:
+  ```bash
+  npx @postmcp/cli run <spec-url> --bearer $MY_API_KEY
+  ```
+* **How to pass via Environment Variables**:
+  PostMCP automatically checks for `BEARER_TOKEN` or `API_KEY` in your environment.
+  ```bash
+  export BEARER_TOKEN="your-token-here"
+  npx @postmcp/cli run <spec-url>
+  ```
+
+#### Pattern B: Custom Header or Query API Key (`apiKey`)
+Common services: Weather APIs, older enterprise gateways, custom services.
+
+* **What it means**: The key is sent in a custom header (e.g. `X-API-Key: <token>`) or query parameter (e.g. `?api_key=<token>`).
+* **Finding the exact parameter name**:
+  Run `npx @postmcp/cli inspect <spec-url> --json` and look at the `securitySchemes` block.
+* **How to pass via CLI**:
+  * For headers:
+    ```bash
+    npx @postmcp/cli run <spec-url> -H "X-API-Key: your-token-here"
+    ```
+    or
+    ```bash
+    npx @postmcp/cli run <spec-url> --api-key "X-API-Key=your-token-here"
+    ```
+  * For query parameters:
+    ```bash
+    npx @postmcp/cli run <spec-url> --api-key "query:api_key=your-token-here"
+    ```
+
+#### Pattern C: Built-in Presets
+If you are using a preset (like `@neon`, `@supabase`, `@github`, or `@stripe`), PostMCP already knows the exact token names:
+
+| Preset | Built-in Env Variable | Description |
+| :--- | :--- | :--- |
+| `@neon` | `NEON_API_KEY` | Serverless Postgres management |
+| `@supabase` | `SUPABASE_ACCESS_TOKEN` | Supabase Cloud management |
+| `@stripe` | `STRIPE_SECRET_KEY` | Stripe Payments & Billing |
+| `@github` | `GITHUB_TOKEN` | GitHub REST API |
+| `@linear` | `LINEAR_API_KEY` | Linear Project Management |
+| `@slack` | `SLACK_BOT_TOKEN` | Slack Web API |
+
+---
+
+### Step 3: Connect to Your AI Coding Assistant
+
+Configure PostMCP in your editor's MCP settings.
+
+#### OpenCode (`~/.config/opencode/opencode.json`)
+
+```json
+{
+  "mcp": {
+    "firecrawl": {
+      "type": "local",
+      "enabled": true,
+      "command": [
+        "npx",
+        "-y",
+        "@postmcp/cli@latest",
+        "run",
+        "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json",
+        "--token-diet"
+      ],
+      "environment": {
+        "BEARER_TOKEN": "{env:FIRECRAWL_API_KEY}"
+      }
+    },
+    "neon": {
+      "type": "local",
+      "enabled": true,
+      "command": [
+        "npx",
+        "-y",
+        "@postmcp/cli@latest",
+        "run",
+        "@neon",
+        "--token-diet"
+      ],
+      "environment": {
+        "NEON_API_KEY": "{env:NEON_API_KEY}"
+      }
+    }
+  }
+}
 ```
 
-### Launch the Visual Web Studio
-
-```bash
-npx @postmcp/cli studio
-```
-
-Open `http://localhost:3000` to visually inspect endpoints, curate field masks, chain macros, test prompts in the live sandbox, and export client configurations.
-
-### 1-Click Cursor Setup (`.cursor/mcp.json`)
+#### Cursor (`.cursor/mcp.json`)
 
 ```json
 {
   "mcpServers": {
-    "linear": {
+    "stripe": {
       "command": "npx",
-      "args": ["-y", "@postmcp/cli", "run", "https://api.linear.app/openapi.json", "--token-diet", "--jit"],
+      "args": [
+        "-y",
+        "@postmcp/cli@latest",
+        "run",
+        "@stripe",
+        "--token-diet",
+        "--jit"
+      ],
       "env": {
-        "LINEAR_API_KEY": "${env:LINEAR_API_KEY}"
+        "STRIPE_SECRET_KEY": "${env:STRIPE_SECRET_KEY}"
+      }
+    }
+  }
+}
+```
+
+#### Claude Desktop (`claude_desktop_config.json`)
+
+```json
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@postmcp/cli@latest",
+        "run",
+        "@supabase",
+        "--token-diet"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "your-access-token"
       }
     }
   }
@@ -94,196 +195,137 @@ Open `http://localhost:3000` to visually inspect endpoints, curate field masks, 
 
 ---
 
-## High-Level Architecture Topology
+## Core Features & Flags
+
+### 1. Token Diet (`--token-diet`)
+Raw API responses often return nested objects with dozens of unused properties, audit logs, and null values.
+
+When `--token-diet` is enabled:
+* Null and undefined values are automatically removed.
+* Redundant links, ETags, and metadata are pruned.
+* Arrays of records are converted into clean GitHub-flavored Markdown tables.
+* Output size is reduced by up to 90%, preventing context overflows and keeping responses legible for LLMs.
+
+### 2. Just-In-Time (JIT) Dynamic Router (`--jit`)
+When an API exposes more than 20 endpoints (or hundreds, like Stripe and GitHub), exposing all tools statically overwhelms the LLM.
+
+When `--jit` is enabled:
+* PostMCP pre-mounts root discovery operations and an intelligent `tool_search` meta-tool.
+* When the agent needs a specialized endpoint, it searches for it (e.g. `tool_search({ query: "refund charge" })`).
+* Matched tools are mounted dynamically into memory and the MCP client is notified.
+* Active prompt context stays below 1,500 tokens regardless of API size.
+
+### 3. Dry-Run Safety Mode (`--dry-run`)
+Allows your agent to test complex, multi-step workflows without making real changes:
+* Read-only operations (`GET`, `HEAD`) execute against live APIs.
+* Mutations (`POST`, `PUT`, `DELETE`, `PATCH`) are intercepted locally.
+* PostMCP returns realistic simulated success responses annotated with `[DRY RUN SAFEGUARD ACTIVE]`.
+
+### 4. Custom Headers (`-H`, `--header`)
+Pass any custom headers required by your proxy, API gateway, or company infrastructure:
+
+```bash
+npx @postmcp/cli run ./my-spec.json \
+  -H "X-Organization-Id: org_123" \
+  -H "X-Workspace: staging"
+```
+
+---
+
+## Visual Web Studio
+
+PostMCP includes a local visual studio for inspecting APIs, testing endpoints, designing multi-step macros, and testing prompts in an interactive AI sandbox.
+
+Launch the studio with:
+
+```bash
+npx @postmcp/cli studio
+```
+
+Or open a specific spec directly:
+
+```bash
+npx @postmcp/cli studio https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
+```
+
+Navigate to `http://localhost:3000` to:
+* Search and browse all operations with risk-tier classification.
+* Configure custom field masks and preview token savings in real time.
+* Build composite multi-step macros.
+* Test tool calls inside the live LLM sandbox.
+* Export ready-to-use configuration files for Cursor, Claude Desktop, and OpenCode with one click.
+
+---
+
+## Standalone Code Generation
+
+If you prefer to deploy an independent, self-contained MCP server instead of running PostMCP as a dynamic proxy, you can generate clean source code in TypeScript or Python:
+
+```bash
+# Generate a standalone TypeScript MCP server project
+npx @postmcp/cli generate @stripe --lang ts -o ./stripe-mcp-ts
+
+# Generate a standalone Python FastMCP project
+npx @postmcp/cli generate @stripe --lang py -o ./stripe-mcp-py
+```
+
+The generated project includes:
+* Native MCP tool handlers.
+* Typed Pydantic models (Python) or Zod schemas (TypeScript).
+* Ready-to-run test suite and Dockerfile.
+
+---
+
+## CLI Reference
 
 ```text
-                                  +----------------------------------------------------------------------+
-                                  |                       PostMCP SUITE ARCHITECTURE                     |
-                                  +----------------------------------------------------------------------+
-                                  |                                                                      |
-+---------------------------+     |  +-------------------------------+  +-----------------------------+  |     +---------------------------+
-|     OpenAPI Specs         |     |  |       Visual Web Studio       |  |        CLI Interface        |  |     |       Target Clients      |
-|  - OpenAPI 3.0 / 3.1      |---->|  |     (Next.js + Turbopack)     |  |     `npx @postmcp/cli <cmd>`     |  |---->|  - Cursor (.cursor/mcp)   |
-|  - Swagger 2.0            |     |  |  - Visual Spec Curator        |  |     (run, studio, inspect,  |  |     |  - Claude Desktop Config  |
-|  - Local file / Live URL  |     |  |  - Live LLM Test Sandbox      |  |      generate, presets,     |  |     |  - Antigravity / Windsurf |
-|  - Presets (60+ APIs)     |     |  |    (Vercel AI Gateway)        |  |      export)                |  |     |  - Custom Python/TS Agents|
-+---------------------------+     |  |  - Real-Time Token Visualizer |  |  (stdio & Streamable HTTP)  |  |     +---------------------------+
-                                  |  +---------------+---------------+  +--------------+--------------+  |
-                                  |                  |                                 |                 |
-                                  |                  +----------------+----------------+                 |
-                                  |                                   |                                  |
-                                  |                                   v                                  |
-                                  |                 +----------------------------------+                 |
-                                  |                 |       packages/core Engine       |                 |
-                                  |                 +----------------------------------+                 |
-                                  |                 | 1. AST Parser & Ref Resolver     |                 |
-                                  |                 | 2. Adaptive Hybrid JIT Router    |                 |
-                                  |                 | 3. Smart Token Diet Engine       |                 |
-                                  |                 | 4. 3-Tier Safety & Dry-Run       |                 |
-                                  |                 | 5. Macro Workflow Chainer        |                 |
-                                  |                 | 6. Media Adapter & Async 202     |                 |
-                                  |                 | 7. Resilient HTTP & Rate Limiter |                 |
-                                  |                 +-----------------+----------------+                 |
-                                  |                                   |                                  |
-                                  |         +-------------------------+------------------------+         |
-                                  |         |                                                  |         |
-                                  |         v                                                  v         |
-                                  |  +-----------------------------+            +----------------------+ |
-                                  |  |   Zero-Code Dynamic Proxy   |            | Standalone Code Gen  | |
-                                  |  |  (In-Memory Dispatcher)     |            | (Python FastMCP, TS) | |
-                                  |  +-----------------------------+            +----------------------+ |
-                                  +----------------------------------------------------------------------+
+Usage: postmcp <command> [options]
+
+Commands:
+  run <spec>         Start an MCP server from an OpenAPI spec, URL, or @preset
+  studio [spec]      Launch the local visual web studio (Next.js + Turbopack)
+  inspect <spec>     Analyze an API spec, security schemes, and estimated token savings
+  generate <spec>    Generate standalone TypeScript or Python MCP server code
+  export <spec>      Generate configuration snippets for Cursor, Claude, or Windsurf
+  presets [action]   List and browse the 60+ built-in API presets
 ```
 
----
+### Options for `postmcp run`
 
-## Core Capabilities & Deep Dive
-
-### 1. JIT Dynamic Tool Router (`tool_search`)
-For APIs with hundreds or thousands of endpoints (e.g., Stripe with 620+ endpoints, GitHub with 1,000+), mounting every tool statically exceeds context windows.
-
-* PostMCP mounts a single meta-tool: `tool_search`.
-* When the AI agent needs an operation, it searches by query (e.g., `tool_search({ query: "refund charge" })`).
-* PostMCP dynamically mounts the matched operations in memory and notifies the client via the MCP `notifications/tools/list_changed` protocol.
-* Context footprint remains **under 1,500 active tokens** regardless of API size.
-
-### 2. Token Diet Engine
-Raw API payloads contain excessive low-value data. The Token Diet engine compresses responses by **70% to 95%**:
-
-* **Boilerplate Pruning**: Automatically strips null fields, empty arrays, link objects (`_links`, `href`), tracking metadata, and ETags.
-* **Field Masking**: Interactive whitelist/blacklist selection per endpoint, configurable via Studio or `postmcp.config.json`.
-* **Smart Markdown Tables**: Detects collection endpoints and serializes homogeneous JSON arrays into compact GitHub-flavored Markdown tables.
-* **Single vs. Collection Differentiation**: Distinguishes single-entity records from arrays to prevent bloated sample arrays.
-
-### 3. Safety Guardrails & Dry-Run Simulation
-PostMCP analyzes HTTP methods, parameter semantics, and route naming to classify operations into three risk tiers:
-
-* `READ_ONLY`: GET, HEAD, OPTIONS queries. Safe for autonomous model exploration. Annotated with `readOnlyHint: true`.
-* `MUTATION`: POST, PUT, PATCH requests that modify state.
-* `CRITICAL`: High-risk actions (e.g., delete, cancel, refund, purge, terminate). Annotated with `destructiveHint: true`.
-* **Dry-Run Mode**: When `--dry-run` is active, mutations are intercepted before leaving the machine. Realistic simulated success data is returned with `[DRY RUN SAFEGUARD ACTIVE]`, allowing agents to complete full workflows without modifying live upstream data.
-
-### 4. Composite Macro Pipelines
-Macros collapse multi-step CRUD sequences into a single atomic MCP tool executed entirely in server memory:
-
-* Chained steps with parameter interpolation (`{{params.query}}`, `{{steps[0].id}}`).
-* JSONPath extraction for passing dynamic responses downstream (`$.data[0].id`).
-* Built-in private network and SSRF safeguards preventing loopback attacks.
-* Single round-trip execution for the AI client instead of multiple slow turns.
-
-### 5. Visual Web Studio & AI Sandbox
-A local Next.js 16 + Turbopack development workbench:
-
-* **API Explorer**: Horizontally resizable navigation with localStorage state persistence.
-* **Token Diet Curator**: Live token reduction counters and side-by-side JSON vs. Markdown table preview.
-* **Macro Builder**: Interactive UI for designing chained multi-step tools.
-* **Live Sandbox**: Test tools using Vercel AI Gateway models or an intelligent offline simulation runner. Supports AI SDK multi-step loops (`stopWhen: stepCountIs(5)`), sequential tool step cards, and dry-run banners.
-
-### 6. Client Exporter & Code Generator
-Deploy configurations or generate standalone production services:
-
-* **1-Click Exporter**: Generates ready-to-use snippets for Cursor, Claude Desktop, Windsurf, or `postmcp.config.json`. Supports up to 10 environment variable credentials.
-* **Direct Workspace Persistence**: Save configuration directly to your project root with one click.
-* **Standalone Code Generation**: Generate a self-contained TypeScript (`@modelcontextprotocol/sdk`) or Python FastMCP project complete with tests, dependencies, and Dockerfile:
-  ```bash
-  # Generate standalone TypeScript server
-  npx @postmcp/cli generate @stripe --lang ts -o ./my-stripe-mcp
-
-  # Generate standalone Python FastMCP server
-  npx @postmcp/cli generate @stripe --lang py -o ./my-stripe-mcp-py
-  ```
-
-### 7. 60+ Curated API Presets
-Zero-configuration presets for leading developer APIs:
-
-```bash
-postmcp run @stripe       # Stripe Payments API
-postmcp run @github       # GitHub REST API
-postmcp run @linear       # Linear Issue Tracking
-postmcp run @slack        # Slack Web API
-postmcp run @supabase     # Supabase Management API
-postmcp run @twilio       # Twilio Communications API
-postmcp run @openai       # OpenAI Platform API
-```
-
-Each preset comes with pre-tuned Token Diet field masks, macros, and authentication mappings.
-
-### 8. Multimodal Adapters & Async 202 Polling
-* **Image Formatting**: Automatically detects image responses (`image/png`, `image/jpeg`, `image/webp`), base64 encodes them, and returns native MCP image content blocks for vision models.
-* **CSV Parsing**: Converts `text/csv` payloads into structured Markdown tables.
-* **HTTP 202 Async Polling**: Autonomously follows `Location` headers and polls background tasks until completion, streaming the final payload back to the LLM in a single turn.
-
----
-
-## CLI Command Reference
-
-### `postmcp run <spec>`
-Run an MCP server from an OpenAPI spec, URL, or preset.
-
-| Option | Description |
+| Flag | Description |
 | :--- | :--- |
-| `-t, --transport <type>` | Transport type: `stdio` (default) or `http` |
-| `-p, --port <number>` | Port for HTTP transport (default: 3000) |
-| `-H, --header <k:v...>` | Custom headers to forward to the target API |
-| `--bearer <token>` | Bearer token for API authentication |
-| `--api-key <key>` | API key for authentication |
-| `--token-diet` | Enable Token Diet response optimization |
-| `--jit` | Enable Just-In-Time dynamic tool routing |
+| `--token-diet` | Enable automatic response pruning and Markdown table conversion |
+| `--jit` | Enable dynamic JIT tool discovery to save context tokens |
+| `--bearer <token>` | Pass an HTTP Bearer token |
+| `--api-key <key>` | Pass an API key (e.g. `X-API-Key=value` or `query:key=value`) |
+| `-H, --header <k:v>` | Forward custom HTTP header to upstream requests (can be repeated) |
 | `--dry-run` | Intercept and simulate destructive mutations |
-| `--config <path>` | Path to `postmcp.config.json` |
-
-### `postmcp studio [spec]`
-Launch the visual web studio.
-
-| Option | Description |
-| :--- | :--- |
-| `-p, --port <number>` | Port for the studio server (default: 3000) |
-| `--no-open` | Start the server without opening the default browser |
-
-### `postmcp inspect <spec>`
-Analyze an OpenAPI spec and view risk tiers, method counts, and token estimates.
-
-| Option | Description |
-| :--- | :--- |
-| `--json` | Output machine-readable normalized AST JSON |
-
-### `postmcp generate <spec>`
-Generate a standalone TypeScript or Python MCP server codebase.
-
-| Option | Description |
-| :--- | :--- |
-| `-t, --target <lang>` | Target language: `ts` or `py` (default: `ts`) |
-| `-l, --lang <lang>` | Alias for `--target` |
-| `-o, --out <dir>` | Output directory for the generated project |
-
-### `postmcp export <spec>`
-Export configuration snippets for AI clients.
-
-| Option | Description |
-| :--- | :--- |
-| `-t, --target <client>`| Target client: `cursor`, `claude`, `windsurf`, or `all` |
-| `--client <client>` | Alias for `--target` |
-| `-w, --write` | Merge and write directly to client configuration file on disk |
-| `--bearer <token>` | Bearer token for client configuration environment |
-
-### `postmcp presets [list|sync]`
-Browse and synchronize the built-in preset catalog.
+| `-t, --transport <type>`| Transport protocol: `stdio` (default) or `http` |
+| `-p, --port <port>` | Port for HTTP transport mode (default: 3000) |
+| `--base-url <url>` | Override the default upstream API base URL |
+| `--config <path>` | Path to a custom `postmcp.config.json` file |
 
 ---
 
-## Monorepo Packages
+## Monorepo Architecture
 
-* `packages/core`: Spec parser, Token Diet engine, JIT dynamic router, safety classifier, macro orchestrator, and MCP protocol server (`@postmcp/core`).
-* `packages/cli`: PostMCP command-line binary (`postmcp run`, `postmcp studio`, `postmcp export`, etc.).
-* `packages/studio`: Next.js 16 + Turbopack local visual workbench (`@postmcp/studio`).
-* `packages/presets`: 60+ pre-curated API configurations (`@postmcp/presets`).
-* `packages/types`: Shared TypeScript definitions and interfaces (`@postmcp/types`).
+PostMCP is organized as a modular TypeScript monorepo managed with `pnpm` and `turbo`:
+
+* `packages/core`: Spec parsing, token diet transformation, dynamic JIT tool routing, and runtime HTTP dispatching (`@postmcp/core`).
+* `packages/cli`: The `postmcp` command-line tool (`@postmcp/cli`).
+* `packages/presets`: Pre-tuned configurations and field masks for 60+ popular developer APIs (`@postmcp/presets`).
+* `packages/studio`: Local visual workbench built on Next.js 16 and Turbopack (`@postmcp/studio`).
+* `packages/types`: Shared TypeScript interfaces across all packages (`@postmcp/types`).
 
 ---
 
-## Development
+## Contributing & Local Development
 
 ```bash
+# Clone the repository
+git clone https://github.com/BraveRam/postmcp.git
+cd postmcp
+
 # Install dependencies
 pnpm install
 
@@ -293,7 +335,7 @@ pnpm build
 # Run unit tests across all packages
 pnpm test
 
-# Typecheck the entire monorepo
+# Run type checking
 pnpm run typecheck
 ```
 

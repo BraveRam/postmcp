@@ -10,7 +10,7 @@ export const CLOUD_DATABASES_PRESETS: Preset[] = [
     authType: 'Bearer (SUPABASE_ACCESS_TOKEN)',
     authEnvVar: 'SUPABASE_ACCESS_TOKEN',
     defaultBaseUrl: 'https://api.supabase.com/v1',
-    specUrl: 'https://api.supabase.com/v1/openapi.json',
+    specUrl: 'https://api.supabase.com/api/v1-json',
     tags: ['postgres', 'auth', 'database', 'storage', 'edge-functions', 'baas'],
     fieldMasks: [
       { path: '/projects', fields: ['id', 'name', 'region', 'status', 'created_at'] },
@@ -28,7 +28,7 @@ export const CLOUD_DATABASES_PRESETS: Preset[] = [
         },
         steps: [
           { id: 'getProject', action: 'GET /projects/{{ref}}' },
-          { id: 'getHealth', action: 'GET /projects/{{ref}}/health' },
+          { id: 'getHealth', action: 'GET /projects/{{ref}}/health?services=db' },
         ],
       },
     ],
@@ -40,7 +40,16 @@ export const CLOUD_DATABASES_PRESETS: Preset[] = [
       endpoints: [
         { path: '/projects', method: 'get', operationId: 'getProjects', summary: 'List all Supabase projects' },
         { path: '/projects/{ref}', method: 'get', operationId: 'getProject', summary: 'Get project details', parameters: [{ name: 'ref', in: 'path', schema: { type: 'string' } }] },
-        { path: '/projects/{ref}/health', method: 'get', operationId: 'getProjectHealth', summary: 'Get database health status', parameters: [{ name: 'ref', in: 'path', schema: { type: 'string' } }] },
+        {
+          path: '/projects/{ref}/health',
+          method: 'get',
+          operationId: 'getProjectHealth',
+          summary: 'Get database health status',
+          parameters: [
+            { name: 'ref', in: 'path', schema: { type: 'string' } },
+            { name: 'services', in: 'query', schema: { type: 'string', default: 'db' }, description: 'Service name (e.g. db, auth, storage, realtime, pooler)' },
+          ],
+        },
         { path: '/organizations', method: 'get', operationId: 'getOrganizations', summary: 'List organizations' },
         { path: '/projects/{ref}/functions', method: 'get', operationId: 'getFunctions', summary: 'List Edge Functions', parameters: [{ name: 'ref', in: 'path', schema: { type: 'string' } }] },
       ],
