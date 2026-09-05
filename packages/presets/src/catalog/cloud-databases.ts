@@ -145,7 +145,7 @@ export const CLOUD_DATABASES_PRESETS: Preset[] = [
     specUrl: 'https://neon.tech/api_spec/release/v2.json',
     tags: ['postgres', 'serverless', 'branching', 'sql'],
     fieldMasks: [
-      { path: '/projects', fields: ['projects.id', 'projects.name', 'projects.region_id', 'projects.created_at'] },
+      { path: '/projects', fields: ['projects[*].id', 'projects[*].name', 'projects[*].region_id', 'projects[*].created_at'] },
     ],
     bundledSpec: buildOpenAPISpec({
       title: 'Neon Serverless Postgres API',

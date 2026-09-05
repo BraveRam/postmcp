@@ -123,4 +123,29 @@ describe('Token Diet Engine', () => {
     const masked3 = applyFieldMask(rootArray, ['name']);
     expect(masked3).toEqual([{ name: 'Alice' }, { name: 'Bob' }]);
   });
+
+  it('should automatically expand dot-notation paths on nested arrays into wildcards', () => {
+    const data = {
+      projects: [
+        { id: 'proj_1', name: 'Alpha', secret: 'hide1' },
+        { id: 'proj_2', name: 'Beta', secret: 'hide2' },
+      ],
+      meta: { total: 2 },
+    };
+
+    // Dot notation on array property without explicit [*]
+    const masked = applyFieldMask(data, ['projects.id', 'projects.name']);
+    expect(masked).toEqual({
+      projects: [
+        { id: 'proj_1', name: 'Alpha' },
+        { id: 'proj_2', name: 'Beta' },
+      ],
+    });
+
+    // Explicit wildcard notation
+    const maskedExplicit = applyFieldMask(data, ['projects[*].name']);
+    expect(maskedExplicit).toEqual({
+      projects: [{ name: 'Alpha' }, { name: 'Beta' }],
+    });
+  });
 });

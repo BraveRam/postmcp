@@ -1,6 +1,6 @@
 {
   "name": "@postmcp/studio",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "publishConfig": {
     "access": "public"
   },
@@ -34,9 +34,9 @@
     "@ai-sdk/openai": "^4.0.56",
     "@ai-sdk/react": "^4.0.93",
     "@fontsource/roboto": "^5.3.0",
-    "@postmcp/core": "^0.1.5",
-    "@postmcp/presets": "^0.1.5",
-    "@postmcp/types": "^0.1.5",
+    "@postmcp/core": "^0.1.6",
+    "@postmcp/presets": "^0.1.6",
+    "@postmcp/types": "^0.1.6",
     "@radix-ui/react-accordion": "^1.2.20",
     "@radix-ui/react-collapsible": "^1.1.20",
     "@radix-ui/react-dialog": "^1.1.23",
