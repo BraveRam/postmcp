@@ -26,6 +26,31 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
     expect(stripe.name).toBe('Stripe API');
   });
 
+  it('GET /api/presets should correctly filter by category with encoded and unencoded ampersands', async () => {
+    // 1. Encoded category
+    const req1 = new Request(`http://localhost:3000/api/presets?category=${encodeURIComponent('Payments & Commerce')}`);
+    const res1 = await getPresetsHandler(req1);
+    const data1 = await res1.json();
+    expect(data1.presets.length).toBeGreaterThanOrEqual(8);
+    expect(data1.presets.every((p: any) => p.category === 'Payments & Commerce')).toBe(true);
+    expect(data1.presets.some((p: any) => p.id === 'stripe')).toBe(true);
+
+    // 2. Unencoded category (e.g. ?category=Payments & Commerce&q=)
+    const req2 = new Request('http://localhost:3000/api/presets?category=Payments & Commerce&q=');
+    const res2 = await getPresetsHandler(req2);
+    const data2 = await res2.json();
+    expect(data2.presets.length).toBeGreaterThanOrEqual(8);
+    expect(data2.presets.some((p: any) => p.id === 'shopify')).toBe(true);
+
+    // 3. Database & Cloud
+    const req3 = new Request(`http://localhost:3000/api/presets?category=${encodeURIComponent('Database & Cloud')}`);
+    const res3 = await getPresetsHandler(req3);
+    const data3 = await res3.json();
+    expect(data3.presets.length).toBeGreaterThanOrEqual(7);
+    expect(data3.presets.some((p: any) => p.id === 'supabase')).toBe(true);
+    expect(data3.presets.some((p: any) => p.id === 'neon')).toBe(true);
+  });
+
   it('GET /api/initial-spec should return runtime initial spec environment variable', async () => {
     process.env.STUDIO_INITIAL_SPEC = '@linear';
     const res = await initialSpecHandler();

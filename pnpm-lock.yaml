@@ -18,17 +18,17 @@ importers:
   packages/cli:
     dependencies:
       '@postmcp/core':
-        specifier: workspace:*
-        version: link:../core
+        specifier: ^0.1.6
+        version: 0.1.6(hono@4.13.5)
       '@postmcp/presets':
-        specifier: workspace:*
-        version: link:../presets
+        specifier: ^0.1.6
+        version: 0.1.6
       '@postmcp/studio':
-        specifier: workspace:*
-        version: link:../studio
+        specifier: ^0.1.6
+        version: 0.1.6(@types/node@22.20.1)(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(hono@4.13.5)(zod@4.5.4)
       '@postmcp/types':
-        specifier: workspace:*
-        version: link:../types
+        specifier: ^0.1.6
+        version: 0.1.6
       axios:
         specifier: ^1.20.0
         version: 1.20.0
@@ -73,8 +73,8 @@ importers:
         specifier: ^2.0.0
         version: 2.0.0
       '@postmcp/types':
-        specifier: workspace:*
-        version: link:../types
+        specifier: ^0.1.6
+        version: 0.1.6
       '@types/dotenv':
         specifier: ^8.2.3
         version: 8.2.3
@@ -119,8 +119,8 @@ importers:
   packages/presets:
     dependencies:
       '@postmcp/types':
-        specifier: workspace:*
-        version: link:../types
+        specifier: ^0.1.6
+        version: 0.1.6
     devDependencies:
       '@types/node':
         specifier: ^22.13.5
@@ -153,14 +153,14 @@ importers:
         specifier: ^5.3.0
         version: 5.3.0
       '@postmcp/core':
-        specifier: workspace:*
-        version: link:../core
+        specifier: ^0.1.6
+        version: 0.1.6(hono@4.13.5)
       '@postmcp/presets':
-        specifier: workspace:*
-        version: link:../presets
+        specifier: ^0.1.6
+        version: 0.1.6
       '@postmcp/types':
-        specifier: workspace:*
-        version: link:../types
+        specifier: ^0.1.6
+        version: 0.1.6
       '@radix-ui/react-accordion':
         specifier: ^1.2.20
         version: 1.2.20(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -199,13 +199,16 @@ importers:
         version: 1.1.1(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       geist:
         specifier: ^1.7.2
-        version: 1.7.2(next@16.3.4(@babel/core@7.29.7)(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))
+        version: 1.7.2(next@16.3.4(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))
       lucide-react:
         specifier: ^1.16.0
         version: 1.39.0(react@19.2.8)
       next:
         specifier: ^16.3.4
         version: 16.3.4(@babel/core@7.29.7)(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      next-themes:
+        specifier: ^0.4.6
+        version: 0.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -1104,6 +1107,18 @@ packages:
   '@nolyfill/is-core-module@1.0.39':
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
+
+  '@postmcp/core@0.1.6':
+    resolution: {integrity: sha512-kyPML2jmbx17yQ+mUMWPKUTMegYvzRKkHV+7R5iOzwpGL+DVCvmRbK9A984zPcGboodn5e8zbrKcYWbpSyFFhw==}
+
+  '@postmcp/presets@0.1.6':
+    resolution: {integrity: sha512-ZAB02jKkj++YAg55Xl/05IY8zlC1GazrQHPpdfrhBSWU9PKTAUbFCQIkAr+7p2kggZFihr9SSvkgyGkCSN1zJA==}
+
+  '@postmcp/studio@0.1.6':
+    resolution: {integrity: sha512-z3OY2n+w2q5r/4uJ+sUaysgX831rj8EwfFGbgX2Rnz9hJfR6LHLUgEOTmuGTjrqs7WmHGXERuzLOnkPAGwdcwQ==}
+
+  '@postmcp/types@0.1.6':
+    resolution: {integrity: sha512-lxfmqMzX16aiQm7T2UVAV72/aKXxZzssvyg+a/G83no6gKurwZXiVOl40CmlWWD+A2IyTu1o2tS8MK2YV2TBbA==}
 
   '@radix-ui/number@1.1.3':
     resolution: {integrity: sha512-Road2bidD0uu/1BGDOWNdPI06g0lIRy6IF9GZcIrDK2KGItfor8IQwQa+yM2ERgHM1MmHxaxpTzk0/Jp42lNfA==}
@@ -3098,6 +3113,12 @@ packages:
     resolution: {integrity: sha512-NMPBRMJgiQHjbd8phG3Vebdx4kZ1H121rbl5IkMqeOsahptB9BKo/d7oJ3zTXqTgagn2bWlNSXkh0QUGM31RYg==}
     engines: {node: '>=18'}
 
+  next-themes@0.4.6:
+    resolution: {integrity: sha512-pZvgD5L0IEvX5/9GWyHMf3m8BKiVQwsCMHfoFosXtXBMnaS0ZnIJ9ST4b4NqLVKDEm8QBxoNNGNaBv2JNF6XNA==}
+    peerDependencies:
+      react: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
+      react-dom: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
+
   next@16.3.4:
     resolution: {integrity: sha512-/Ztf6CeRH+ejEXUrYtqI4gkS66eFIHuSwqi60RgcpWKodxFZx2/dqVCMKBwILfAHXQ+F1b1vAudgj3mnxqtoIA==}
     engines: {node: '>=20.9.0'}
@@ -4614,6 +4635,76 @@ snapshots:
       fastq: 1.20.3
 
   '@nolyfill/is-core-module@1.0.39': {}
+
+  '@postmcp/core@0.1.6(hono@4.13.5)':
+    dependencies:
+      '@modelcontextprotocol/node': 2.0.0(@modelcontextprotocol/server@2.0.0)(hono@4.13.5)
+      '@modelcontextprotocol/sdk': 1.30.0(zod@3.25.76)
+      '@modelcontextprotocol/server': 2.0.0
+      '@postmcp/types': 0.1.6
+      '@types/dotenv': 8.2.3
+      axios: 1.20.0
+      csv-parse: 7.0.2
+      dotenv: 16.6.1
+      jsonpath-plus: 10.4.0
+      mime-types: 3.0.2
+      yaml: 2.9.0
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - '@cfworker/json-schema'
+      - debug
+      - hono
+      - supports-color
+
+  '@postmcp/presets@0.1.6':
+    dependencies:
+      '@postmcp/types': 0.1.6
+
+  '@postmcp/studio@0.1.6(@types/node@22.20.1)(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(hono@4.13.5)(zod@4.5.4)':
+    dependencies:
+      '@ai-sdk/anthropic': 4.0.48(zod@4.5.4)
+      '@ai-sdk/google': 4.0.62(zod@4.5.4)
+      '@ai-sdk/openai': 4.0.56(zod@4.5.4)
+      '@ai-sdk/react': 4.0.93(react@19.2.8)(zod@4.5.4)
+      '@fontsource/roboto': 5.3.0
+      '@postmcp/core': 0.1.6(hono@4.13.5)
+      '@postmcp/presets': 0.1.6
+      '@postmcp/types': 0.1.6
+      '@radix-ui/react-accordion': 1.2.20(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@radix-ui/react-collapsible': 1.1.20(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@radix-ui/react-dialog': 1.1.23(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@radix-ui/react-dropdown-menu': 2.1.24(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@radix-ui/react-popover': 1.1.23(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@radix-ui/react-scroll-area': 1.2.18(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@radix-ui/react-select': 2.3.7(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@radix-ui/react-tabs': 1.1.21(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@radix-ui/react-tooltip': 1.2.16(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      ai: 7.0.90(zod@4.5.4)
+      clsx: 2.1.1
+      cmdk: 1.1.1(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      geist: 1.7.2(next@16.3.4(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))
+      lucide-react: 1.39.0(react@19.2.8)
+      next: 16.3.4(@babel/core@7.29.7)(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
+      tailwind-merge: 3.6.0
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@cfworker/json-schema'
+      - '@opentelemetry/api'
+      - '@playwright/test'
+      - '@types/node'
+      - '@types/react'
+      - '@types/react-dom'
+      - babel-plugin-macros
+      - babel-plugin-react-compiler
+      - debug
+      - hono
+      - sass
+      - supports-color
+      - zod
+
+  '@postmcp/types@0.1.6': {}
 
   '@radix-ui/number@1.1.3': {}
 
@@ -6354,7 +6445,7 @@ snapshots:
 
   functions-have-names@1.2.3: {}
 
-  geist@1.7.2(next@16.3.4(@babel/core@7.29.7)(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)):
+  geist@1.7.2(next@16.3.4(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)):
     dependencies:
       next: 16.3.4(@babel/core@7.29.7)(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
 
@@ -6779,6 +6870,11 @@ snapshots:
   negotiator@1.1.0:
     dependencies:
       content-type: 2.1.0
+
+  next-themes@0.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
+    dependencies:
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
 
   next@16.3.4(@babel/core@7.29.7)(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:

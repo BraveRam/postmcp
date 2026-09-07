@@ -29,7 +29,7 @@ export function PresetSelectorModal({
   useEffect(() => {
     if (isOpen) {
       setIsLoading(true);
-      fetch(`/api/presets?category=${selectedCategory}&q=${encodeURIComponent(searchQuery)}`)
+      fetch(`/api/presets?category=${encodeURIComponent(selectedCategory)}&q=${encodeURIComponent(searchQuery)}`)
         .then((res) => res.json())
         .then((data) => {
           setPresets(data.presets || []);
@@ -71,7 +71,7 @@ export function PresetSelectorModal({
         </div>
 
         {/* Command Search List */}
-        <Command className="bg-zinc-950 flex-1">
+        <Command shouldFilter={false} className="bg-zinc-950 flex-1">
           <CommandInput
             value={searchQuery}
             onValueChange={setSearchQuery}

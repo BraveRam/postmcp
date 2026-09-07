@@ -4,12 +4,32 @@ import { ALL_PRESETS, getAllCategories } from '@postmcp/presets';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q')?.toLowerCase().trim();
-  const category = searchParams.get('category');
+  // Reconstruct category in case unencoded '&' was split by URL parser
+  // (e.g. ?category=Payments & Commerce => category="Payments ", " Commerce"="")
+  let rawCategory = searchParams.get('category') || '';
+  if (rawCategory && rawCategory.toLowerCase() !== 'all') {
+    const isDirectMatch = ALL_PRESETS.some(
+      (p) => p.category.toLowerCase() === rawCategory.toLowerCase().trim()
+    );
+    if (!isDirectMatch) {
+      for (const key of searchParams.keys()) {
+        if (key !== 'category' && key !== 'q') {
+          const combined = `${rawCategory}&${key}`.trim();
+          if (ALL_PRESETS.some((p) => p.category.toLowerCase() === combined.toLowerCase())) {
+            rawCategory = combined;
+            break;
+          }
+        }
+      }
+    }
+  }
 
+  const category = rawCategory.trim();
   let presets = ALL_PRESETS;
 
-  if (category && category !== 'all') {
-    presets = presets.filter((p) => p.category === category);
+  if (category && category.toLowerCase() !== 'all') {
+    const catLower = category.toLowerCase();
+    presets = presets.filter((p) => p.category.toLowerCase() === catLower);
   }
 
   if (query) {

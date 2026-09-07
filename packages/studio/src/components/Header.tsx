@@ -3,6 +3,7 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { Sparkles, Download, Upload, Layers, Terminal, Zap, Menu } from 'lucide-react';
 import { NormalizedSpec } from '@postmcp/types';
+import { ModeToggle } from './mode-toggle';
 
 interface HeaderProps {
   spec: NormalizedSpec | null;
@@ -98,6 +99,8 @@ export function Header({
           <span className="hidden sm:inline">Export MCP</span>
           <span className="sm:hidden">Export</span>
         </Button>
+
+        <ModeToggle />
       </div>
     </header>
   );
