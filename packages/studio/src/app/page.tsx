@@ -202,7 +202,7 @@ export default function StudioPage() {
 
   return (
     <div
-      className={`flex flex-col h-screen overflow-hidden bg-black text-zinc-100 font-sans ${
+      className={`flex flex-col h-screen overflow-hidden bg-background text-foreground font-sans ${
         isDraggingSidebar ? 'select-none cursor-col-resize' : ''
       }`}
     >
@@ -219,12 +219,12 @@ export default function StudioPage() {
 
       {/* Main Workspace Layout */}
       {isLoading ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-zinc-400 gap-3 font-sans p-4 text-center">
-          <Loader2 className="h-6 w-6 animate-spin text-white" />
+        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3 font-sans p-4 text-center">
+          <Loader2 className="h-6 w-6 animate-spin text-foreground" />
           <span className="text-xs">Analyzing OpenAPI schema & generating MCP tools...</span>
         </div>
       ) : !spec ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-zinc-400 gap-4 font-sans p-4 text-center">
+        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-4 font-sans p-4 text-center">
           <p className="text-xs">No specification loaded.</p>
           <Button
             onClick={() => setIsPresetsOpen(true)}
@@ -256,13 +256,13 @@ export default function StudioPage() {
                 setIsDraggingSidebar(true);
               }}
               className={`absolute top-0 -right-1 w-2.5 h-full cursor-col-resize z-30 group flex items-center justify-center transition-colors select-none ${
-                isDraggingSidebar ? 'bg-zinc-700/60' : 'hover:bg-zinc-800/80'
+                isDraggingSidebar ? 'bg-border' : 'hover:bg-muted'
               }`}
               title="Drag horizontally to resize sidebar"
             >
               <div
                 className={`w-0.5 h-7 rounded-full transition-colors ${
-                  isDraggingSidebar ? 'bg-white scale-y-125' : 'bg-zinc-700 group-hover:bg-zinc-300'
+                  isDraggingSidebar ? 'bg-foreground scale-y-125' : 'bg-muted-foreground/40 group-hover:bg-foreground'
                 }`}
               />
             </div>
@@ -270,8 +270,8 @@ export default function StudioPage() {
 
           {/* Mobile Drawer Left Panel: API Explorer */}
           {isMobileSidebarOpen && (
-            <div className="fixed inset-0 z-50 md:hidden flex bg-black/80 backdrop-blur-xs">
-              <div className="w-4/5 max-w-sm h-full bg-zinc-950 border-r border-zinc-800 shadow-2xl animate-in slide-in-from-left duration-200">
+            <div className="fixed inset-0 z-50 md:hidden flex bg-black/60 backdrop-blur-xs">
+              <div className="w-4/5 max-w-sm h-full bg-background border-r border-border shadow-2xl animate-in slide-in-from-left duration-200">
                 <ApiExplorer
                   operations={spec.operations}
                   selectedOperationId={selectedOperation?.id || null}
@@ -293,16 +293,16 @@ export default function StudioPage() {
           )}
 
           {/* Right Panel: Workbenches */}
-          <div className="flex-1 flex flex-col overflow-hidden bg-black min-w-0">
+          <div className="flex-1 flex flex-col overflow-hidden bg-background min-w-0">
             {/* Workbench Tab Bar */}
-            <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-950 px-3 sm:px-6 shrink-0 overflow-x-auto">
+            <div className="flex items-center justify-between border-b border-border bg-muted/40 px-3 sm:px-6 shrink-0 overflow-x-auto">
               <div className="flex items-center gap-3 sm:gap-6 min-w-max">
                 <button
                   onClick={() => setActiveTab('detail')}
                   className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer font-sans whitespace-nowrap ${
                     activeTab === 'detail'
-                      ? 'border-white text-white'
-                      : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                      ? 'border-foreground text-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <FileText className="h-3.5 w-3.5 shrink-0" />
@@ -313,8 +313,8 @@ export default function StudioPage() {
                   onClick={() => setActiveTab('tokendiet')}
                   className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer font-sans whitespace-nowrap ${
                     activeTab === 'tokendiet'
-                      ? 'border-white text-white'
-                      : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                      ? 'border-foreground text-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <Sparkles className="h-3.5 w-3.5 shrink-0" />
@@ -325,8 +325,8 @@ export default function StudioPage() {
                   onClick={() => setActiveTab('macros')}
                   className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer font-sans whitespace-nowrap ${
                     activeTab === 'macros'
-                      ? 'border-white text-white'
-                      : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                      ? 'border-foreground text-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <Workflow className="h-3.5 w-3.5 shrink-0" />
@@ -337,8 +337,8 @@ export default function StudioPage() {
                   onClick={() => setActiveTab('sandbox')}
                   className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer font-sans whitespace-nowrap ${
                     activeTab === 'sandbox'
-                      ? 'border-white text-white'
-                      : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                      ? 'border-foreground text-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <Bot className="h-3.5 w-3.5 shrink-0" />
@@ -347,15 +347,15 @@ export default function StudioPage() {
               </div>
 
               {selectedOperation && (
-                <div className="hidden lg:flex items-center gap-1.5 text-xs font-sans text-zinc-500 truncate max-w-xs ml-4">
-                  <span className="text-zinc-400 font-semibold">{selectedOperation.method.toUpperCase()}</span>
+                <div className="hidden lg:flex items-center gap-1.5 text-xs font-sans text-muted-foreground truncate max-w-xs ml-4">
+                  <span className="font-semibold text-foreground">{selectedOperation.method.toUpperCase()}</span>
                   <span className="truncate">{selectedOperation.path}</span>
                 </div>
               )}
             </div>
 
             {/* Workbench Tab Content */}
-            <div className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 bg-black">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 bg-background">
               {activeTab === 'detail' && selectedOperation && (
                 <EndpointDetail operation={selectedOperation} />
               )}
