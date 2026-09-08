@@ -48,3 +48,4 @@ skills-lock.json
 
 # Local generated configs
 *.postmcp.json
+postmcp.config.json

@@ -133,6 +133,25 @@ describe('Resilient HTTP, Auth, and Parameter Serialization', () => {
     });
     expect(invalidProps.valid).toBe(false);
     expect(invalidProps.errors.some((e) => e.includes('Unexpected property'))).toBe(true);
+
+    // UUID validation supporting UUIDv1 through UUIDv7
+    const uuidSchema = {
+      type: 'object',
+      properties: {
+        id: { type: 'string', format: 'uuid' },
+      },
+    };
+    const validUuidV7 = validateInputArguments(uuidSchema, {
+      id: '01a08192-8999-75d7-9bf6-06e28d6ecc7c',
+    });
+    expect(validUuidV7.valid).toBe(true);
+    expect(validUuidV7.errors).toHaveLength(0);
+
+    const invalidUuid = validateInputArguments(uuidSchema, {
+      id: 'not-a-valid-uuid-1234',
+    });
+    expect(invalidUuid.valid).toBe(false);
+    expect(invalidUuid.errors.some((e) => e.includes('Invalid UUID format'))).toBe(true);
   });
 
   it('should poll 202 Accepted background jobs with JSON arraybuffer bodies and complete successfully', async () => {
