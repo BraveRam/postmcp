@@ -15,8 +15,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`dark ${GeistSans.variable} ${GeistMono.variable}`}>
-      <body className="min-h-screen bg-black text-zinc-100 font-sans antialiased selection:bg-white selection:text-black">
+    <html lang="en" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className="min-h-screen bg-background text-foreground font-sans antialiased">
 	<ThemeProvider
             attribute="class"
             defaultTheme="system"
