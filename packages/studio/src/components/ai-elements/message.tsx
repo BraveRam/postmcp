@@ -52,8 +52,8 @@ export function MessageContent({
       className={cn(
         'rounded-lg p-3 sm:p-4 text-xs font-sans leading-relaxed transition-all',
         from === 'user'
-          ? 'bg-zinc-900 border border-zinc-700 text-white ml-auto'
-          : 'bg-zinc-950 border border-zinc-800 text-zinc-200 mr-auto',
+          ? 'bg-primary text-primary-foreground ml-auto shadow-xs'
+          : 'bg-muted/50 border border-border text-foreground mr-auto',
         className
       )}
       {...props}
@@ -85,7 +85,7 @@ export function MessageActions({ className, children, ...props }: MessageActions
   return (
     <div
       className={cn(
-        'flex items-center gap-1.5 pt-1 text-zinc-500 opacity-80 group-hover:opacity-100 transition-opacity font-sans',
+        'flex items-center gap-1.5 pt-1 text-muted-foreground opacity-80 group-hover:opacity-100 transition-opacity font-sans',
         className
       )}
       {...props}
@@ -111,7 +111,7 @@ export function MessageAction({
     <Button
       variant="ghost"
       size="sm"
-      className={cn('h-6 px-2 text-[11px] text-zinc-400 hover:text-white hover:bg-zinc-900 font-sans', className)}
+      className={cn('h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground font-sans', className)}
       title={tooltip || label}
       {...props}
     >

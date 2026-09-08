@@ -34,7 +34,7 @@ export function PromptInput({
     <form
       onSubmit={handleFormSubmit}
       className={cn(
-        'relative rounded-xl border border-zinc-800 bg-zinc-950 p-2 shadow-2xl transition-colors focus-within:border-zinc-600 font-sans',
+        'relative rounded-xl border border-border bg-card p-2 shadow-lg transition-colors focus-within:border-ring font-sans',
         className
       )}
       {...props}
@@ -80,7 +80,7 @@ export function PromptInputTextarea({
       rows={rows}
       onKeyDown={handleKeyDown}
       className={cn(
-        'w-full resize-none bg-transparent px-3 py-2 text-xs font-sans text-zinc-100 placeholder:text-zinc-600 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 min-h-[50px] max-h-[160px]',
+        'w-full resize-none bg-transparent px-3 py-2 text-xs font-sans text-foreground placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 min-h-[50px] max-h-[160px]',
         className
       )}
       {...props}
@@ -94,7 +94,7 @@ export function PromptInputFooter({ className, children, ...props }: PromptInput
   return (
     <div
       className={cn(
-        'flex items-center justify-between border-t border-zinc-900 pt-2 px-1 text-xs font-sans',
+        'flex items-center justify-between border-t border-border pt-2 px-1 text-xs font-sans',
         className
       )}
       {...props}
@@ -129,7 +129,7 @@ export function PromptInputButton({
       variant="ghost"
       size="sm"
       className={cn(
-        'h-7 px-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-900 cursor-pointer font-sans',
+        'h-7 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer font-sans',
         className
       )}
       title={tooltip}
@@ -162,13 +162,13 @@ export function PromptInputSubmit({
         size="icon"
         onClick={onStop}
         className={cn(
-          'h-7 w-7 rounded-md border-zinc-700 bg-zinc-900 text-white hover:bg-zinc-800 cursor-pointer font-sans',
+          'h-7 w-7 rounded-md cursor-pointer font-sans',
           className
         )}
         title="Stop generation"
         {...props}
       >
-        <Square className="h-3 w-3 fill-white" />
+        <Square className="h-3 w-3 fill-foreground" />
       </Button>
     );
   }
@@ -180,7 +180,7 @@ export function PromptInputSubmit({
       size="icon"
       disabled={disabled}
       className={cn(
-        'h-7 w-7 rounded-md bg-white text-black hover:bg-zinc-200 cursor-pointer disabled:opacity-40 shadow-xs font-sans',
+        'h-7 w-7 rounded-md cursor-pointer font-sans',
         className
       )}
       title="Send prompt"

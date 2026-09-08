@@ -13,7 +13,7 @@ export function Tool({ status = 'complete', className, children, ...props }: Too
   return (
     <div
       className={cn(
-        'rounded-lg border border-zinc-800 bg-black overflow-hidden font-sans text-xs transition-colors',
+        'rounded-lg border border-border bg-card overflow-hidden font-sans text-xs transition-colors',
         className
       )}
       {...props}
@@ -45,14 +45,14 @@ export function ToolHeader({
     <div
       onClick={onToggle}
       className={cn(
-        'flex items-center justify-between p-2.5 sm:p-3 bg-zinc-950 border-b border-zinc-800/80 cursor-pointer select-none text-zinc-300 hover:text-white transition-colors font-sans',
+        'flex items-center justify-between p-2.5 sm:p-3 bg-muted/40 border-b border-border cursor-pointer select-none text-foreground hover:bg-muted/60 transition-colors font-sans',
         className
       )}
       {...props}
     >
       <div className="flex items-center gap-2 min-w-0">
-        <Terminal className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
-        <span className="font-semibold text-white truncate text-xs font-sans">{name}</span>
+        <Terminal className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <span className="font-semibold text-foreground truncate text-xs font-sans">{name}</span>
         <Badge variant="secondary" className="text-[9px] py-0 px-1 font-sans shrink-0">
           {badge}
         </Badge>
@@ -60,18 +60,18 @@ export function ToolHeader({
 
       <div className="flex items-center gap-2 shrink-0">
         {status === 'running' && (
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-400" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
         )}
         {status === 'complete' && (
-          <CheckCircle2 className="h-3.5 w-3.5 text-zinc-300" />
+          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
         )}
         {status === 'error' && (
-          <AlertCircle className="h-3.5 w-3.5 text-zinc-400" />
+          <AlertCircle className="h-3.5 w-3.5 text-destructive" />
         )}
         {onToggle && (
           <ChevronDown
             className={cn(
-              'h-3.5 w-3.5 text-zinc-500 transition-transform duration-200',
+              'h-3.5 w-3.5 text-muted-foreground transition-transform duration-200',
               isOpen ? 'rotate-180' : 'rotate-0'
             )}
           />
@@ -107,10 +107,10 @@ export interface ToolInputProps extends React.HTMLAttributes<HTMLDivElement> {
 export function ToolInput({ input, className, ...props }: ToolInputProps) {
   return (
     <div className={cn('space-y-1 font-sans', className)} {...props}>
-      <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider block font-sans">
+      <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block font-sans">
         Input Arguments
       </span>
-      <pre className="p-2.5 bg-zinc-950 border border-zinc-800/80 rounded text-[11px] text-zinc-300 overflow-x-auto font-sans">
+      <pre className="p-2.5 bg-muted/30 border border-border rounded text-[11px] text-foreground overflow-x-auto font-sans">
         {typeof input === 'string' ? input : JSON.stringify(input, null, 2)}
       </pre>
     </div>
@@ -124,18 +124,18 @@ export interface ToolOutputProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function ToolOutput({ output, savings, className, ...props }: ToolOutputProps) {
   return (
-    <div className={cn('space-y-1 pt-1 border-t border-zinc-900 font-sans', className)} {...props}>
+    <div className={cn('space-y-1 pt-1 border-t border-border font-sans', className)} {...props}>
       <div className="flex items-center justify-between font-sans">
-        <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider font-sans">
+        <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider font-sans">
           Output / Token Diet Payload
         </span>
         {savings !== undefined && (
-          <span className="text-[10px] text-zinc-300 bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded font-sans">
+          <span className="text-[10px] text-foreground bg-muted border border-border px-1.5 py-0.5 rounded font-sans">
             ~{savings}% Token Savings
           </span>
         )}
       </div>
-      <pre className="p-2.5 bg-zinc-950 border border-zinc-800/80 rounded text-[11px] text-zinc-300 overflow-x-auto whitespace-pre max-h-56 font-sans">
+      <pre className="p-2.5 bg-muted/30 border border-border rounded text-[11px] text-foreground overflow-x-auto whitespace-pre max-h-56 font-sans">
         {typeof output === 'string' ? output : JSON.stringify(output, null, 2)}
       </pre>
     </div>

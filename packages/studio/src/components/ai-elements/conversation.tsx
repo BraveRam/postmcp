@@ -51,7 +51,7 @@ export interface ConversationEmptyStateProps extends React.HTMLAttributes<HTMLDi
 export function ConversationEmptyState({
   title = 'Start a conversation',
   description = 'Send a message to begin chatting with the MCP agent.',
-  icon = <MessageSquare className="h-8 w-8 text-zinc-500" />,
+  icon = <MessageSquare className="h-8 w-8 text-muted-foreground" />,
   className,
   children,
   ...props
@@ -64,12 +64,12 @@ export function ConversationEmptyState({
       )}
       {...props}
     >
-      <div className="h-14 w-14 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white">
+      <div className="h-14 w-14 rounded-full bg-muted border border-border flex items-center justify-center text-foreground">
         {icon}
       </div>
       <div className="space-y-1 max-w-sm font-sans">
-        <h3 className="text-sm font-semibold text-white font-sans">{title}</h3>
-        <p className="text-xs text-zinc-400 leading-relaxed font-sans">{description}</p>
+        <h3 className="text-sm font-semibold text-foreground font-sans">{title}</h3>
+        <p className="text-xs text-muted-foreground leading-relaxed font-sans">{description}</p>
       </div>
       {children}
     </div>
@@ -87,7 +87,7 @@ export function ConversationScrollButton({
       size="icon"
       onClick={onClick}
       className={cn(
-        'absolute bottom-3 right-4 h-8 w-8 rounded-full bg-zinc-900/90 border-zinc-700 text-white shadow-lg backdrop-blur hover:bg-zinc-800 cursor-pointer',
+        'absolute bottom-3 right-4 h-8 w-8 rounded-full bg-background/90 border-border text-foreground shadow-lg backdrop-blur hover:bg-accent cursor-pointer',
         className
       )}
       {...props}
