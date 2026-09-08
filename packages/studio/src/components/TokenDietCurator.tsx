@@ -136,43 +136,43 @@ export function TokenDietCurator({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="p-4 pb-2">
-            <CardDescription className="font-sans text-[11px] uppercase tracking-wider text-zinc-500">
+            <CardDescription className="font-sans text-[11px] uppercase tracking-wider text-muted-foreground">
               Raw Token Cost
             </CardDescription>
-            <CardTitle className="text-2xl font-sans text-white">
+            <CardTitle className="text-2xl font-sans text-foreground">
               {simulationResult ? simulationResult.rawEstimatedTokens : '...'} tokens
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4 pt-0 text-[11px] text-zinc-500 font-sans">
+          <CardContent className="p-4 pt-0 text-[11px] text-muted-foreground font-sans">
             Unfiltered JSON response
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="p-4 pb-2">
-            <CardDescription className="font-sans text-[11px] uppercase tracking-wider text-zinc-500">
+            <CardDescription className="font-sans text-[11px] uppercase tracking-wider text-muted-foreground">
               Token Diet Output
             </CardDescription>
-            <CardTitle className="text-2xl font-sans text-white">
+            <CardTitle className="text-2xl font-sans text-foreground">
               {simulationResult ? simulationResult.dietEstimatedTokens : '...'} tokens
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4 pt-0 text-[11px] text-zinc-500 font-sans">
+          <CardContent className="p-4 pt-0 text-[11px] text-muted-foreground font-sans">
             Masked & formatted for LLM
           </CardContent>
         </Card>
 
-        <Card className="border-white/20 bg-zinc-950">
+        <Card className="border-border bg-card">
           <CardHeader className="p-4 pb-2">
-            <CardDescription className="font-sans text-[11px] uppercase tracking-wider text-zinc-400">
+            <CardDescription className="font-sans text-[11px] uppercase tracking-wider text-muted-foreground">
               Efficiency Gain
             </CardDescription>
-            <CardTitle className="text-2xl font-sans text-white flex items-center gap-2">
-              <TrendingDown className="h-6 w-6 text-white" />
+            <CardTitle className="text-2xl font-sans text-foreground flex items-center gap-2">
+              <TrendingDown className="h-6 w-6 text-foreground" />
               {simulationResult ? `${simulationResult.savingsPercentage}%` : '...'}
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4 pt-0 text-[11px] text-zinc-400 font-sans">
+          <CardContent className="p-4 pt-0 text-[11px] text-muted-foreground font-sans">
             Token footprint reduction
           </CardContent>
         </Card>
@@ -183,7 +183,7 @@ export function TokenDietCurator({
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-sm flex items-center gap-2">
-              <Layers className="h-4 w-4 text-zinc-400" />
+              <Layers className="h-4 w-4 text-muted-foreground" />
               Response Field Masking ({currentMask.length}/{availableFields.length || 'All'} selected)
             </CardTitle>
             <CardDescription>
@@ -206,7 +206,7 @@ export function TokenDietCurator({
         </CardHeader>
         <CardContent className="space-y-4">
           {availableFields.length === 0 ? (
-            <div className="text-xs text-zinc-500 font-sans p-4 bg-zinc-950 rounded border border-zinc-800 text-center">
+            <div className="text-xs text-muted-foreground font-sans p-4 bg-muted/30 rounded border border-border text-center">
               No schema properties defined in response schema. Using automatic Token Diet heuristic filtering.
             </div>
           ) : (
@@ -220,14 +220,14 @@ export function TokenDietCurator({
                     onClick={() => toggleField(field)}
                     className={`flex items-center gap-2 p-2 rounded border text-xs font-sans transition-all text-left cursor-pointer ${
                       isSelected
-                        ? 'bg-zinc-900 border-white text-white font-semibold shadow-xs'
-                        : 'bg-black border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                        ? 'bg-primary text-primary-foreground font-semibold shadow-xs border-primary'
+                        : 'bg-background border-border text-muted-foreground hover:bg-muted hover:text-foreground'
                     }`}
                   >
                     {isSelected ? (
-                      <CheckSquare className="h-3.5 w-3.5 text-white shrink-0" />
+                      <CheckSquare className="h-3.5 w-3.5 text-primary-foreground shrink-0" />
                     ) : (
-                      <Square className="h-3.5 w-3.5 text-zinc-600 shrink-0" />
+                      <Square className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     )}
                     <span className="truncate">{field}</span>
                   </button>
@@ -237,12 +237,12 @@ export function TokenDietCurator({
           )}
 
           {/* Table Optimization Toggle */}
-          <div className="flex items-center justify-between pt-4 border-t border-zinc-800">
+          <div className="flex items-center justify-between pt-4 border-t border-border">
             <div>
-              <span className="text-xs font-semibold text-white block">
+              <span className="text-xs font-semibold text-foreground block">
                 Markdown Table Formatting
               </span>
-              <span className="text-[11px] text-zinc-500">
+              <span className="text-[11px] text-muted-foreground">
                 Transform array payloads into compact Markdown tables for ~60% extra token savings.
               </span>
             </div>
@@ -258,7 +258,7 @@ export function TokenDietCurator({
       <Card>
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
-            <Eye className="h-4 w-4 text-zinc-400" />
+            <Eye className="h-4 w-4 text-muted-foreground" />
             Live Formatted Response Preview
           </CardTitle>
           <CardDescription>
@@ -266,7 +266,7 @@ export function TokenDietCurator({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <pre className="p-4 bg-black border border-zinc-800 rounded-md font-sans text-xs text-zinc-200 overflow-x-auto max-h-96 whitespace-pre">
+          <pre className="p-4 bg-muted/40 border border-border rounded-md font-sans text-xs text-foreground overflow-x-auto max-h-96 whitespace-pre">
             {simulationResult ? simulationResult.text : 'Calculating preview...'}
           </pre>
         </CardContent>

@@ -9,7 +9,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'default', size = 'md', disabled, children, ...props }, ref) => {
     const baseClasses =
-      'inline-flex items-center justify-center rounded-md font-sans font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 disabled:pointer-events-none disabled:opacity-40 select-none cursor-pointer';
+      'inline-flex items-center justify-center rounded-md font-sans font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer';
 
     const sizeClasses = {
       sm: 'h-8 px-2.5 text-xs gap-1.5',
@@ -19,11 +19,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     const variantClasses = {
-      default: 'bg-white text-black hover:bg-zinc-200 font-semibold shadow-sm',
-      secondary: 'bg-zinc-900 text-zinc-100 hover:bg-zinc-800 border border-zinc-800',
-      outline: 'border border-zinc-800 bg-transparent text-zinc-300 hover:bg-zinc-900 hover:text-white',
-      ghost: 'text-zinc-400 hover:text-white hover:bg-zinc-900',
-      destructive: 'bg-zinc-900 text-zinc-200 border border-zinc-700 hover:bg-zinc-800',
+      default: 'bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-xs',
+      secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border',
+      outline: 'border border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground shadow-xs',
+      ghost: 'text-muted-foreground hover:text-foreground hover:bg-accent',
+      destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-xs',
     };
 
     return (

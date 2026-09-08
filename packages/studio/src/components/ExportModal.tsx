@@ -123,10 +123,10 @@ export function ExportModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl bg-zinc-950 border-zinc-800 text-white font-sans">
+      <DialogContent className="max-w-2xl font-sans">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Download className="h-4 w-4 text-white" />
+            <Download className="h-4 w-4" />
             Export MCP Client Configuration
           </DialogTitle>
           <DialogDescription>
@@ -136,7 +136,7 @@ export function ExportModal({
 
         <div className="space-y-4">
           <Tabs value={activeTab} onValueChange={(val: any) => setActiveTab(val)}>
-            <TabsList className="grid grid-cols-4 w-full bg-black border-zinc-800">
+            <TabsList className="grid grid-cols-4 w-full">
               <TabsTrigger value="cursor">Cursor</TabsTrigger>
               <TabsTrigger value="claude">Claude Desktop</TabsTrigger>
               <TabsTrigger value="windsurf">Windsurf</TabsTrigger>
@@ -145,16 +145,16 @@ export function ExportModal({
 
             <div className="pt-3 space-y-3">
               {/* Optional Secret Injection: Up to 10 environment variables */}
-              <div className="p-3 bg-black border border-zinc-800 rounded-md space-y-2.5">
+              <div className="p-3 bg-muted/40 border border-border rounded-md space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-zinc-300 font-sans">
+                  <span className="text-xs font-semibold text-foreground font-sans">
                     Optional: Inject Authentication Credentials / Env Vars ({envVars.length}/10)
                   </span>
                   {envVars.length < 10 && (
                     <button
                       type="button"
                       onClick={handleAddEnv}
-                      className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 font-sans transition-colors cursor-pointer"
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 font-sans transition-colors cursor-pointer"
                     >
                       <Plus className="h-3 w-3" />
                       Add Variable
@@ -169,20 +169,20 @@ export function ExportModal({
                         value={env.key}
                         onChange={(e) => handleUpdateEnv(env.id, 'key', e.target.value)}
                         placeholder={`KEY_${index + 1} (e.g. STRIPE_API_KEY)`}
-                        className="bg-zinc-950 flex-1 font-sans text-xs h-8"
+                        className="bg-background flex-1 font-sans text-xs h-8"
                       />
                       <Input
                         value={env.val}
                         onChange={(e) => handleUpdateEnv(env.id, 'val', e.target.value)}
                         type="password"
                         placeholder="Value or Reference"
-                        className="bg-zinc-950 flex-1 font-sans text-xs h-8"
+                        className="bg-background flex-1 font-sans text-xs h-8"
                       />
                       {envVars.length > 1 && (
                         <button
                           type="button"
                           onClick={() => handleRemoveEnv(env.id)}
-                          className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 rounded transition-colors cursor-pointer shrink-0"
+                          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors cursor-pointer shrink-0"
                           title="Remove variable"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -195,18 +195,18 @@ export function ExportModal({
 
               {/* Code Snippet Box */}
               <div className="relative">
-                <pre className="p-4 bg-black border border-zinc-800 rounded-md text-xs font-sans text-zinc-200 overflow-x-auto max-h-56 whitespace-pre">
+                <pre className="p-4 bg-muted/40 dark:bg-zinc-950/80 border border-border rounded-md text-xs font-mono text-foreground overflow-x-auto max-h-56 whitespace-pre">
                   {currentSnippet || 'Generating configuration snippet...'}
                 </pre>
 
                 <button
                   onClick={handleCopy}
-                  className="absolute top-3 right-3 px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white text-xs rounded border border-zinc-700 flex items-center gap-1.5 font-medium transition-colors shadow-xs cursor-pointer"
+                  className="absolute top-3 right-3 px-2.5 py-1.5 bg-secondary hover:bg-secondary/80 text-secondary-foreground text-xs rounded border border-border flex items-center gap-1.5 font-medium transition-colors shadow-xs cursor-pointer"
                 >
                   {copied ? (
                     <>
-                      <Check className="h-3.5 w-3.5 text-white" />
-                      <span className="text-white font-sans">Copied</span>
+                      <Check className="h-3.5 w-3.5" />
+                      <span className="font-sans">Copied</span>
                     </>
                   ) : (
                     <>
@@ -219,15 +219,15 @@ export function ExportModal({
 
               {/* Persistence Alert */}
               {persistSuccess && (
-                <div className="p-2.5 bg-zinc-900 border border-zinc-700 rounded text-xs text-zinc-200 flex items-center gap-2 font-sans">
-                  <CheckCircle2 className="h-4 w-4 text-white shrink-0" />
+                <div className="p-2.5 bg-secondary/60 border border-border rounded text-xs text-foreground flex items-center gap-2 font-sans">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <span>{persistSuccess}</span>
                 </div>
               )}
             </div>
           </Tabs>
 
-          <div className="flex items-center justify-between pt-3 border-t border-zinc-800">
+          <div className="flex items-center justify-between pt-3 border-t border-border">
             <Button
               type="button"
               variant="secondary"

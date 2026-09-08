@@ -80,13 +80,13 @@ export function MacroBuilder({
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
+      <div className="flex items-center justify-between border-b border-border pb-4">
         <div>
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-            <Workflow className="h-4 w-4 text-zinc-400" />
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Workflow className="h-4 w-4 text-muted-foreground" />
             Composite Multi-Step Macros
           </h3>
-          <p className="text-xs text-zinc-500 mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             Chain multiple discrete API operations into a single, context-efficient MCP tool for LLMs.
           </p>
         </div>
@@ -101,7 +101,7 @@ export function MacroBuilder({
 
       {/* Creating Form */}
       {isCreating && (
-        <Card className="border-white/20">
+        <Card className="border-border">
           <CardHeader>
             <CardTitle className="text-base">Define Composite Workflow</CardTitle>
             <CardDescription>
@@ -111,7 +111,7 @@ export function MacroBuilder({
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold text-zinc-300">Macro Tool Name</label>
+                <label className="text-xs font-semibold text-foreground">Macro Tool Name</label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -121,7 +121,7 @@ export function MacroBuilder({
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-zinc-300">Description</label>
+                <label className="text-xs font-semibold text-foreground">Description</label>
                 <Input
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -133,22 +133,22 @@ export function MacroBuilder({
 
             {/* Steps Editor */}
             <div className="space-y-3 pt-2">
-              <label className="text-xs font-semibold text-zinc-300">Execution Steps (Sequential)</label>
+              <label className="text-xs font-semibold text-foreground">Execution Steps (Sequential)</label>
 
               {steps.map((step, idx) => (
                 <div
                   key={step.id}
-                  className="p-3 bg-black border border-zinc-800 rounded-md space-y-2 relative"
+                  className="p-3 bg-muted/30 border border-border rounded-md space-y-2 relative"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-sans text-zinc-400 font-semibold">
+                    <span className="text-[11px] font-sans text-muted-foreground font-semibold">
                       Step {idx + 1}
                     </span>
                     {steps.length > 1 && (
                       <button
                         type="button"
                         onClick={() => handleRemoveStep(idx)}
-                        className="text-zinc-600 hover:text-white transition-colors cursor-pointer"
+                        className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -187,7 +187,7 @@ export function MacroBuilder({
               </Button>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-4 border-t border-zinc-800">
+            <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
               <Button variant="ghost" size="sm" onClick={() => setIsCreating(false)}>
                 Cancel
               </Button>
@@ -203,7 +203,7 @@ export function MacroBuilder({
       <div className="space-y-3">
         {macros.length === 0 ? (
           <Card>
-            <CardContent className="py-12 text-center text-xs text-zinc-500 font-sans">
+            <CardContent className="py-12 text-center text-xs text-muted-foreground font-sans">
               No composite macros defined yet. Click "New Macro" to build your first multi-step workflow.
             </CardContent>
           </Card>
@@ -225,20 +225,20 @@ export function MacroBuilder({
                   variant="ghost"
                   size="sm"
                   onClick={() => onDeleteMacro(macro.name)}
-                  className="text-zinc-500 hover:text-white"
+                  className="text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </CardHeader>
 
               <CardContent className="space-y-2 pt-0">
-                <div className="p-3 bg-black border border-zinc-800 rounded-md font-sans text-xs text-zinc-300 space-y-1.5">
+                <div className="p-3 bg-muted/40 border border-border rounded-md font-sans text-xs text-foreground space-y-1.5">
                   {macro.steps.map((step, idx) => (
                     <div key={idx} className="flex items-center gap-2">
-                      <span className="text-zinc-600">{idx + 1}.</span>
-                      <span className="text-zinc-200">{step.action}</span>
+                      <span className="text-muted-foreground">{idx + 1}.</span>
+                      <span className="text-foreground">{step.action}</span>
                       {step.export && (
-                        <span className="text-zinc-500 text-[11px] ml-auto">
+                        <span className="text-muted-foreground text-[11px] ml-auto">
                           export: {JSON.stringify(step.export)}
                         </span>
                       )}
