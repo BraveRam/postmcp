@@ -42,10 +42,10 @@ export function PresetSelectorModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0 overflow-hidden bg-zinc-950 border-zinc-800">
-        <DialogHeader className="p-4 pb-3 border-b border-zinc-800 bg-black">
+      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0 overflow-hidden bg-background border-border">
+        <DialogHeader className="p-4 pb-3 border-b border-border bg-muted/40">
           <DialogTitle className="flex items-center gap-2">
-            <Layers className="h-4 w-4 text-white" />
+            <Layers className="h-4 w-4 text-foreground" />
             60+ Curated MCP API Presets
           </DialogTitle>
           <DialogDescription>
@@ -54,15 +54,15 @@ export function PresetSelectorModal({
         </DialogHeader>
 
         {/* Category Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto p-3 bg-zinc-950 border-b border-zinc-800 text-xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto p-3 bg-muted/20 border-b border-border text-xs">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
               className={`px-2.5 py-1 rounded transition-colors whitespace-nowrap text-xs font-sans cursor-pointer ${
                 selectedCategory === cat
-                  ? 'bg-white text-black font-semibold shadow-xs'
-                  : 'bg-black text-zinc-400 hover:bg-zinc-900 hover:text-white border border-zinc-800'
+                  ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
+                  : 'bg-background text-muted-foreground hover:bg-muted hover:text-foreground border border-border'
               }`}
             >
               {cat === 'all' ? 'All Presets' : cat}
@@ -71,19 +71,19 @@ export function PresetSelectorModal({
         </div>
 
         {/* Command Search List */}
-        <Command shouldFilter={false} className="bg-zinc-950 flex-1">
+        <Command shouldFilter={false} className="bg-background flex-1">
           <CommandInput
             value={searchQuery}
             onValueChange={setSearchQuery}
             placeholder="Search 60+ presets (e.g. stripe, github, slack, shopify)..."
-            className="bg-zinc-950 border-zinc-800 text-white"
+            className="bg-background border-border text-foreground"
           />
 
           <ScrollArea className="h-[400px] p-3">
             {isLoading ? (
-              <div className="py-16 text-center text-xs text-zinc-500 font-sans">Loading presets...</div>
+              <div className="py-16 text-center text-xs text-muted-foreground font-sans">Loading presets...</div>
             ) : presets.length === 0 ? (
-              <div className="py-16 text-center text-xs text-zinc-500 font-sans">No matching presets found</div>
+              <div className="py-16 text-center text-xs text-muted-foreground font-sans">No matching presets found</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                 {presets.map((preset) => (
@@ -93,23 +93,23 @@ export function PresetSelectorModal({
                       onSelectPreset(preset.id);
                       onClose();
                     }}
-                    className="group border border-zinc-800 hover:border-zinc-500 bg-black hover:bg-zinc-900/60 rounded-md p-3.5 cursor-pointer transition-all flex flex-col justify-between"
+                    className="group border border-border hover:border-foreground/50 bg-card hover:bg-accent/40 rounded-md p-3.5 cursor-pointer transition-all flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2 mb-1">
-                        <h3 className="font-semibold text-zinc-100 group-hover:text-white transition-colors text-xs flex items-center gap-1.5 font-sans">
+                        <h3 className="font-semibold text-foreground transition-colors text-xs flex items-center gap-1.5 font-sans">
                           {preset.name}
                           <Badge variant="outline" className="text-[10px] font-sans">
                             @{preset.id}
                           </Badge>
                         </h3>
                       </div>
-                      <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
+                      <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
                         {preset.description}
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-zinc-900">
+                    <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border">
                       <div className="flex items-center gap-1.5">
                         <Badge variant="secondary" className="text-[9px]">
                           {preset.category}
@@ -122,7 +122,7 @@ export function PresetSelectorModal({
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1 text-[11px] text-zinc-300 font-sans group-hover:text-white">
+                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-sans group-hover:text-foreground">
                         <span>Load</span>
                         <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
                       </div>
