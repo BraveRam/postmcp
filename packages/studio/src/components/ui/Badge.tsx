@@ -7,17 +7,17 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 
 export function Badge({ className, variant = 'default', ...props }: BadgeProps) {
   const variantClasses = {
-    default: 'bg-white text-black font-semibold border-white shadow-xs',
-    secondary: 'bg-zinc-900 text-zinc-300 border-zinc-800',
-    outline: 'text-zinc-400 border-zinc-800 bg-transparent',
-    success: 'bg-zinc-900 text-zinc-200 border-zinc-700 font-medium',
-    warning: 'bg-zinc-800 text-zinc-200 border-zinc-600 font-medium',
-    destructive: 'bg-zinc-950 text-zinc-400 border-zinc-800 font-medium',
-    get: 'bg-zinc-900 text-zinc-100 border-zinc-700 font-bold uppercase',
-    post: 'bg-white text-black border-white font-bold uppercase',
-    put: 'bg-zinc-800 text-zinc-100 border-zinc-600 font-bold uppercase',
-    delete: 'bg-zinc-950 text-zinc-400 border-zinc-800 font-bold uppercase',
-    patch: 'bg-zinc-800 text-zinc-200 border-zinc-600 font-bold uppercase',
+    default: 'bg-primary text-primary-foreground font-semibold border-transparent shadow-xs',
+    secondary: 'bg-secondary text-secondary-foreground border-border',
+    outline: 'text-foreground border-border bg-transparent',
+    success: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 font-medium',
+    warning: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 font-medium',
+    destructive: 'bg-destructive/15 text-destructive border-destructive/30 font-medium',
+    get: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 font-bold uppercase',
+    post: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 font-bold uppercase',
+    put: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 font-bold uppercase',
+    delete: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30 font-bold uppercase',
+    patch: 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 font-bold uppercase',
   };
 
   return (
