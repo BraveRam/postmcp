@@ -84,11 +84,24 @@ function applyGeneralAuth(
   queryParams: Record<string, any>,
   config: AuthConfig
 ): void {
+  // Custom headers
+  if (config.headers && typeof config.headers === 'object') {
+    for (const [k, v] of Object.entries(config.headers)) {
+      if (k && v !== undefined && v !== null && !headers[k]) {
+        const val = substituteEnvVars(String(v)).trim();
+        if (val) {
+          headers[k] = val;
+        }
+      }
+    }
+  }
+
   // Bearer Token
-  if (config.bearerToken && !headers['Authorization']) {
-    const token = getNonEmptySecret(config.bearerToken);
+  const bearerCandidate = config.bearerToken || (!headers['Authorization'] ? process.env.BEARER_TOKEN : undefined);
+  if (bearerCandidate && !headers['Authorization']) {
+    const token = getNonEmptySecret(bearerCandidate);
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
     }
   }
 
