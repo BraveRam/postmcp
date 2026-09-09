@@ -45,14 +45,21 @@ function cleanOperationId(method: HttpMethod, path: string, rawId?: string): str
 }
 
 function classifyRiskTier(method: HttpMethod, path: string, summary: string): RiskTier {
-  const destructiveRegex = /(delete|drop|purge|cancel|terminate|refund|transfer|destroy|wipe|revoke|admin|billing|auth)/i;
-  const isDestructiveIntent = destructiveRegex.test(path) || destructiveRegex.test(summary);
-
   if (method === 'delete') {
     return 'CRITICAL';
   }
 
+  // Check destructive intent using word boundaries to prevent false positives (e.g. "authenticated" matching "auth")
+  const destructiveRegex = /\b(delete|drop|purge|cancel|terminate|refund|transfer|destroy|wipe|revoke)\b/i;
+  const isDestructiveIntent = destructiveRegex.test(path) || destructiveRegex.test(summary);
+
   if (isDestructiveIntent && (method === 'post' || method === 'put' || method === 'patch' || method === 'get')) {
+    return 'CRITICAL';
+  }
+
+  // Admin and sensitive mutating operations
+  const adminMutatingRegex = /\b(admin|billing|auth)\b/i;
+  if ((adminMutatingRegex.test(path) || adminMutatingRegex.test(summary)) && (method === 'post' || method === 'put' || method === 'patch')) {
     return 'CRITICAL';
   }
 
@@ -63,14 +70,13 @@ function classifyRiskTier(method: HttpMethod, path: string, summary: string): Ri
   return 'MUTATION';
 }
 
-function sanitizeSchema(schema: any, maxDepth = 4, currentDepth = 0): any {
+function sanitizeSchema(schema: any, maxDepth = 6, currentDepth = 0): any {
   if (!schema || typeof schema !== 'object') return schema;
-  if (currentDepth >= maxDepth) {
-    return { type: schema.type || 'object' };
-  }
-
   if (Array.isArray(schema)) {
     return schema.slice(0, 30).map((item) => sanitizeSchema(item, maxDepth, currentDepth + 1));
+  }
+  if (currentDepth >= maxDepth) {
+    return { type: schema.type || 'object' };
   }
 
   const result: Record<string, any> = {};
@@ -85,6 +91,60 @@ function sanitizeSchema(schema: any, maxDepth = 4, currentDepth = 0): any {
     }
   }
   return result;
+}
+
+function extractObjectProperties(schema?: any): {
+  properties: Record<string, JSONSchemaObject>;
+  required: string[];
+} {
+  const properties: Record<string, JSONSchemaObject> = {};
+  const required: string[] = [];
+
+  if (!schema || typeof schema !== 'object') {
+    return { properties, required };
+  }
+
+  // Handle allOf composition
+  if (Array.isArray(schema.allOf)) {
+    for (const sub of schema.allOf) {
+      const ext = extractObjectProperties(sub);
+      Object.assign(properties, ext.properties);
+      for (const r of ext.required) {
+        if (!required.includes(r)) required.push(r);
+      }
+    }
+  }
+
+  // Handle anyOf / oneOf composition
+  if (Array.isArray(schema.oneOf)) {
+    for (const sub of schema.oneOf) {
+      const ext = extractObjectProperties(sub);
+      Object.assign(properties, ext.properties);
+    }
+  }
+  if (Array.isArray(schema.anyOf)) {
+    for (const sub of schema.anyOf) {
+      const ext = extractObjectProperties(sub);
+      Object.assign(properties, ext.properties);
+    }
+  }
+
+  // Direct properties
+  if (schema.properties && typeof schema.properties === 'object') {
+    for (const [k, v] of Object.entries(schema.properties)) {
+      properties[k] = v as JSONSchemaObject;
+    }
+  }
+
+  if (Array.isArray(schema.required)) {
+    for (const r of schema.required) {
+      if (typeof r === 'string' && !required.includes(r)) {
+        required.push(r);
+      }
+    }
+  }
+
+  return { properties, required };
 }
 
 function buildUnifiedInputSchema(
@@ -105,17 +165,16 @@ function buildUnifiedInputSchema(
     }
   }
 
-  // Merge requestBody properties if JSON
+  // Merge requestBody properties if JSON or composite (allOf / anyOf / oneOf)
   if (requestBodySchema) {
-    if (requestBodySchema.type === 'object' && requestBodySchema.properties) {
-      for (const [propKey, propSchema] of Object.entries(requestBodySchema.properties)) {
+    const extracted = extractObjectProperties(requestBodySchema);
+    if (Object.keys(extracted.properties).length > 0) {
+      for (const [propKey, propSchema] of Object.entries(extracted.properties)) {
         properties[propKey] = propSchema;
       }
-      if (Array.isArray(requestBodySchema.required)) {
-        for (const req of requestBodySchema.required) {
-          if (!required.includes(req)) {
-            required.push(req);
-          }
+      for (const req of extracted.required) {
+        if (!required.includes(req)) {
+          required.push(req);
         }
       }
     } else {
@@ -271,7 +330,7 @@ export function normalizeSpec(spec: any): NormalizedSpec {
         }
       }
 
-      const inputSchema = sanitizeSchema(buildUnifiedInputSchema(normalizedParams, requestBodySchema), 5);
+      const inputSchema = sanitizeSchema(buildUnifiedInputSchema(normalizedParams, requestBodySchema), 6);
 
       // Extract 200/201 response schema if available
       const successResponse = op.responses?.['200'] || op.responses?.['201'] || op.responses?.['default'];

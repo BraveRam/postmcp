@@ -214,4 +214,56 @@ User:
     expect(op.extensions?.['x-priority']).toBe('high');
     expect(op.extensions?.['x-custom-meta']).toEqual({ env: 'prod' });
   });
+
+  it('should unwrap composite allOf request body schemas into top-level tool parameters', async () => {
+    const specJson = {
+      openapi: '3.0.0',
+      info: { title: 'Firecrawl Like API', version: '1.0' },
+      paths: {
+        '/scrape': {
+          post: {
+            summary: 'Scrape a URL',
+            operationId: 'scrapeAndExtractFromUrl',
+            requestBody: {
+              required: true,
+              content: {
+                'application/json': {
+                  schema: {
+                    allOf: [
+                      {
+                        type: 'object',
+                        properties: {
+                          url: { type: 'string', description: 'The URL to scrape' },
+                        },
+                        required: ['url'],
+                      },
+                      {
+                        type: 'object',
+                        properties: {
+                          formats: { type: 'array', items: { type: 'string' } },
+                          onlyMainContent: { type: 'boolean' },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+            responses: { '200': { description: 'OK' } },
+          },
+        },
+      },
+    };
+
+    const spec = await parseOpenAPI(specJson);
+    const op = spec.operations[0];
+    expect(op.id).toBe('scrapeAndExtractFromUrl');
+    expect(op.inputSchema).toBeDefined();
+    expect(op.inputSchema?.type).toBe('object');
+    expect(op.inputSchema?.properties?.url).toBeDefined();
+    expect(op.inputSchema?.properties?.url.type).toBe('string');
+    expect(op.inputSchema?.properties?.formats).toBeDefined();
+    expect(op.inputSchema?.properties?.onlyMainContent).toBeDefined();
+    expect(op.inputSchema?.required).toEqual(['url']);
+  });
 });
