@@ -48,6 +48,63 @@ export function isPrivateOrBlockedHost(urlStr: string): boolean {
   }
 }
 
+export function resolveTargetAuthConfig(
+  incomingAuth?: any,
+  spec?: NormalizedSpec
+): any {
+  const headers: Record<string, string> = { ...(incomingAuth?.headers || {}) };
+
+  // If customFields are provided (array of { key, value } or plain object), merge into headers
+  if (Array.isArray(incomingAuth?.customFields)) {
+    for (const field of incomingAuth.customFields) {
+      if (field && field.key && (field.value !== undefined || field.val !== undefined)) {
+        headers[field.key.trim()] = String(field.value ?? field.val).trim();
+      }
+    }
+  } else if (incomingAuth?.customFields && typeof incomingAuth.customFields === 'object') {
+    for (const [k, v] of Object.entries(incomingAuth.customFields)) {
+      if (k.trim() && v !== undefined && v !== null) {
+        headers[k.trim()] = String(v).trim();
+      }
+    }
+  }
+
+  // Resolve Bearer token
+  let bearerToken = incomingAuth?.bearerToken?.trim();
+
+  // If user entered Authorization in custom headers
+  if (!bearerToken && headers['Authorization']) {
+    const authHeader = headers['Authorization'];
+    if (authHeader.toLowerCase().startsWith('bearer ')) {
+      bearerToken = authHeader.slice(7).trim();
+    }
+  }
+
+  // Auto-resolve env fallbacks if not provided in request
+  if (!bearerToken) {
+    const specTitleOrUrl = `${spec?.title || ''} ${spec?.servers?.[0]?.url || ''}`.toLowerCase();
+    if (specTitleOrUrl.includes('firecrawl')) {
+      bearerToken = process.env.FIRECRAWL_API_KEY || process.env.BEARER_TOKEN;
+    } else if (specTitleOrUrl.includes('stripe')) {
+      bearerToken = process.env.STRIPE_SECRET_KEY || process.env.BEARER_TOKEN;
+    } else if (specTitleOrUrl.includes('github')) {
+      bearerToken = process.env.GITHUB_TOKEN || process.env.BEARER_TOKEN;
+    } else {
+      bearerToken = process.env.BEARER_TOKEN || process.env.API_KEY;
+    }
+  }
+
+  if (bearerToken && !headers['Authorization']) {
+    headers['Authorization'] = bearerToken.startsWith('Bearer ') ? bearerToken : `Bearer ${bearerToken}`;
+  }
+
+  return {
+    ...incomingAuth,
+    bearerToken,
+    headers,
+  };
+}
+
 async function executeMcpOperation(
   op: NormalizedOperation,
   args: any,
@@ -55,13 +112,13 @@ async function executeMcpOperation(
   authConfig?: any,
   dryRun: boolean = true
 ): Promise<SandboxExecutionResult> {
-  const isReadOnly = op.method === 'get' || op.riskTier === 'READ_ONLY';
-
-  // Real HTTP dispatch only for safe GET operations when credentials/baseUrl provided and dryRun is false
+  const isCritical = op.riskTier === 'CRITICAL';
   const baseUrl = spec.servers?.[0]?.url;
+
+  // Real HTTP dispatch when dryRun is false, not a critical destructive action, and targeting a public URL
   const isRealExecutionAllowed =
     !dryRun &&
-    isReadOnly &&
+    !isCritical &&
     baseUrl &&
     baseUrl.startsWith('http') &&
     !baseUrl.includes('example.com') &&
@@ -82,20 +139,39 @@ async function executeMcpOperation(
       const client = new ResilientHttpClient({
         baseUrl,
         auth: authConfig,
-        timeout: 10000,
+        timeout: 15000,
       });
 
       let targetUrl = op.path;
+      const queryParams: Record<string, any> = {};
+      const bodyData: Record<string, any> = {};
+
       if (args) {
         for (const [k, v] of Object.entries(args)) {
-          targetUrl = targetUrl.replace(`{${k}}`, encodeURIComponent(String(v)));
+          if (targetUrl.includes(`{${k}}`)) {
+            targetUrl = targetUrl.replace(`{${k}}`, encodeURIComponent(String(v)));
+          } else if (op.parameters?.some((p) => p.name === k && p.in === 'query')) {
+            queryParams[k] = v;
+          } else if (op.parameters?.some((p) => p.name === k && (p.in === 'header' || p.in === 'cookie'))) {
+            // Header or cookie parameter
+          } else {
+            bodyData[k] = v;
+          }
         }
       }
 
+      const isBodyMethod = ['post', 'put', 'patch', 'delete'].includes(op.method.toLowerCase());
       const res = await client.request({
         url: targetUrl,
-        method: 'GET',
-        params: args,
+        method: op.method.toUpperCase() as any,
+        data: isBodyMethod
+          ? args.requestBody !== undefined
+            ? args.requestBody
+            : Object.keys(bodyData).length > 0
+            ? bodyData
+            : undefined
+          : undefined,
+        params: Object.keys(queryParams).length > 0 ? queryParams : (!isBodyMethod ? args : undefined),
       });
 
       const diet = applyTokenDiet(res.data, {
@@ -114,7 +190,7 @@ async function executeMcpOperation(
       return {
         operationId: op.id,
         status: 500,
-        result: `Failed to fetch live GET endpoint: ${err.message}`,
+        result: `Failed to execute live endpoint: ${err.message}`,
         savings: 0,
       };
     }
@@ -135,9 +211,12 @@ async function executeMcpOperation(
   });
 
   const isMutation = op.riskTier === 'MUTATION' || op.riskTier === 'CRITICAL' || op.method !== 'get';
-  const prefix = (dryRun && isMutation)
-    ? '[DRY RUN SAFEGUARD ACTIVE] Mutation simulated safely without modifying remote state.\n\n'
-    : '';
+  let prefix = '';
+  if (dryRun && isMutation) {
+    prefix = '[DRY RUN SAFEGUARD ACTIVE] Mutation simulated safely without modifying remote state.\n\n';
+  } else if (!dryRun && isCritical) {
+    prefix = '[SAFETY SAFEGUARD] Destructive CRITICAL operations are simulated in the web sandbox.\n\n';
+  }
 
   return {
     operationId: op.id,
@@ -185,16 +264,56 @@ export async function POST(request: Request) {
       );
     }
 
+    const resolvedAuth = resolveTargetAuthConfig(authConfig, spec);
+
     // Dynamically mount tools for active operations
     const dynamicTools: Record<string, any> = {};
     const operationsToMount: NormalizedOperation[] = spec.operations.slice(0, 20);
 
+    const executedToolCalls: Array<{
+      name: string;
+      args: any;
+      result: { text: string; savings?: number };
+    }> = [];
+
+    let onToolExecutionEvent: ((event: any) => void) | null = null;
+
     for (const op of operationsToMount) {
+      const opSchema = (op.inputSchema || { type: 'object', properties: {} }) as any;
       dynamicTools[op.id] = tool({
         description: op.description || op.summary || `Execute ${op.method.toUpperCase()} ${op.path}`,
-        parameters: jsonSchema((op.inputSchema || { type: 'object', properties: {} }) as any),
+        inputSchema: jsonSchema(opSchema),
+        parameters: jsonSchema(opSchema),
         execute: async (args: any) => {
-          return await executeMcpOperation(op, args, spec, authConfig, dryRun);
+          if (onToolExecutionEvent) {
+            onToolExecutionEvent({
+              type: 'tool-call',
+              name: op.id,
+              args,
+            });
+          }
+
+          const execRes = await executeMcpOperation(op, args, spec, resolvedAuth, dryRun);
+          const toolData = {
+            name: op.id,
+            args,
+            result: {
+              text: execRes.result,
+              savings: execRes.savings,
+            },
+          };
+          executedToolCalls.push(toolData);
+
+          if (onToolExecutionEvent) {
+            onToolExecutionEvent({
+              type: 'tool-result',
+              name: op.id,
+              args,
+              result: toolData.result,
+            });
+          }
+
+          return execRes;
         },
       } as any);
     }
@@ -210,8 +329,136 @@ export async function POST(request: Request) {
             messages,
             tools: dynamicTools,
             stopWhen: stepCountIs(5),
+            onToolExecutionStart: ({ toolCall }) => {
+              if (onToolExecutionEvent) {
+                onToolExecutionEvent({
+                  type: 'tool-call',
+                  toolCallId: toolCall.toolCallId,
+                  name: toolCall.toolName,
+                  args: toolCall.input,
+                });
+              }
+            },
+            onToolExecutionEnd: ({ toolCall, toolOutput }) => {
+              const out = (toolOutput as any)?.output ?? toolOutput;
+              const text =
+                out?.result ??
+                (typeof out === 'string'
+                  ? out
+                  : typeof out?.text === 'string'
+                  ? out.text
+                  : JSON.stringify(out ?? {}));
+              if (onToolExecutionEvent) {
+                onToolExecutionEvent({
+                  type: 'tool-result',
+                  toolCallId: toolCall.toolCallId,
+                  name: toolCall.toolName,
+                  args: toolCall.input ?? {},
+                  result: {
+                    text,
+                    savings: out?.savings,
+                  },
+                });
+              }
+            },
           });
-          return streamResult.toTextStreamResponse();
+
+          const encoder = new TextEncoder();
+          const readableStream = new ReadableStream({
+            async start(controller) {
+              onToolExecutionEvent = (event) => {
+                try {
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+                } catch {}
+              };
+
+              try {
+                for await (const chunk of streamResult.fullStream) {
+                  if (chunk.type === 'tool-call') {
+                    controller.enqueue(
+                      encoder.encode(
+                        `data: ${JSON.stringify({
+                          type: 'tool-call',
+                          toolCallId: chunk.toolCallId,
+                          name: chunk.toolName,
+                          args: chunk.input,
+                        })}\n\n`
+                      )
+                    );
+                  } else if (chunk.type === 'tool-result') {
+                    const out = (chunk.output ?? (chunk as any).result) as any;
+                    const text =
+                      out?.result ??
+                      (typeof out === 'string'
+                        ? out
+                        : typeof out?.text === 'string'
+                        ? out.text
+                        : JSON.stringify(out ?? {}));
+                    controller.enqueue(
+                      encoder.encode(
+                        `data: ${JSON.stringify({
+                          type: 'tool-result',
+                          toolCallId: chunk.toolCallId,
+                          name: chunk.toolName,
+                          args: chunk.input ?? (chunk as any).args ?? {},
+                          result: {
+                            text,
+                            savings: out?.savings,
+                          },
+                        })}\n\n`
+                      )
+                    );
+                  } else if (chunk.type === 'text-delta') {
+                    controller.enqueue(
+                      encoder.encode(
+                        `data: ${JSON.stringify({
+                          type: 'text-delta',
+                          text: chunk.text,
+                        })}\n\n`
+                      )
+                    );
+                  }
+                }
+
+                // Ensure all executed tools have their results sent before ending
+                for (const tc of executedToolCalls) {
+                  controller.enqueue(
+                    encoder.encode(
+                      `data: ${JSON.stringify({
+                        type: 'tool-result',
+                        name: tc.name,
+                        args: tc.args,
+                        result: tc.result,
+                      })}\n\n`
+                    )
+                  );
+                }
+
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
+                controller.close();
+              } catch (streamErr: any) {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({
+                      type: 'error',
+                      error: streamErr.message || 'Streaming failed',
+                    })}\n\n`
+                  )
+                );
+                controller.close();
+              } finally {
+                onToolExecutionEvent = null;
+              }
+            },
+          });
+
+          return new Response(readableStream, {
+            headers: {
+              'Content-Type': 'text/event-stream; charset=utf-8',
+              'Cache-Control': 'no-cache, no-transform',
+              'Connection': 'keep-alive',
+            },
+          });
         }
 
         const result = await generateText({
@@ -221,15 +468,28 @@ export async function POST(request: Request) {
           stopWhen: stepCountIs(5),
         });
 
-        // Use AI SDK's native toolResults collection
-        const sdkToolCalls = (result.toolResults || []).map((tr: any) => ({
-          name: tr.toolName,
-          args: tr.args,
-          result: {
-            text: tr.result?.result || (typeof tr.result === 'string' ? tr.result : JSON.stringify(tr.result)),
-            savings: tr.result?.savings,
-          },
-        }));
+        // Use executedToolCalls directly or AI SDK's toolResults collection
+        const sdkToolCalls =
+          executedToolCalls.length > 0
+            ? executedToolCalls
+            : (result.toolResults || []).map((tr: any) => {
+                const out = tr.output ?? tr.result;
+                const text =
+                  out?.result ??
+                  (typeof out === 'string'
+                    ? out
+                    : typeof out?.text === 'string'
+                    ? out.text
+                    : JSON.stringify(out ?? {}));
+                return {
+                  name: tr.toolName,
+                  args: tr.input ?? tr.args ?? {},
+                  result: {
+                    text,
+                    savings: out?.savings,
+                  },
+                };
+              });
 
         return NextResponse.json({
           role: 'assistant',
@@ -286,11 +546,24 @@ export async function POST(request: Request) {
             ? 'obj_882910'
             : p.name.includes('email')
             ? 'user@example.com'
+            : p.name.includes('url')
+            ? 'https://pullora.chat'
             : 'sample_val';
         }
       }
+      if (targetOp.inputSchema?.properties) {
+        for (const [propName] of Object.entries(targetOp.inputSchema.properties)) {
+          if (!mockArgs[propName]) {
+            mockArgs[propName] = propName.includes('url')
+              ? 'https://pullora.chat'
+              : propName.includes('id')
+              ? 'obj_882910'
+              : 'sample_val';
+          }
+        }
+      }
 
-      const execRes = await executeMcpOperation(targetOp, mockArgs, spec, authConfig, dryRun);
+      const execRes = await executeMcpOperation(targetOp, mockArgs, spec, resolvedAuth, dryRun);
       simulatedToolCalls.push({
         name: targetOp.id,
         args: mockArgs,
@@ -301,12 +574,79 @@ export async function POST(request: Request) {
       });
     }
 
+    const simulatedContent =
+      simulatedToolCalls.length > 1
+        ? `Executed **${simulatedToolCalls.length} tool calls in sequence** for query: _"${lastUserMessage}"_.\n\nAll tool responses compressed through **Token Diet**.`
+        : `Dispatched tool **${simulatedToolCalls[0].name}** for query: _"${lastUserMessage}"_.\n\nSimulated through Vercel AI Gateway runner (${model}) with **Token Diet** output optimization.`;
+
+    if (stream) {
+      const encoder = new TextEncoder();
+      const readableStream = new ReadableStream({
+        async start(controller) {
+          try {
+            for (const tc of simulatedToolCalls) {
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({
+                    type: 'tool-call',
+                    name: tc.name,
+                    args: tc.args,
+                  })}\n\n`
+                )
+              );
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({
+                    type: 'tool-result',
+                    name: tc.name,
+                    args: tc.args,
+                    result: tc.result,
+                  })}\n\n`
+                )
+              );
+            }
+
+            const words = simulatedContent.split(' ');
+            for (let i = 0; i < words.length; i++) {
+              const chunkText = (i === 0 ? '' : ' ') + words[i];
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({
+                    type: 'text-delta',
+                    text: chunkText,
+                  })}\n\n`
+                )
+              );
+            }
+
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
+            controller.close();
+          } catch (simErr: any) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: 'error',
+                  error: simErr.message || 'Simulation streaming error',
+                })}\n\n`
+              )
+            );
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(readableStream, {
+        headers: {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform',
+          'Connection': 'keep-alive',
+        },
+      });
+    }
+
     return NextResponse.json({
       role: 'assistant',
-      content:
-        simulatedToolCalls.length > 1
-          ? `Executed **${simulatedToolCalls.length} tool calls in sequence** for query: _"${lastUserMessage}"_.\n\nAll tool responses compressed through **Token Diet**.`
-          : `Dispatched tool **${simulatedToolCalls[0].name}** for query: _"${lastUserMessage}"_.\n\nSimulated through Vercel AI Gateway runner (${model}) with **Token Diet** output optimization.`,
+      content: simulatedContent,
       toolCalls: simulatedToolCalls,
       toolCall: {
         name: simulatedToolCalls[0].name,
