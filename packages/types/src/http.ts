@@ -20,6 +20,17 @@ export interface AuthConfig {
   allowCrossOriginAuth?: boolean;
 }
 
+export interface SandboxAuthConfig {
+  bearerToken?: string;
+  headers?: Record<string, string>;
+  apiKey?: {
+    name: string;
+    value: string;
+    in?: 'header' | 'query' | 'cookie';
+  };
+  customFields?: Array<{ key: string; value: string }>;
+}
+
 export interface AsyncPollResult {
   response: AxiosResponse;
   timedOut: boolean;
