@@ -92,10 +92,40 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
     process.env.BASE_URL ||
     (parsedSpec.servers.length > 0 ? parsedSpec.servers[0].url : preset?.defaultBaseUrl);
 
-  const isJit = options.jit !== undefined ? options.jit : fileConfig.jit !== undefined ? fileConfig.jit : undefined;
+  let isJit: boolean | { forceJIT?: boolean; maxMountedTools?: number; hotToolKeywords?: string[] } | undefined;
+  if (options.jit !== undefined) {
+    if (typeof fileConfig.jit === 'object') {
+      isJit = {
+        forceJIT: options.jit,
+        maxMountedTools: fileConfig.jit.maxMountedTools,
+        hotToolKeywords: fileConfig.jit.hotToolKeywords,
+      };
+    } else {
+      isJit = options.jit;
+    }
+  } else if (fileConfig.jit !== undefined) {
+    if (typeof fileConfig.jit === 'boolean') {
+      isJit = fileConfig.jit;
+    } else {
+      isJit = {
+        forceJIT: fileConfig.jit.enabled,
+        maxMountedTools: fileConfig.jit.maxMountedTools,
+        hotToolKeywords: fileConfig.jit.hotToolKeywords,
+      };
+    }
+  }
   const isDryRun = options.dryRun !== undefined ? options.dryRun : fileConfig.dryRun;
   const isTokenDiet = options.tokenDiet !== undefined ? options.tokenDiet : fileConfig.tokenDiet?.enabled !== false;
   const maxTokens = options.maxTokens ? parseInt(options.maxTokens, 10) : fileConfig.tokenDiet?.maxTokens || 2500;
+
+  let hotToolKeywords: string[] | undefined;
+  if (options.hotToolKeywords) {
+    hotToolKeywords = options.hotToolKeywords.split(',').map((s) => s.trim()).filter(Boolean);
+  } else if (fileConfig.hotToolKeywords) {
+    hotToolKeywords = fileConfig.hotToolKeywords;
+  } else if (typeof fileConfig.jit === 'object' && fileConfig.jit.hotToolKeywords) {
+    hotToolKeywords = fileConfig.jit.hotToolKeywords;
+  }
 
   // 4. Build path-specific field masks from preset & file config (Finding 2 & 5)
   const pathFieldMasks: Record<string, string[]> = {};
@@ -113,6 +143,7 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
     baseUrl: resolvedBaseUrl,
     auth: authConfig,
     jit: isJit,
+    hotToolKeywords,
     dryRun: isDryRun,
     tokenDiet: {
       enabled: isTokenDiet,

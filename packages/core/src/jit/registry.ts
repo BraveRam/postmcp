@@ -4,6 +4,7 @@ import { BM25ToolIndex } from './indexer.js';
 export interface ToolRegistryOptions {
   forceJIT?: boolean;
   maxMountedTools?: number; // LRU capacity (default: 10)
+  hotToolKeywords?: string[];
 }
 
 export class ToolRegistry {
@@ -13,6 +14,7 @@ export class ToolRegistry {
   private index: BM25ToolIndex;
   private isJITMode: boolean = false;
   private maxMountedTools: number;
+  private hotToolKeywords: string[] = [];
   private onToolsChangedCallback?: () => void;
 
   constructor(operations: NormalizedOperation[], options?: ToolRegistryOptions | boolean) {
@@ -24,6 +26,9 @@ export class ToolRegistry {
 
     const forceJIT = typeof options === 'boolean' ? options : options?.forceJIT;
     this.maxMountedTools = (typeof options === 'object' && options.maxMountedTools) ? options.maxMountedTools : 10;
+    if (typeof options === 'object' && Array.isArray(options.hotToolKeywords)) {
+      this.hotToolKeywords = options.hotToolKeywords.map((k) => k.trim().toLowerCase()).filter(Boolean);
+    }
 
     // Adaptive threshold: <= 20 static tools, > 20 JIT mode
     if (forceJIT !== undefined) {
@@ -42,6 +47,7 @@ export class ToolRegistry {
       // Hybrid JIT: Pre-mount top root collection read operations ("Hot Tools") on startup
       const hotTools = this.identifyHotTools(operations);
       for (const op of hotTools) {
+        if (this.activeOperations.size >= this.maxMountedTools) break;
         this.activeOperations.set(op.id, op);
         this.mountedOrder.push(op.id);
       }
@@ -49,29 +55,141 @@ export class ToolRegistry {
   }
 
   private identifyHotTools(operations: NormalizedOperation[]): NormalizedOperation[] {
+    // 1. Derive domain keywords dynamically from OpenAPI specification tags
+    const tagFrequencies = new Map<string, number>();
+    for (const op of operations) {
+      if (Array.isArray(op.tags)) {
+        for (const rawTag of op.tags) {
+          const t = rawTag.trim().toLowerCase();
+          if (t && !['default', 'api', 'v1', 'v2', 'v3', 'maintenance', 'health', 'ping'].includes(t)) {
+            tagFrequencies.set(t, (tagFrequencies.get(t) || 0) + 1);
+          }
+        }
+      }
+    }
+
+    let maxTagFreq = 1;
+    for (const freq of tagFrequencies.values()) {
+      if (freq > maxTagFreq) maxTagFreq = freq;
+    }
+
+    const derivedTagKeywords = new Map<string, number>();
+    for (const [tag, freq] of tagFrequencies.entries()) {
+      derivedTagKeywords.set(tag, freq);
+      const parts = tag.split(/[-_\s]+/).filter((p) => p.length > 2);
+      for (const p of parts) {
+        if (!derivedTagKeywords.has(p)) {
+          derivedTagKeywords.set(p, freq);
+        }
+      }
+    }
+
+    // 2. Candidate filtering
     const candidates = operations.filter((op) => {
       if (op.method !== 'get') return false;
       if (op.riskTier === 'CRITICAL') return false;
       // Exclude paths with path parameters like /projects/{id}
       if (op.path.includes('{')) return false;
-      // Path segments <= 2 (e.g. /projects, /users/me, /databases)
-      const segments = op.path.split('/').filter(Boolean);
-      if (segments.length > 2) return false;
+
+      // Explicit vendor extension override: if marked x-hot-tool: true or x-mcp-hot: true, include even if segments > 2
+      const isExplicitHot =
+        op.extensions?.['x-hot-tool'] === true ||
+        op.extensions?.['x-mcp-hot'] === true ||
+        op.extensions?.['x-postmcp-hot'] === true;
+
+      if (!isExplicitHot) {
+        const segments = op.path.split('/').filter(Boolean);
+        if (segments.length > 2) return false;
+      }
       return true;
     });
 
+    const defaultFallbackKeywords = [
+      'project', 'repo', 'issue', 'charge', 'user', 'me', 'account', 'org', 'team'
+    ];
+
+    // 3. Multi-tier scoring
     const scored = candidates.map((op) => {
       let priority = 0;
       const lower = (op.id + ' ' + op.path + ' ' + op.summary).toLowerCase();
-      if (lower.includes('project') || lower.includes('repo') || lower.includes('issue') || lower.includes('charge')) priority += 25;
-      if (lower.includes('user') || lower.includes('me') || lower.includes('account') || lower.includes('org')) priority += 20;
-      if (lower.includes('list') || lower.includes('get')) priority += 15;
-      if (op.path.split('/').filter(Boolean).length === 1) priority += 10;
+      const opTagsLower = (op.tags || []).map((t) => t.toLowerCase());
+
+      // Tier 1: Explicit Vendor Extensions
+      const isExplicitHot =
+        op.extensions?.['x-hot-tool'] === true ||
+        op.extensions?.['x-mcp-hot'] === true ||
+        op.extensions?.['x-postmcp-hot'] === true ||
+        op.extensions?.['x-priority'] === 'high' ||
+        op.extensions?.['x-priority'] === 'critical';
+
+      const isExplicitCold =
+        op.extensions?.['x-hot-tool'] === false ||
+        op.extensions?.['x-mcp-hot'] === false ||
+        op.extensions?.['x-priority'] === 'low';
+
+      if (isExplicitHot) priority += 50;
+      if (isExplicitCold) priority -= 100;
+
+      // Tier 2: Configured Hot-Tool Keywords
+      if (this.hotToolKeywords.length > 0) {
+        for (const kw of this.hotToolKeywords) {
+          if (lower.includes(kw) || opTagsLower.some((t) => t.includes(kw))) {
+            priority += 30;
+            break;
+          }
+        }
+      }
+
+      // Tier 3: Dynamic Spec-Derived Tag Keywords (weighted by relative frequency)
+      if (derivedTagKeywords.size > 0) {
+        let bestTagScore = 0;
+        for (const [tagKw, freq] of derivedTagKeywords.entries()) {
+          if (opTagsLower.includes(tagKw) || lower.includes(tagKw)) {
+            const weight = Math.round(20 * (freq / maxTagFreq));
+            if (weight > bestTagScore) {
+              bestTagScore = weight;
+            }
+          }
+        }
+        priority += bestTagScore;
+      }
+
+      // Tier 4: Structural & Semantic Heuristics
+      if (lower.includes('list') || lower.includes('get') || lower.includes('all')) {
+        priority += 10;
+      }
+      if (op.path.split('/').filter(Boolean).length === 1) {
+        priority += 15;
+      }
+
+      // Tier 5: Fallback CRUD Keywords
+      for (const kw of defaultFallbackKeywords) {
+        if (lower.includes(kw) || opTagsLower.some((t) => t.includes(kw))) {
+          priority += 15;
+          break;
+        }
+      }
+
+      // Deprioritize non-domain diagnostic/healthcheck endpoints from turn-1 hot tools
+      if (
+        lower.includes('health') ||
+        lower.includes('ping') ||
+        lower.includes('heartbeat') ||
+        opTagsLower.includes('maintenance') ||
+        opTagsLower.includes('health')
+      ) {
+        priority -= 15;
+      }
+
       return { op, priority };
     });
 
     scored.sort((a, b) => b.priority - a.priority);
-    return scored.slice(0, 6).map((s) => s.op);
+    const limit = Math.min(6, this.maxMountedTools);
+    return scored
+      .filter((s) => s.priority > 0)
+      .slice(0, limit)
+      .map((s) => s.op);
   }
 
   public getIsJIT(): boolean {

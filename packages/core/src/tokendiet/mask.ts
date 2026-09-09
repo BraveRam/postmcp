@@ -62,7 +62,20 @@ export function normalizeJsonPath(rawMask: string, data: any): string {
     return path;
   }
 
-  const parts = path.split('.');
+  let parts = path.split('.');
+  if (
+    data &&
+    typeof data === 'object' &&
+    !Array.isArray(data) &&
+    !(parts[0] in data)
+  ) {
+    if (data.data && typeof data.data === 'object' && parts[0] in data.data) {
+      parts = ['data', ...parts];
+    } else if (data.result && typeof data.result === 'object' && parts[0] in data.result) {
+      parts = ['result', ...parts];
+    }
+  }
+
   let currentObjs = [data];
   const jsonPathParts = ['$'];
 

@@ -113,4 +113,152 @@ describe('JIT Dynamic Tool Router', () => {
       expect(registry.isOperationMounted(m.id)).toBe(true);
     }
   });
+
+  it('should pre-mount operations with x-hot-tool or x-priority: "high" vendor extensions', () => {
+    const customOps: NormalizedOperation[] = [
+      {
+        id: 'getDeepNestedAnalytics',
+        method: 'get',
+        path: '/v1/internal/deep/analytics',
+        summary: 'Deeply nested internal metric report',
+        description: 'Returns internal usage metrics',
+        tags: ['internal'],
+        parameters: [],
+        inputSchema: { type: 'object' },
+        riskTier: 'READ_ONLY',
+        extensions: { 'x-hot-tool': true },
+      },
+      {
+        id: 'getGenericAudit',
+        method: 'get',
+        path: '/audit',
+        summary: 'Audit log listing',
+        description: 'Listing logs',
+        tags: ['logs'],
+        parameters: [],
+        inputSchema: { type: 'object' },
+        riskTier: 'READ_ONLY',
+      },
+    ];
+
+    const registry = new ToolRegistry(customOps, { forceJIT: true, maxMountedTools: 5 });
+    const active = registry.getActiveOperations();
+    expect(active.map((o) => o.id)).toContain('getDeepNestedAnalytics');
+  });
+
+  it('should exclude operations with x-hot-tool: false from turn-1 hot tools', () => {
+    const customOps: NormalizedOperation[] = [
+      {
+        id: 'listProjects',
+        method: 'get',
+        path: '/projects',
+        summary: 'List projects',
+        description: 'List all projects',
+        tags: ['projects'],
+        parameters: [],
+        inputSchema: { type: 'object' },
+        riskTier: 'READ_ONLY',
+        extensions: { 'x-hot-tool': false },
+      },
+      {
+        id: 'listDatabases',
+        method: 'get',
+        path: '/databases',
+        summary: 'List databases',
+        description: 'List all databases',
+        tags: ['databases'],
+        parameters: [],
+        inputSchema: { type: 'object' },
+        riskTier: 'READ_ONLY',
+      },
+    ];
+
+    const registry = new ToolRegistry(customOps, { forceJIT: true, maxMountedTools: 5 });
+    const active = registry.getActiveOperations();
+    expect(active.map((o) => o.id)).not.toContain('listProjects');
+    expect(active.map((o) => o.id)).toContain('listDatabases');
+  });
+
+  it('should prioritize user-configured hotToolKeywords over default heuristics', () => {
+    const customOps: NormalizedOperation[] = [
+      {
+        id: 'listProjects',
+        method: 'get',
+        path: '/projects',
+        summary: 'List projects',
+        description: 'List all projects',
+        tags: ['general'],
+        parameters: [],
+        inputSchema: { type: 'object' },
+        riskTier: 'READ_ONLY',
+      },
+      {
+        id: 'listTelemetry',
+        method: 'get',
+        path: '/telemetry',
+        summary: 'IoT telemetry feed',
+        description: 'IoT metrics',
+        tags: ['iot'],
+        parameters: [],
+        inputSchema: { type: 'object' },
+        riskTier: 'READ_ONLY',
+      },
+    ];
+
+    // With hotToolKeywords: ['telemetry'], listTelemetry gets boosted ahead
+    const registry = new ToolRegistry(customOps, {
+      forceJIT: true,
+      maxMountedTools: 1,
+      hotToolKeywords: ['telemetry'],
+    });
+
+    const active = registry.getActiveOperations();
+    expect(active.length).toBe(1);
+    expect(active[0].id).toBe('listTelemetry');
+  });
+
+  it('should dynamically infer entity keywords from spec tags without manual configuration', () => {
+    const scrapingOps: NormalizedOperation[] = [
+      {
+        id: 'scrapeUrl',
+        method: 'get',
+        path: '/scrape',
+        summary: 'Scrape a single web page',
+        description: 'Extract markdown from a URL',
+        tags: ['scraping'],
+        parameters: [],
+        inputSchema: { type: 'object' },
+        riskTier: 'READ_ONLY',
+      },
+      {
+        id: 'crawlSite',
+        method: 'get',
+        path: '/crawl',
+        summary: 'Start crawl job',
+        description: 'Crawl entire site',
+        tags: ['scraping'],
+        parameters: [],
+        inputSchema: { type: 'object' },
+        riskTier: 'READ_ONLY',
+      },
+      {
+        id: 'getHealth',
+        method: 'get',
+        path: '/health',
+        summary: 'System health check',
+        description: 'Returns server status',
+        tags: ['maintenance'],
+        parameters: [],
+        inputSchema: { type: 'object' },
+        riskTier: 'READ_ONLY',
+      },
+    ];
+
+    // Tags 'scraping' appears twice, becoming the primary domain tag
+    const registry = new ToolRegistry(scrapingOps, { forceJIT: true, maxMountedTools: 2 });
+    const active = registry.getActiveOperations();
+    const activeIds = active.map((o) => o.id);
+    expect(activeIds).toContain('scrapeUrl');
+    expect(activeIds).toContain('crawlSite');
+  });
 });

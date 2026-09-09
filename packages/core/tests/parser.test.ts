@@ -187,4 +187,31 @@ User:
 
     spyGet.mockRestore();
   });
+
+  it('should preserve vendor extensions (x-*) on operations and pathItems', async () => {
+    const specJson = {
+      openapi: '3.0.0',
+      info: { title: 'Extensions Test', version: '1.0' },
+      paths: {
+        '/analytics': {
+          'x-path-tag': 'analytics-root',
+          get: {
+            summary: 'Get Analytics',
+            'x-hot-tool': true,
+            'x-priority': 'high',
+            'x-custom-meta': { env: 'prod' },
+            responses: { '200': { description: 'OK' } },
+          },
+        },
+      },
+    };
+
+    const spec = await parseOpenAPI(specJson);
+    const op = spec.operations[0];
+    expect(op.extensions).toBeDefined();
+    expect(op.extensions?.['x-path-tag']).toBe('analytics-root');
+    expect(op.extensions?.['x-hot-tool']).toBe(true);
+    expect(op.extensions?.['x-priority']).toBe('high');
+    expect(op.extensions?.['x-custom-meta']).toEqual({ env: 'prod' });
+  });
 });

@@ -5,7 +5,12 @@ export interface PostMcpCliConfig {
   spec?: string;
   baseUrl?: string;
   auth?: AuthConfig;
-  jit?: boolean;
+  jit?: boolean | {
+    enabled?: boolean;
+    maxMountedTools?: number;
+    hotToolKeywords?: string[];
+  };
+  hotToolKeywords?: string[];
   dryRun?: boolean;
   transport?: 'stdio' | 'http';
   port?: number;
@@ -32,6 +37,7 @@ export interface RunCommandOptions {
   bearer?: string;
   apiKey?: string;
   jit?: boolean;
+  hotToolKeywords?: string;
   dryRun?: boolean;
   tokenDiet?: boolean;
   maxTokens?: string;

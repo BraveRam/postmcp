@@ -5,7 +5,7 @@ import {
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { NormalizedSpec, NormalizedOperation } from '../parser/types.js';
-import { ToolRegistry } from '../jit/registry.js';
+import { ToolRegistry, ToolRegistryOptions } from '../jit/registry.js';
 import {
   TOOL_SEARCH_NAME,
   TOOL_SEARCH_DESCRIPTION,
@@ -25,7 +25,8 @@ export interface PostMcpServerOptions {
   baseUrl?: string;
   auth?: AuthConfig;
   tokenDiet?: TokenDietOptions;
-  jit?: boolean;
+  jit?: boolean | ToolRegistryOptions;
+  hotToolKeywords?: string[];
   dryRun?: boolean;
   serverName?: string;
   serverVersion?: string;
@@ -65,7 +66,12 @@ export class PostMcpServer {
 
   constructor(options: PostMcpServerOptions) {
     this.spec = options.spec;
-    this.registry = new ToolRegistry(this.spec.operations, options.jit);
+    const jitOptions = typeof options.jit === 'object'
+      ? { ...options.jit, hotToolKeywords: options.hotToolKeywords || options.jit.hotToolKeywords }
+      : options.hotToolKeywords
+        ? { forceJIT: options.jit, hotToolKeywords: options.hotToolKeywords }
+        : options.jit;
+    this.registry = new ToolRegistry(this.spec.operations, jitOptions);
     this.tokenDietOptions = options.tokenDiet || { enabled: true, convertToMarkdownTable: true };
     this.isDryRun = Boolean(options.dryRun);
 

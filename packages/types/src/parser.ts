@@ -43,6 +43,7 @@ export interface NormalizedOperation {
   security?: Array<Record<string, string[]>>;
   isDeprecated?: boolean;
   contentType?: string;
+  extensions?: Record<string, any>;
 }
 
 export interface SecurityScheme {

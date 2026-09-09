@@ -5,6 +5,7 @@ import type { TokenDietOptions } from './tokendiet.js';
 export interface ToolRegistryOptions {
   forceJIT?: boolean;
   maxMountedTools?: number; // LRU capacity (default: 10)
+  hotToolKeywords?: string[];
 }
 
 export interface PostMcpServerOptions {
@@ -12,7 +13,8 @@ export interface PostMcpServerOptions {
   baseUrl?: string;
   auth?: AuthConfig;
   tokenDiet?: TokenDietOptions;
-  jit?: boolean;
+  jit?: boolean | ToolRegistryOptions;
+  hotToolKeywords?: string[];
   dryRun?: boolean;
   serverName?: string;
   serverVersion?: string;

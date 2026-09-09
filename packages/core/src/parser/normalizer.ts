@@ -279,6 +279,19 @@ export function normalizeSpec(spec: any): NormalizedSpec {
         successResponse?.content?.['application/json']?.schema || successResponse?.schema;
       const responseSchema = rawResponseSchema ? sanitizeSchema(rawResponseSchema, 3) : undefined;
 
+      // Extract vendor extensions (x-*) from pathItem and op
+      const extensions: Record<string, any> = {};
+      for (const [key, val] of Object.entries(pathItem)) {
+        if (key.startsWith('x-')) {
+          extensions[key] = val;
+        }
+      }
+      for (const [key, val] of Object.entries(op)) {
+        if (key.startsWith('x-')) {
+          extensions[key] = val;
+        }
+      }
+
       operations.push({
         id: uniqueId,
         method,
@@ -293,6 +306,7 @@ export function normalizeSpec(spec: any): NormalizedSpec {
         security: op.security || spec.security,
         isDeprecated: Boolean(op.deprecated),
         contentType,
+        extensions: Object.keys(extensions).length > 0 ? extensions : undefined,
       });
     }
   }

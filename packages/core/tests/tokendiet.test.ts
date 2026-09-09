@@ -67,6 +67,22 @@ describe('Token Diet Engine', () => {
     // Invalid mask should return empty object, not original payload (fail-safe)
     const invalidMasked = applyFieldMask(data, ['nonExistentField']);
     expect(invalidMasked).toEqual({});
+
+    // Auto-unwrap data envelope (e.g. Firecrawl / REST API response envelopes)
+    const envelopeData = {
+      success: true,
+      data: {
+        markdown: '# Hello World',
+        metadata: { title: 'Test Title', extra: 'drop' },
+      },
+    };
+    const envelopeMasked = applyFieldMask(envelopeData, ['markdown', 'metadata.title']);
+    expect(envelopeMasked).toEqual({
+      data: {
+        markdown: '# Hello World',
+        metadata: { title: 'Test Title' },
+      },
+    });
   });
 
   it('should strip HTML tags and cap long prose fields (Finding 21)', () => {
