@@ -595,13 +595,25 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
       expect(fileContent).toContain('CUSTOM_TEST_API_KEY="sec_test_secret_value_12345"');
       expect(fileContent).toContain('CUSTOM_TEST_HEADER_X_APP_ID="app_999"');
 
-      // 3. Query GET again - should now report exists with masked value
+      // 3. Query GET again - should now report exists with value and custom headers
       const checkReq2 = new Request('http://localhost:3000/api/env?specTitle=CustomTestAPI');
       const checkRes2 = await getEnvHandler(checkReq2);
       const checkData2 = await checkRes2.json();
       expect(checkData2.exists).toBe(true);
       expect(checkData2.hasValue).toBe(true);
+      expect(checkData2.value).toBe('sec_test_secret_value_12345');
       expect(checkData2.maskedValue).toContain('sec_...2345');
+      expect(checkData2.customHeaders).toEqual([{ key: 'X-APP-ID', val: 'app_999' }]);
+
+      // 4. Query another API (e.g. OtherService) - must be completely isolated and not return CustomTestAPI's key
+      const otherReq = new Request('http://localhost:3000/api/env?specTitle=OtherService');
+      const otherRes = await getEnvHandler(otherReq);
+      const otherData = await otherRes.json();
+      expect(otherData.envVarName).toBe('OTHER_API_KEY');
+      expect(otherData.exists).toBe(false);
+      expect(otherData.hasValue).toBe(false);
+      expect(otherData.value).toBe('');
+      expect(otherData.customHeaders).toEqual([]);
     } finally {
       delete process.env.POSTMCP_WORKSPACE;
       delete process.env.CUSTOM_TEST_API_KEY;

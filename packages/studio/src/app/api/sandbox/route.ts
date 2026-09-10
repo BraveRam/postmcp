@@ -84,10 +84,11 @@ export function resolveTargetAuthConfig(
   // Auto-resolve env fallbacks if not provided in request
   const scopedKey = getScopedEnvKey(spec?.title, spec?.servers?.[0]?.url);
   if (!bearerToken) {
-    bearerToken =
-      process.env[scopedKey] ||
-      (scopedKey !== 'BEARER_TOKEN' ? process.env.BEARER_TOKEN : undefined) ||
-      process.env.API_KEY;
+    if (scopedKey === 'BEARER_TOKEN') {
+      bearerToken = process.env.BEARER_TOKEN || process.env.API_KEY;
+    } else {
+      bearerToken = process.env[scopedKey];
+    }
   }
 
   // Auto-resolve any matching scoped headers from environment

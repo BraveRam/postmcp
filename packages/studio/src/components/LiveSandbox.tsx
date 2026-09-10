@@ -57,6 +57,7 @@ import {
   Maximize2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getScopedEnvKey } from '@/lib/env-scope';
 
 export interface SandboxMessage {
   id: string;
@@ -99,45 +100,97 @@ export function LiveSandbox({
   const [isCredentialsModalOpen, setIsCredentialsModalOpen] = useState(false);
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
 
-  const [bearerToken, setBearerToken] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('postmcp_sandbox_bearer_token') || '';
-    }
-    return '';
-  });
-  const [customHeaders, setCustomHeaders] = useState<HeaderRow[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = sessionStorage.getItem('postmcp_sandbox_custom_headers');
-        if (saved) return JSON.parse(saved);
-      } catch {}
-    }
-    return [{ id: 'hdr_1', key: '', val: '' }];
-  });
-
-  const handleSaveCredentials = (token: string, headers: HeaderRow[]) => {
-    setBearerToken(token);
-    setCustomHeaders(headers);
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('postmcp_sandbox_bearer_token', token);
-      sessionStorage.setItem('postmcp_sandbox_custom_headers', JSON.stringify(headers));
-    }
-  };
-
+  const [bearerToken, setBearerToken] = useState<string>('');
+  const [customHeaders, setCustomHeaders] = useState<HeaderRow[]>([
+    { id: 'hdr_1', key: '', val: '' },
+  ]);
   const [hasEnvCredentials, setHasEnvCredentials] = useState(false);
 
+  // Sync credentials whenever the active spec changes
   useEffect(() => {
+    // 1. Clean up legacy un-scoped storage keys if present
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('postmcp_sandbox_bearer_token');
+      sessionStorage.removeItem('postmcp_sandbox_custom_headers');
+    }
+
+    const scopeKey = getScopedEnvKey(spec.title, spec.servers?.[0]?.url);
+    let loadedFromSession = false;
+
+    // Check scoped session storage first
+    if (typeof window !== 'undefined') {
+      try {
+        const savedRaw = sessionStorage.getItem(`postmcp_sandbox_auth_${scopeKey}`);
+        if (savedRaw) {
+          const parsed = JSON.parse(savedRaw);
+          if (parsed && (parsed.bearerToken !== undefined || parsed.customHeaders)) {
+            setBearerToken(parsed.bearerToken || '');
+            if (Array.isArray(parsed.customHeaders) && parsed.customHeaders.length > 0) {
+              setCustomHeaders(parsed.customHeaders);
+            } else {
+              setCustomHeaders([{ id: 'hdr_1', key: '', val: '' }]);
+            }
+            loadedFromSession = true;
+          }
+        }
+      } catch {}
+    }
+
+    // Check environment (.env)
     fetch(
-      `/api/env?specTitle=${encodeURIComponent(spec.title || '')}&serverUrl=${encodeURIComponent(spec.servers?.[0]?.url || '')}`
+      `/api/env?specTitle=${encodeURIComponent(spec.title || '')}&serverUrl=${encodeURIComponent(spec.servers?.[0]?.url || '')}&envVarName=${encodeURIComponent(scopeKey)}`
     )
       .then((r) => r.json())
       .then((data) => {
         if (data && data.hasValue) {
           setHasEnvCredentials(true);
+          // If session didn't explicitly override it, load the active credentials from .env
+          if (!loadedFromSession) {
+            setBearerToken(data.value || '');
+            if (Array.isArray(data.customHeaders) && data.customHeaders.length > 0) {
+              setCustomHeaders(
+                data.customHeaders.map((h: any, idx: number) => ({
+                  id: `hdr_${idx + 1}`,
+                  key: h.key,
+                  val: h.val,
+                }))
+              );
+            } else {
+              setCustomHeaders([{ id: 'hdr_1', key: '', val: '' }]);
+            }
+          }
+        } else {
+          setHasEnvCredentials(false);
+          if (!loadedFromSession) {
+            setBearerToken('');
+            setCustomHeaders([{ id: 'hdr_1', key: '', val: '' }]);
+          }
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!loadedFromSession) {
+          setHasEnvCredentials(false);
+          setBearerToken('');
+          setCustomHeaders([{ id: 'hdr_1', key: '', val: '' }]);
+        }
+      });
   }, [spec.title, spec.servers]);
+
+  const handleSaveCredentials = (token: string, headers: HeaderRow[]) => {
+    setBearerToken(token);
+    setCustomHeaders(headers);
+    const scopeKey = getScopedEnvKey(spec.title, spec.servers?.[0]?.url);
+    if (typeof window !== 'undefined') {
+      if (token.trim() || headers.some((h) => h.key.trim() && h.val.trim())) {
+        sessionStorage.setItem(
+          `postmcp_sandbox_auth_${scopeKey}`,
+          JSON.stringify({ bearerToken: token, customHeaders: headers })
+        );
+      } else {
+        sessionStorage.removeItem(`postmcp_sandbox_auth_${scopeKey}`);
+      }
+    }
+  };
 
   const hasCredentials = Boolean(
     bearerToken.trim() ||

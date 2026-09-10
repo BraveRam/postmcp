@@ -59,6 +59,27 @@ export function SandboxCredentialsModal({
   const [envSavedMsg, setEnvSavedMsg] = useState('');
   const [existingEnvInfo, setExistingEnvInfo] = useState<{ exists: boolean; maskedValue?: string } | null>(null);
 
+  const handleEnvVarNameChange = (newKey: string) => {
+    setEnvVarName(newKey);
+    if (!newKey.trim()) {
+      setExistingEnvInfo(null);
+      return;
+    }
+    fetch(`/api/env?envVarName=${encodeURIComponent(newKey.trim())}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && data.exists) {
+          setExistingEnvInfo({ exists: true, maskedValue: data.maskedValue });
+          if (!token && data.value) {
+            setToken(data.value);
+          }
+        } else {
+          setExistingEnvInfo(null);
+        }
+      })
+      .catch(() => setExistingEnvInfo(null));
+  };
+
   useEffect(() => {
     if (isOpen) {
       const defaultEnvKey = getScopedEnvKey(specTitle, serverUrl);
@@ -80,6 +101,22 @@ export function SandboxCredentialsModal({
         .then((data) => {
           if (data && data.exists) {
             setExistingEnvInfo({ exists: true, maskedValue: data.maskedValue });
+            if (!initialBearerToken && data.value) {
+              setToken(data.value);
+            }
+            if (
+              (!initialCustomHeaders || initialCustomHeaders.every((h) => !h.key.trim())) &&
+              Array.isArray(data.customHeaders) &&
+              data.customHeaders.length > 0
+            ) {
+              setHeaders(
+                data.customHeaders.map((h: any, idx: number) => ({
+                  id: `hdr_${idx + 1}`,
+                  key: h.key,
+                  val: h.val,
+                }))
+              );
+            }
           } else {
             setExistingEnvInfo(null);
           }
@@ -206,6 +243,9 @@ export function SandboxCredentialsModal({
                 onChange={(e) => setToken(e.target.value)}
                 placeholder="fc-... or sk_test_... or bearer token"
                 className="pr-10 font-sans text-xs h-9 bg-background"
+                autoComplete="off"
+                data-1p-ignore="true"
+                data-lpignore="true"
               />
               <button
                 type="button"
@@ -292,9 +332,11 @@ export function SandboxCredentialsModal({
                 <span className="text-[11px] font-mono text-muted-foreground shrink-0">Key:</span>
                 <Input
                   value={envVarName}
-                  onChange={(e) => setEnvVarName(e.target.value)}
+                  onChange={(e) => handleEnvVarNameChange(e.target.value)}
                   placeholder="ENV_VAR_NAME"
                   className="bg-background font-mono text-xs h-8 flex-1"
+                  autoComplete="off"
+                  data-1p-ignore="true"
                 />
               </div>
               <Button
@@ -325,7 +367,7 @@ export function SandboxCredentialsModal({
               </p>
             )}
 
-            {existingEnvInfo?.exists && !token && (
+            {existingEnvInfo?.exists && (
               <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 bg-muted/40 px-2 py-1 rounded border border-border/40 font-sans">
                 <Check className="h-3 w-3 text-emerald-400 shrink-0" />
                 <span>

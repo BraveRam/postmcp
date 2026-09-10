@@ -87,16 +87,43 @@ export async function GET(request: Request) {
     const inMemoryValue = process.env[envVarName] || '';
     const activeValue = fileValue || inMemoryValue;
 
+    const prefix = envVarName.replace(/_(API_KEY|TOKEN|SECRET_KEY|KEY|AUTH_TOKEN)$/i, '');
+    const customHeaders: { key: string; val: string }[] = [];
+
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf-8');
+      const lines = content.split('\n');
+      for (const line of lines) {
+        const match = line.trim().match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+        if (match && match[1].startsWith(`${prefix}_HEADER_`)) {
+          const headerKey = match[1].slice(`${prefix}_HEADER_`.length).replace(/_/g, '-');
+          const headerVal = match[2].replace(/^["']|["']$/g, '');
+          customHeaders.push({ key: headerKey, val: headerVal });
+        }
+      }
+    }
+
+    for (const [k, v] of Object.entries(process.env)) {
+      if (v && k.startsWith(`${prefix}_HEADER_`)) {
+        const headerKey = k.slice(`${prefix}_HEADER_`.length).replace(/_/g, '-');
+        if (!customHeaders.some((h) => h.key.toLowerCase() === headerKey.toLowerCase())) {
+          customHeaders.push({ key: headerKey, val: v });
+        }
+      }
+    }
+
     return NextResponse.json({
       envVarName,
       exists: existsInFile || Boolean(inMemoryValue),
       envPath,
+      value: activeValue || '',
       maskedValue: activeValue
         ? activeValue.length > 8
           ? `${activeValue.slice(0, 4)}...${activeValue.slice(-4)}`
           : '••••••••'
         : undefined,
       hasValue: Boolean(activeValue),
+      customHeaders,
     });
   } catch (err: any) {
     return NextResponse.json(
