@@ -737,7 +737,6 @@ export function LiveSandbox({
                 value={inputPrompt}
                 onChange={(e) => setInputPrompt(e.target.value)}
                 placeholder={`Ask the AI agent to invoke OpenAPI endpoints through ${model}...`}
-                disabled={isLoading}
               />
             </PromptInputBody>
             <PromptInputFooter>

@@ -5,6 +5,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 
+import { CodeBlock } from './CodeBlock';
+
 export interface MarkdownProps {
   children: string;
   className?: string;
@@ -68,20 +70,17 @@ export const Markdown = React.memo(function Markdown({ children, className }: Ma
             if (isInline) {
               return (
                 <code
-                  className="px-1.5 py-0.5 rounded bg-muted/80 text-[11px] font-sans border border-border/50 text-foreground font-medium"
+                  className="px-1.5 py-0.5 rounded bg-muted/80 text-[11px] font-mono border border-border/50 text-foreground font-medium"
                   {...props}
                 >
                   {codeChildren}
                 </code>
               );
             }
-            return (
-              <pre className="p-3 my-2 overflow-x-auto rounded-md bg-muted/30 border border-border text-[11px] font-sans text-foreground">
-                <code className={cn('font-sans text-[11px]', codeClassName)} {...props}>
-                  {codeChildren}
-                </code>
-              </pre>
-            );
+            const match = /language-(\w+)/.exec(codeClassName || '');
+            const language = match ? match[1] : '';
+            const codeString = String(codeChildren).replace(/\n$/, '');
+            return <CodeBlock code={codeString} language={language} />;
           },
           pre: ({ children: preChildren }) => <>{preChildren}</>,
           table: ({ children: tableChildren, ...props }) => (
