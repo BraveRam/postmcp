@@ -73,8 +73,8 @@ importers:
         specifier: ^2.0.0
         version: 2.0.0
       '@postmcp/types':
-        specifier: ^0.1.14
-        version: 0.1.14
+        specifier: workspace:*
+        version: link:../types
       '@types/dotenv':
         specifier: ^8.2.3
         version: 8.2.3
@@ -119,8 +119,8 @@ importers:
   packages/presets:
     dependencies:
       '@postmcp/types':
-        specifier: ^0.1.14
-        version: 0.1.14
+        specifier: workspace:*
+        version: link:../types
     devDependencies:
       '@types/node':
         specifier: ^22.13.5
@@ -1113,9 +1113,6 @@ packages:
   '@nolyfill/is-core-module@1.0.39':
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
-
-  '@postmcp/types@0.1.14':
-    resolution: {integrity: sha512-pjjOrcunckKaA3SVKX8bC84l9fU5RBfgxSYlgIyVUFWKjtnClpao8dF0t6k0b9pbiXV/Nj0mAbxksbY+tLepSQ==}
 
   '@radix-ui/number@1.1.3':
     resolution: {integrity: sha512-Road2bidD0uu/1BGDOWNdPI06g0lIRy6IF9GZcIrDK2KGItfor8IQwQa+yM2ERgHM1MmHxaxpTzk0/Jp42lNfA==}
@@ -4925,8 +4922,6 @@ snapshots:
       fastq: 1.20.3
 
   '@nolyfill/is-core-module@1.0.39': {}
-
-  '@postmcp/types@0.1.14': {}
 
   '@radix-ui/number@1.1.3': {}
 
