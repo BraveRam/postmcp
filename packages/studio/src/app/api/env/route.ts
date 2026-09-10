@@ -4,11 +4,28 @@ import * as path from 'node:path';
 import { getScopedEnvKey } from '@/lib/env-scope';
 
 function getWorkspaceDir(): string {
-  return (
+  const dir =
     process.env.POSTMCP_WORKSPACE ||
     process.env.WORKSPACE_CWD ||
-    process.cwd()
-  );
+    process.cwd();
+
+  // If dir points inside packages/studio (e.g. running pnpm dev or inside monorepo), resolve to project root
+  if (
+    dir.endsWith(path.join('packages', 'studio')) ||
+    dir.endsWith('packages/studio') ||
+    fs.existsSync(path.join(dir, '..', '..', 'pnpm-workspace.yaml'))
+  ) {
+    const candidate = path.resolve(dir, '..', '..');
+    if (
+      fs.existsSync(path.join(candidate, 'package.json')) ||
+      fs.existsSync(path.join(candidate, '.git')) ||
+      fs.existsSync(path.join(candidate, 'pnpm-workspace.yaml'))
+    ) {
+      return candidate;
+    }
+  }
+
+  return dir;
 }
 
 function updateEnvFile(filePath: string, updates: Record<string, string>) {
