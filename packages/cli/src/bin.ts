@@ -5,18 +5,32 @@ import { generateCommand } from './commands/generate.js';
 import { exportCommand } from './commands/export.js';
 import { listPresetsCommand, syncPresetsCommand } from './commands/presets.js';
 import { studioCommand } from './commands/studio.js';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import pc from 'picocolors';
 
 declare const __POSTMCP_VERSION__: string | undefined;
 
+function getCliVersion(): string {
+  if (typeof __POSTMCP_VERSION__ === 'string') {
+    return __POSTMCP_VERSION__;
+  }
+  try {
+    const dir = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
+    const pkg = JSON.parse(readFileSync(resolve(dir, '../package.json'), 'utf8'));
+    return pkg.version || 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
 export function createCli(): Command {
   const program = new Command();
-  const cliVersion = typeof __POSTMCP_VERSION__ !== 'undefined' ? __POSTMCP_VERSION__ : '0.1.11';
 
   program
     .name('postmcp')
     .description('The Postman for MCP. Turn any OpenAPI spec into a context-optimized MCP server in seconds.')
-    .version(cliVersion);
+    .version(getCliVersion());
 
   // 1. Run Command
   program
