@@ -7,7 +7,7 @@ import { POST as parseHandler } from '../src/app/api/parse/route.js';
 import { POST as tokenDietHandler } from '../src/app/api/token-diet/route.js';
 import { POST as exportHandler } from '../src/app/api/export/route.js';
 import { POST as persistHandler } from '../src/app/api/persist/route.js';
-import { POST as sandboxHandler, isPrivateOrBlockedHost } from '../src/app/api/sandbox/route.js';
+import { POST as sandboxHandler, isPrivateOrBlockedHost, resolveTargetAuthConfig } from '../src/app/api/sandbox/route.js';
 import { GET as initialSpecHandler } from '../src/app/api/initial-spec/route.js';
 
 describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
@@ -211,4 +211,341 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
     expect(isPrivateOrBlockedHost('https://api.stripe.com/v1/charges')).toBe(false);
     expect(isPrivateOrBlockedHost('https://api.github.com/user')).toBe(false);
   });
+
+  it('resolveTargetAuthConfig should correctly inject bearer token and custom headers', () => {
+    // 1. Explicit Bearer token
+    const res1 = resolveTargetAuthConfig({ bearerToken: 'fc-test-key-12345' });
+    expect(res1.bearerToken).toBe('fc-test-key-12345');
+    expect(res1.headers['Authorization']).toBe('Bearer fc-test-key-12345');
+
+    // 2. Custom headers as array
+    const res2 = resolveTargetAuthConfig({
+      bearerToken: 'token_abc',
+      customFields: [
+        { key: 'X-Api-Key', value: 'custom_val' },
+        { key: 'X-Org-Id', value: 'org_999' },
+      ],
+    });
+    expect(res2.headers['Authorization']).toBe('Bearer token_abc');
+    expect(res2.headers['X-Api-Key']).toBe('custom_val');
+    expect(res2.headers['X-Org-Id']).toBe('org_999');
+
+    // 3. Custom headers as record object
+    const res3 = resolveTargetAuthConfig({
+      customFields: {
+        'X-Client-Id': 'client_123',
+      },
+    });
+    expect(res3.headers['X-Client-Id']).toBe('client_123');
+  });
+
+  it('resolveTargetAuthConfig should auto-resolve from environment variables based on spec title/url', () => {
+    process.env.FIRECRAWL_API_KEY = 'fc-env-secret-999';
+    const firecrawlSpec: any = { title: 'Firecrawl API', servers: [{ url: 'https://api.firecrawl.dev' }] };
+    const res = resolveTargetAuthConfig(undefined, firecrawlSpec);
+
+    expect(res.bearerToken).toBe('fc-env-secret-999');
+    expect(res.headers['Authorization']).toBe('Bearer fc-env-secret-999');
+    delete process.env.FIRECRAWL_API_KEY;
+  });
+
+  it('POST /api/sandbox should accept authConfig with custom headers and never leak tokens to LLM output', async () => {
+    const mockSpec: any = {
+      title: 'Firecrawl API',
+      servers: [{ url: 'https://api.firecrawl.dev' }],
+      operations: [
+        {
+          id: 'scrape',
+          summary: 'Scrape Web Page',
+          description: 'Extract clean markdown and content from URL',
+          method: 'post',
+          path: '/v1/scrape',
+          riskTier: 'MUTATION',
+          parameters: [{ name: 'url', in: 'body', required: true, schema: { type: 'string' } }],
+          inputSchema: { type: 'object', properties: { url: { type: 'string' } } },
+        },
+      ],
+    };
+
+    const secretKey = 'fc-super-secret-token-xyz';
+    const req = new Request('http://localhost:3000/api/sandbox', {
+      method: 'POST',
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: 'Scrape https://example.com' }],
+        spec: mockSpec,
+        selectedOperationId: 'scrape',
+        dryRun: true,
+        authConfig: {
+          bearerToken: secretKey,
+          customFields: [{ key: 'X-Tenant-Id', value: 'tenant-abc' }],
+        },
+      }),
+    });
+
+    const res = await sandboxHandler(req);
+    const data = await res.json();
+
+    expect(data.content).toBeDefined();
+    expect(data.toolCall?.name).toBe('scrape');
+    // Ensure the secret key is never leaked into the model output or response text
+    expect(data.content).not.toContain(secretKey);
+    if (data.result?.text) {
+      expect(data.result.text).not.toContain(secretKey);
+    }
+  });
+
+  it('POST /api/sandbox should support stream: true and return text/event-stream with tool events and text deltas', async () => {
+    const mockSpec: any = {
+      title: 'Scrape API',
+      servers: [{ url: 'https://api.example.com' }],
+      operations: [
+        {
+          id: 'scrapeUrl',
+          summary: 'Scrape a single URL',
+          method: 'post',
+          path: '/v1/scrape',
+          riskTier: 'MUTATION',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              url: { type: 'string' },
+            },
+            required: ['url'],
+          },
+        },
+      ],
+    };
+
+    const req = new Request('http://localhost:3000/api/sandbox', {
+      method: 'POST',
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: 'Scrape https://pullora.chat' }],
+        spec: mockSpec,
+        selectedOperationId: 'scrapeUrl',
+        dryRun: true,
+        stream: true,
+      }),
+    });
+
+    const res = await sandboxHandler(req);
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+
+    const reader = res.body?.getReader();
+    expect(reader).toBeDefined();
+
+    const decoder = new TextDecoder();
+    let fullOutput = '';
+    const events: any[] = [];
+
+    while (true) {
+      const { done, value } = await reader!.read();
+      if (done) break;
+      fullOutput += decoder.decode(value, { stream: true });
+      const lines = fullOutput.split('\n');
+      fullOutput = lines.pop() || '';
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const raw = line.slice(6).trim();
+          if (raw && raw !== '[DONE]') {
+            events.push(JSON.parse(raw));
+          }
+        }
+      }
+    }
+
+    expect(events.length).toBeGreaterThan(0);
+    const toolCallEvent = events.find((e) => e.type === 'tool-call');
+    expect(toolCallEvent).toBeDefined();
+    expect(toolCallEvent.name).toBe('scrapeUrl');
+
+    const toolResultEvent = events.find((e) => e.type === 'tool-result');
+    expect(toolResultEvent).toBeDefined();
+    expect(toolResultEvent.name).toBe('scrapeUrl');
+
+    const textDeltaEvent = events.find((e) => e.type === 'text-delta');
+    expect(textDeltaEvent).toBeDefined();
+
+    const doneEvent = events.find((e) => e.type === 'done');
+    expect(doneEvent).toBeDefined();
+  });
+
+  it('getToolLabel should humanize camelCase, snake_case, and kebab-case operation names into natural titles', async () => {
+    const { getToolLabel } = await import('../src/components/ai-elements/tool.js');
+
+    expect(getToolLabel('scrapeAndExtractFromUrl')).toBe('Scrape And Extract From Url');
+    expect(getToolLabel('assignment_edit_references')).toBe('Assignment Edit References');
+    expect(getToolLabel('billing_balance')).toBe('Billing Balance');
+    expect(getToolLabel('create-checkout-session')).toBe('Create Checkout Session');
+    expect(getToolLabel('listAllProjects')).toBe('List All Projects');
+  });
+
+  it('POST /api/sandbox should preserve input parameters and non-empty output in tool results for composite schemas', async () => {
+    const firecrawlLikeSpec: any = {
+      title: 'Firecrawl Like API',
+      servers: [{ url: 'https://api.example.com' }],
+      operations: [
+        {
+          id: 'scrapeAndExtractFromUrl',
+          summary: 'Scrape a single URL',
+          method: 'post',
+          path: '/v1/scrape',
+          riskTier: 'MUTATION',
+          parameters: [],
+          inputSchema: {
+            type: 'object',
+            properties: {
+              url: { type: 'string', description: 'Target URL' },
+            },
+            required: ['url'],
+          },
+        },
+      ],
+    };
+
+    const req = new Request('http://localhost:3000/api/sandbox', {
+      method: 'POST',
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: 'Scrape https://pullora.chat' }],
+        spec: firecrawlLikeSpec,
+        selectedOperationId: 'scrapeAndExtractFromUrl',
+        dryRun: true,
+        stream: true,
+      }),
+    });
+
+    const res = await sandboxHandler(req);
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    let fullOutput = '';
+    const events: any[] = [];
+
+    while (true) {
+      const { done, value } = await reader!.read();
+      if (done) break;
+      fullOutput += decoder.decode(value, { stream: true });
+      const lines = fullOutput.split('\n');
+      fullOutput = lines.pop() || '';
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const raw = line.slice(6).trim();
+          if (raw && raw !== '[DONE]') {
+            events.push(JSON.parse(raw));
+          }
+        }
+      }
+    }
+
+    const toolCall = events.find((e) => e.type === 'tool-call');
+    expect(toolCall).toBeDefined();
+    expect(toolCall.args).toBeDefined();
+    expect(toolCall.args.url).toBe('https://pullora.chat');
+
+    const toolResult = events.find((e) => e.type === 'tool-result');
+    expect(toolResult).toBeDefined();
+    expect(toolResult.args).toBeDefined();
+    expect(toolResult.args.url).toBe('https://pullora.chat');
+    expect(toolResult.result.text).toBeDefined();
+    expect(toolResult.result.text.length).toBeGreaterThan(0);
+  });
+
+  it('Markdown component should render formatted headers, lists, code blocks, and links', async () => {
+    const React = await import('react');
+    const { renderToString } = await import('react-dom/server');
+    const { Markdown } = await import('../src/components/Markdown.js');
+
+    const markdownText = `# Studio Title\n\nHere is a [link](https://postmcp.dev) and \`inline_code\`.\n\n- Bullet 1\n- Bullet 2\n\n\`\`\`json\n{"status": "ok"}\n\`\`\``;
+    const html = renderToString(React.createElement(Markdown, { children: markdownText }));
+
+    expect(html).toContain('<h1');
+    expect(html).toContain('Studio Title');
+    expect(html).toContain('<a href="https://postmcp.dev"');
+    expect(html).toContain('<code');
+    expect(html).toContain('inline_code');
+    expect(html).toContain('<ul');
+    expect(html).toContain('<li');
+    expect(html).toContain('Bullet 1');
+    expect(html).toContain('<pre');
+  });
+
+  it('LiveSandboxModal should export component and accept modal configuration props', async () => {
+    const { LiveSandboxModal } = await import('../src/components/LiveSandboxModal.js');
+    expect(LiveSandboxModal).toBeDefined();
+    expect(typeof LiveSandboxModal).toBe('function');
+  });
+
+  it('User messages should render plain text without markdown conversion', async () => {
+    const React = await import('react');
+    const { renderToString } = await import('react-dom/server');
+    const { MessageResponse } = await import('../src/components/ai-elements/message.js');
+
+    const rawText = '# Not A Header\n**not bold**';
+    const userHtml = renderToString(React.createElement(MessageResponse, { from: 'user' }, rawText));
+    expect(userHtml).not.toContain('<h1');
+    expect(userHtml).not.toContain('<strong');
+    expect(userHtml).toContain('# Not A Header');
+    expect(userHtml).toContain('whitespace-pre-wrap');
+
+    const assistantHtml = renderToString(React.createElement(MessageResponse, { from: 'assistant' }, rawText));
+    expect(assistantHtml).toContain('<h1');
+    expect(assistantHtml).toContain('<strong');
+  });
+
+  it('Streaming sandbox endpoint should emit matching toolCallId on tool-call and tool-result events', async () => {
+    const mockSpec: any = {
+      title: 'Test Spec',
+      operations: [
+        {
+          id: 'testOp',
+          summary: 'Test Operation',
+          method: 'get',
+          path: '/test',
+          riskTier: 'READ_ONLY',
+        },
+      ],
+    };
+
+    const req = new Request('http://localhost:3000/api/sandbox', {
+      method: 'POST',
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: 'test' }],
+        spec: mockSpec,
+        selectedOperationId: 'testOp',
+        dryRun: false,
+        stream: true,
+      }),
+    });
+
+    const res = await sandboxHandler(req);
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    let fullOutput = '';
+    const events: any[] = [];
+
+    while (true) {
+      const { done, value } = await reader!.read();
+      if (done) break;
+      fullOutput += decoder.decode(value, { stream: true });
+      const lines = fullOutput.split('\n');
+      fullOutput = lines.pop() || '';
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const raw = line.slice(6).trim();
+          if (raw && raw !== '[DONE]') {
+            events.push(JSON.parse(raw));
+          }
+        }
+      }
+    }
+
+    const toolCall = events.find((e) => e.type === 'tool-call');
+    const toolResult = events.find((e) => e.type === 'tool-result');
+
+    expect(toolCall).toBeDefined();
+    expect(toolResult).toBeDefined();
+    expect(toolCall.toolCallId).toBeDefined();
+    expect(toolResult.toolCallId).toBeDefined();
+    expect(toolCall.toolCallId).toBe(toolResult.toolCallId);
+    expect(toolResult.result.text).toBeDefined();
+  });
 });
+
