@@ -7,13 +7,16 @@ import { listPresetsCommand, syncPresetsCommand } from './commands/presets.js';
 import { studioCommand } from './commands/studio.js';
 import pc from 'picocolors';
 
+declare const __POSTMCP_VERSION__: string | undefined;
+
 export function createCli(): Command {
   const program = new Command();
+  const cliVersion = typeof __POSTMCP_VERSION__ !== 'undefined' ? __POSTMCP_VERSION__ : '0.1.11';
 
   program
     .name('postmcp')
     .description('The Postman for MCP. Turn any OpenAPI spec into a context-optimized MCP server in seconds.')
-    .version('0.1.8');
+    .version(cliVersion);
 
   // 1. Run Command
   program
