@@ -1,3 +1,5 @@
+import type { JSONSchemaObject, MacroStep } from './parser.js';
+
 export type PresetCategory =
   | 'Developer Tools'
   | 'Database & Cloud'
@@ -17,15 +19,10 @@ export interface PresetMacro {
   description: string;
   parameters: {
     type: 'object';
-    properties: Record<string, any>;
+    properties: Record<string, JSONSchemaObject>;
     required?: string[];
   };
-  steps: Array<{
-    id: string;
-    action: string;
-    body?: any;
-    export?: Record<string, string>;
-  }>;
+  steps: MacroStep[];
 }
 
 export interface Preset {
@@ -53,12 +50,12 @@ export interface EndpointDef {
     name: string;
     in: 'query' | 'path' | 'header';
     required?: boolean;
-    schema: { type: string; format?: string; default?: any };
+    schema: { type: string; format?: string; default?: unknown };
     description?: string;
   }>;
   requestBody?: {
     required?: boolean;
     properties: Record<string, { type: string; description?: string; required?: boolean }>;
   };
-  responseSchema?: Record<string, any>;
+  responseSchema?: Record<string, unknown>;
 }

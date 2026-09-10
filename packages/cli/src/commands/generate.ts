@@ -18,8 +18,9 @@ export async function generateCommand(specArg: string, options: GenerateCommandO
   if (typeof specPath === 'string' && specPath.startsWith('@')) {
     try {
       specPath = await resolvePresetSpec(specPath);
-    } catch (err: any) {
-      console.error(pc.red(`Error resolving preset: ${err.message}`));
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error(pc.red(`Error resolving preset: ${errMsg}`));
       process.exit(1);
       return;
     }
@@ -28,8 +29,9 @@ export async function generateCommand(specArg: string, options: GenerateCommandO
   let spec;
   try {
     spec = await parseOpenAPI(specPath);
-  } catch (err: any) {
-    console.error(pc.red(`Failed to parse specification: ${err.message}`));
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error(pc.red(`Failed to parse specification: ${errMsg}`));
     process.exit(1);
     return;
   }

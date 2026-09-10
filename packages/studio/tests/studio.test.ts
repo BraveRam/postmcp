@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import type { Preset, NormalizedSpec, NormalizedOperation } from '@postmcp/types';
 import { GET as getPresetsHandler } from '../src/app/api/presets/route.js';
 import { POST as parseHandler } from '../src/app/api/parse/route.js';
 import { POST as tokenDietHandler } from '../src/app/api/token-diet/route.js';
@@ -11,6 +12,38 @@ import { POST as sandboxHandler, isPrivateOrBlockedHost, resolveTargetAuthConfig
 import { GET as initialSpecHandler } from '../src/app/api/initial-spec/route.js';
 import { GET as getEnvHandler, POST as postEnvHandler } from '../src/app/api/env/route.js';
 import { getScopedEnvKey } from '../src/lib/env-scope.js';
+
+interface StreamEvent {
+  type: string;
+  toolCallId?: string;
+  name?: string;
+  args?: Record<string, unknown>;
+  result?: { text: string; [key: string]: unknown };
+  text?: string;
+}
+
+function createMockSpec(overrides: Partial<NormalizedSpec>): NormalizedSpec {
+  return {
+    title: 'Test Spec',
+    version: '1.0.0',
+    servers: [{ url: 'https://api.example.com' }],
+    operations: [],
+    securitySchemes: {},
+    ...overrides,
+  };
+}
+
+function createMockOperation(overrides: Partial<NormalizedOperation> & { id: string; method: NormalizedOperation['method']; path: string }): NormalizedOperation {
+  return {
+    summary: overrides.id,
+    description: overrides.id,
+    tags: ['default'],
+    parameters: [],
+    inputSchema: { type: 'object', properties: {} },
+    riskTier: 'READ_ONLY',
+    ...overrides,
+  };
+}
 
 describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
   it('GET /api/presets should return all 60+ curated presets with categories', async () => {
@@ -34,23 +67,23 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
     const res1 = await getPresetsHandler(req1);
     const data1 = await res1.json();
     expect(data1.presets.length).toBeGreaterThanOrEqual(8);
-    expect(data1.presets.every((p: any) => p.category === 'Payments & Commerce')).toBe(true);
-    expect(data1.presets.some((p: any) => p.id === 'stripe')).toBe(true);
+    expect(data1.presets.every((p: Preset) => p.category === 'Payments & Commerce')).toBe(true);
+    expect(data1.presets.some((p: Preset) => p.id === 'stripe')).toBe(true);
 
     // 2. Unencoded category (e.g. ?category=Payments & Commerce&q=)
     const req2 = new Request('http://localhost:3000/api/presets?category=Payments & Commerce&q=');
     const res2 = await getPresetsHandler(req2);
     const data2 = await res2.json();
     expect(data2.presets.length).toBeGreaterThanOrEqual(8);
-    expect(data2.presets.some((p: any) => p.id === 'shopify')).toBe(true);
+    expect(data2.presets.some((p: Preset) => p.id === 'shopify')).toBe(true);
 
     // 3. Database & Cloud
     const req3 = new Request(`http://localhost:3000/api/presets?category=${encodeURIComponent('Database & Cloud')}`);
     const res3 = await getPresetsHandler(req3);
     const data3 = await res3.json();
     expect(data3.presets.length).toBeGreaterThanOrEqual(7);
-    expect(data3.presets.some((p: any) => p.id === 'supabase')).toBe(true);
-    expect(data3.presets.some((p: any) => p.id === 'neon')).toBe(true);
+    expect(data3.presets.some((p: Preset) => p.id === 'supabase')).toBe(true);
+    expect(data3.presets.some((p: Preset) => p.id === 'neon')).toBe(true);
   });
 
   it('GET /api/initial-spec should return runtime initial spec environment variable', async () => {
@@ -243,7 +276,10 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
 
   it('resolveTargetAuthConfig should auto-resolve from environment variables based on spec title/url', () => {
     process.env.FIRECRAWL_API_KEY = 'fc-env-secret-999';
-    const firecrawlSpec: any = { title: 'Firecrawl API', servers: [{ url: 'https://api.firecrawl.dev' }] };
+    const firecrawlSpec = createMockSpec({
+      title: 'Firecrawl API',
+      servers: [{ url: 'https://api.firecrawl.dev' }],
+    });
     const res = resolveTargetAuthConfig(undefined, firecrawlSpec);
 
     expect(res.bearerToken).toBe('fc-env-secret-999');
@@ -252,11 +288,11 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
   });
 
   it('POST /api/sandbox should accept authConfig with custom headers and never leak tokens to LLM output', async () => {
-    const mockSpec: any = {
+    const mockSpec = createMockSpec({
       title: 'Firecrawl API',
       servers: [{ url: 'https://api.firecrawl.dev' }],
       operations: [
-        {
+        createMockOperation({
           id: 'scrape',
           summary: 'Scrape Web Page',
           description: 'Extract clean markdown and content from URL',
@@ -265,9 +301,9 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
           riskTier: 'MUTATION',
           parameters: [{ name: 'url', in: 'body', required: true, schema: { type: 'string' } }],
           inputSchema: { type: 'object', properties: { url: { type: 'string' } } },
-        },
+        }),
       ],
-    };
+    });
 
     const secretKey = 'fc-super-secret-token-xyz';
     const req = new Request('http://localhost:3000/api/sandbox', {
@@ -297,11 +333,11 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
   });
 
   it('POST /api/sandbox should support stream: true and return text/event-stream with tool events and text deltas', async () => {
-    const mockSpec: any = {
+    const mockSpec = createMockSpec({
       title: 'Scrape API',
       servers: [{ url: 'https://api.example.com' }],
       operations: [
-        {
+        createMockOperation({
           id: 'scrapeUrl',
           summary: 'Scrape a single URL',
           method: 'post',
@@ -314,9 +350,9 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
             },
             required: ['url'],
           },
-        },
+        }),
       ],
-    };
+    });
 
     const req = new Request('http://localhost:3000/api/sandbox', {
       method: 'POST',
@@ -337,7 +373,7 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
 
     const decoder = new TextDecoder();
     let fullOutput = '';
-    const events: any[] = [];
+    const events: StreamEvent[] = [];
 
     while (true) {
       const { done, value } = await reader!.read();
@@ -358,11 +394,11 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
     expect(events.length).toBeGreaterThan(0);
     const toolCallEvent = events.find((e) => e.type === 'tool-call');
     expect(toolCallEvent).toBeDefined();
-    expect(toolCallEvent.name).toBe('scrapeUrl');
+    expect(toolCallEvent?.name).toBe('scrapeUrl');
 
     const toolResultEvent = events.find((e) => e.type === 'tool-result');
     expect(toolResultEvent).toBeDefined();
-    expect(toolResultEvent.name).toBe('scrapeUrl');
+    expect(toolResultEvent?.name).toBe('scrapeUrl');
 
     const textDeltaEvent = events.find((e) => e.type === 'text-delta');
     expect(textDeltaEvent).toBeDefined();
@@ -382,11 +418,11 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
   });
 
   it('POST /api/sandbox should preserve input parameters and non-empty output in tool results for composite schemas', async () => {
-    const firecrawlLikeSpec: any = {
+    const firecrawlLikeSpec = createMockSpec({
       title: 'Firecrawl Like API',
       servers: [{ url: 'https://api.example.com' }],
       operations: [
-        {
+        createMockOperation({
           id: 'scrapeAndExtractFromUrl',
           summary: 'Scrape a single URL',
           method: 'post',
@@ -400,9 +436,9 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
             },
             required: ['url'],
           },
-        },
+        }),
       ],
-    };
+    });
 
     const req = new Request('http://localhost:3000/api/sandbox', {
       method: 'POST',
@@ -419,7 +455,7 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
     const reader = res.body?.getReader();
     const decoder = new TextDecoder();
     let fullOutput = '';
-    const events: any[] = [];
+    const events: StreamEvent[] = [];
 
     while (true) {
       const { done, value } = await reader!.read();
@@ -439,15 +475,15 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
 
     const toolCall = events.find((e) => e.type === 'tool-call');
     expect(toolCall).toBeDefined();
-    expect(toolCall.args).toBeDefined();
-    expect(toolCall.args.url).toBe('https://pullora.chat');
+    expect(toolCall?.args).toBeDefined();
+    expect(toolCall?.args?.url).toBe('https://pullora.chat');
 
     const toolResult = events.find((e) => e.type === 'tool-result');
     expect(toolResult).toBeDefined();
-    expect(toolResult.args).toBeDefined();
-    expect(toolResult.args.url).toBe('https://pullora.chat');
-    expect(toolResult.result.text).toBeDefined();
-    expect(toolResult.result.text.length).toBeGreaterThan(0);
+    expect(toolResult?.args).toBeDefined();
+    expect(toolResult?.args?.url).toBe('https://pullora.chat');
+    expect(toolResult?.result?.text).toBeDefined();
+    expect(toolResult?.result?.text.length).toBeGreaterThan(0);
   });
 
   it('Markdown component should render formatted headers, lists, code blocks, and links', async () => {
@@ -493,18 +529,18 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
   });
 
   it('Streaming sandbox endpoint should emit matching toolCallId on tool-call and tool-result events', async () => {
-    const mockSpec: any = {
+    const mockSpec = createMockSpec({
       title: 'Test Spec',
       operations: [
-        {
+        createMockOperation({
           id: 'testOp',
           summary: 'Test Operation',
           method: 'get',
           path: '/test',
           riskTier: 'READ_ONLY',
-        },
+        }),
       ],
-    };
+    });
 
     const req = new Request('http://localhost:3000/api/sandbox', {
       method: 'POST',
@@ -521,7 +557,7 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
     const reader = res.body?.getReader();
     const decoder = new TextDecoder();
     let fullOutput = '';
-    const events: any[] = [];
+    const events: StreamEvent[] = [];
 
     while (true) {
       const { done, value } = await reader!.read();
@@ -544,10 +580,10 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
 
     expect(toolCall).toBeDefined();
     expect(toolResult).toBeDefined();
-    expect(toolCall.toolCallId).toBeDefined();
-    expect(toolResult.toolCallId).toBeDefined();
-    expect(toolCall.toolCallId).toBe(toolResult.toolCallId);
-    expect(toolResult.result.text).toBeDefined();
+    expect(toolCall?.toolCallId).toBeDefined();
+    expect(toolResult?.toolCallId).toBeDefined();
+    expect(toolCall?.toolCallId).toBe(toolResult?.toolCallId);
+    expect(toolResult?.result?.text).toBeDefined();
   });
 
   it('getScopedEnvKey should accurately map well-known services and sanitize custom titles', () => {

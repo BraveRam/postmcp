@@ -13,7 +13,7 @@ function decodeJsonPointerPart(part: string): string {
   return decodeURIComponent(part).replace(/~1/g, '/').replace(/~0/g, '~');
 }
 
-export function resolvePointer(root: any, pointer: string): any {
+export function resolvePointer(root: unknown, pointer: string): unknown {
   if (pointer === '#' || pointer === '' || !pointer) {
     return root;
   }
@@ -23,26 +23,26 @@ export function resolvePointer(root: any, pointer: string): any {
   }
 
   const parts = pointer.slice(2).split('/').map(decodeJsonPointerPart);
-  let current = root;
+  let current: unknown = root;
 
   for (const part of parts) {
     if (current === null || typeof current !== 'object') {
       return null;
     }
-    current = current[part];
+    current = (current as Record<string, unknown>)[part];
   }
 
   return current;
 }
 
-export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<any> {
+export async function dereferenceSpec(rawDoc: unknown, basePath?: string): Promise<unknown> {
   if (!rawDoc || typeof rawDoc !== 'object') return rawDoc;
 
-  const docCache = new Map<string, { doc: any; base: string }>();
-  const resolvedCache = new Map<string, any>();
+  const docCache = new Map<string, { doc: unknown; base: string }>();
+  const resolvedCache = new Map<string, unknown>();
   const activeStack = new Set<string>();
 
-  async function loadDoc(uriOrPath: string, currentBase?: string): Promise<{ doc: any; base: string }> {
+  async function loadDoc(uriOrPath: string, currentBase?: string): Promise<{ doc: unknown; base: string }> {
     const isRemote =
       uriOrPath.startsWith('http://') ||
       uriOrPath.startsWith('https://') ||
@@ -66,7 +66,7 @@ export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<a
         responseType: 'text',
       });
 
-      let parsed: any;
+      let parsed: unknown;
       try {
         parsed = JSON.parse(res.data);
       } catch {
@@ -89,7 +89,7 @@ export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<a
     }
 
     const content = fs.readFileSync(resolvedPath, 'utf-8');
-    let parsed: any;
+    let parsed: unknown;
     try {
       parsed = JSON.parse(content);
     } catch {
@@ -103,11 +103,11 @@ export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<a
   }
 
   async function walk(
-    node: any,
-    currentDocRoot: any,
+    node: unknown,
+    currentDocRoot: unknown,
     currentBase?: string,
     depth: number = 0
-  ): Promise<any> {
+  ): Promise<unknown> {
     if (node === null || typeof node !== 'object') {
       return node;
     }
@@ -120,9 +120,11 @@ export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<a
       return Promise.all(node.map((item) => walk(item, currentDocRoot, currentBase, depth + 1)));
     }
 
+    const nodeRecord = node as Record<string, unknown>;
+
     // Handle $ref
-    if (typeof node.$ref === 'string') {
-      const ref = node.$ref;
+    if (typeof nodeRecord.$ref === 'string') {
+      const ref = nodeRecord.$ref;
       const scopedRefKey = `${currentBase || 'root'}::${ref}`;
 
       // Circular reference protection: Break cycle if currently in call stack
@@ -137,19 +139,19 @@ export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<a
       // Memoization: Return previously resolved schema
       if (resolvedCache.has(scopedRefKey)) {
         const cached = resolvedCache.get(scopedRefKey);
-        const { $ref: _, ...rest } = node;
+        const { $ref: _, ...rest } = nodeRecord;
         if (Object.keys(rest).length === 0) {
           return cached;
         }
         const restResolved = await walk(rest, currentDocRoot, currentBase, depth + 1);
         if (typeof cached === 'object' && cached !== null && !Array.isArray(cached)) {
-          return { ...cached, ...restResolved };
+          return { ...(cached as Record<string, unknown>), ...(restResolved as Record<string, unknown>) };
         }
         return cached;
       }
 
-      let target: any = null;
-      let targetDocRoot = currentDocRoot;
+      let target: unknown = null;
+      let targetDocRoot: unknown = currentDocRoot;
       let targetBase = currentBase;
 
       if (ref === '#' || ref.startsWith('#/')) {
@@ -162,8 +164,9 @@ export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<a
           target = resolvePointer(loaded.doc, pointer);
           targetDocRoot = loaded.doc;
           targetBase = loaded.base;
-        } catch (err: any) {
-          throw new Error(`Failed to dereference external $ref '${ref}': ${err.message}`);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          throw new Error(`Failed to dereference external $ref '${ref}': ${msg}`);
         }
       } else {
         try {
@@ -171,8 +174,9 @@ export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<a
           target = loaded.doc;
           targetDocRoot = loaded.doc;
           targetBase = loaded.base;
-        } catch (err: any) {
-          throw new Error(`Failed to dereference external $ref '${ref}': ${err.message}`);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          throw new Error(`Failed to dereference external $ref '${ref}': ${msg}`);
         }
       }
 
@@ -188,20 +192,20 @@ export async function dereferenceSpec(rawDoc: any, basePath?: string): Promise<a
       resolvedCache.set(scopedRefKey, resolved);
 
       // Merge remaining sibling properties alongside $ref
-      const { $ref: _, ...rest } = node;
+      const { $ref: _, ...rest } = nodeRecord;
       if (Object.keys(rest).length === 0) {
         return resolved;
       }
       const restResolved = await walk(rest, currentDocRoot, currentBase, depth + 1);
       if (typeof resolved === 'object' && resolved !== null && !Array.isArray(resolved)) {
-        return { ...resolved, ...restResolved };
+        return { ...(resolved as Record<string, unknown>), ...(restResolved as Record<string, unknown>) };
       }
       return resolved;
     }
 
     // Handle object properties
-    const result: Record<string, any> = {};
-    for (const [key, value] of Object.entries(node)) {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(nodeRecord)) {
       result[key] = await walk(value, currentDocRoot, currentBase, depth + 1);
     }
     return result;

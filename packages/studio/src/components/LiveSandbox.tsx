@@ -63,12 +63,12 @@ export interface SandboxMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  toolCall?: { name: string; args: any; toolCallId?: string };
+  toolCall?: { name: string; args: Record<string, unknown>; toolCallId?: string };
   result?: { text: string; savings?: number };
   toolCalls?: Array<{
     toolCallId?: string;
     name: string;
-    args: any;
+    args: Record<string, unknown>;
     result?: { text: string; savings?: number };
     status?: 'running' | 'complete' | 'error';
   }>;
@@ -149,7 +149,7 @@ export function LiveSandbox({
             setBearerToken(data.value || '');
             if (Array.isArray(data.customHeaders) && data.customHeaders.length > 0) {
               setCustomHeaders(
-                data.customHeaders.map((h: any, idx: number) => ({
+                data.customHeaders.map((h: { key: string; val: string }, idx: number) => ({
                   id: `hdr_${idx + 1}`,
                   key: h.key,
                   val: h.val,
@@ -345,13 +345,13 @@ export function LiveSandbox({
                     const tools = [...(msg.toolCalls || [])];
                     const existingIdx = tools.findIndex(
                       (t) =>
-                        (event.toolCallId && (t as any).toolCallId === event.toolCallId) ||
+                        (event.toolCallId && t.toolCallId === event.toolCallId) ||
                         (t.name === event.name && (!t.result || t.status === 'running'))
                     );
                     if (existingIdx >= 0) {
                       tools[existingIdx] = {
                         ...tools[existingIdx],
-                        toolCallId: event.toolCallId || (tools[existingIdx] as any).toolCallId,
+                        toolCallId: event.toolCallId || tools[existingIdx].toolCallId,
                         args: event.args ?? tools[existingIdx].args,
                         status: tools[existingIdx].result ? 'complete' : 'running',
                       };
@@ -377,7 +377,7 @@ export function LiveSandbox({
                     const tools = [...(msg.toolCalls || [])];
                     const existingIdx = tools.findIndex(
                       (t) =>
-                        (event.toolCallId && (t as any).toolCallId === event.toolCallId) ||
+                        (event.toolCallId && t.toolCallId === event.toolCallId) ||
                         (t.name === event.name)
                     );
                     const formattedResult =
@@ -388,7 +388,7 @@ export function LiveSandbox({
                     if (existingIdx >= 0) {
                       tools[existingIdx] = {
                         ...tools[existingIdx],
-                        toolCallId: event.toolCallId || (tools[existingIdx] as any).toolCallId,
+                        toolCallId: event.toolCallId || tools[existingIdx].toolCallId,
                         args: event.args ?? tools[existingIdx].args,
                         result: formattedResult,
                         status: 'complete',
@@ -487,8 +487,8 @@ export function LiveSandbox({
           },
         ]);
       }
-    } catch (err: any) {
-      if (err.name !== 'AbortError') {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name !== 'AbortError') {
         setMessages((prev) => {
           const existing = prev.find((m) => m.id === assistantMsgId);
           if (existing) {
@@ -719,14 +719,14 @@ export function LiveSandbox({
                         {hasTools && (
                           <div className="space-y-3 mb-3">
                             {activeTools.map((tc, idx) => {
-                              const cardKey = `${m.id}_tool_${(tc as any).toolCallId || tc.name}_${idx}`;
+                              const cardKey = `${m.id}_tool_${tc.toolCallId || tc.name}_${idx}`;
                               const isMulti = activeTools.length > 1;
                               const isToolRunning = isLoading && tc.status === 'running' && !tc.result;
                               const effectiveStatus = tc.status === 'error' ? 'error' : isToolRunning ? 'running' : 'complete';
                               const displayOutput =
                                 typeof tc.result === 'string'
                                   ? tc.result
-                                  : (tc.result?.text ?? (tc.result as any)?.result ?? (tc.result ? JSON.stringify(tc.result, null, 2) : undefined));
+                                  : (tc.result?.text ?? (tc.result ? JSON.stringify(tc.result, null, 2) : undefined));
 
                               return (
                                 <Tool key={cardKey} status={effectiveStatus}>

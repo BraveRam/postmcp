@@ -1,8 +1,30 @@
 import { describe, it, expect } from 'vitest';
+import * as http from 'node:http';
+import type { AddressInfo } from 'node:net';
+import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import type { Tool, CallToolResult, TextContent } from '@modelcontextprotocol/sdk/types.js';
 import { PostMcpServer, DEFAULT_POSTMCP_INSTRUCTIONS } from '../src/server/runtime.js';
 import { startHttpServer } from '../src/server/http.js';
 import { NormalizedSpec } from '../src/parser/types.js';
-import * as http from 'node:http';
+import type { ToolAnnotations } from '../src/safety/classifier.js';
+import type { HttpRequestConfig, HttpResponseResult } from '../src/http/client.js';
+
+type RequestHandler<TReq = Record<string, unknown>, TRes = unknown> = (request: TReq) => Promise<TRes>;
+
+function getMcpHandler<TRes = unknown, TReq = Record<string, unknown>>(
+  server: Server,
+  method: string
+): RequestHandler<TReq, TRes> {
+  const handler = (
+    server as Server & {
+      _requestHandlers?: Map<string, RequestHandler<TReq, TRes>>;
+    }
+  )._requestHandlers?.get(method);
+  if (!handler) {
+    throw new Error(`Handler for ${method} not found`);
+  }
+  return handler;
+}
 
 describe('PostMcpServer MCP Protocol Conformance', () => {
   const sampleSpec: NormalizedSpec = {
@@ -56,7 +78,7 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
     const mcpServer = postServer.getServerInstance();
 
     // Trigger ListToolsRequest handler
-    const listHandler = (mcpServer as any)._requestHandlers?.get('tools/list');
+    const listHandler = getMcpHandler<{ tools: Tool[] }>(mcpServer, 'tools/list');
     expect(listHandler).toBeDefined();
 
     const result = await listHandler({ method: 'tools/list', params: {} });
@@ -64,32 +86,35 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
     // 2 operations + 1 macro
     expect(result.tools.length).toBe(3);
 
-    const deleteTool = result.tools.find((t: any) => t.name === 'deleteItem');
+    const deleteTool = result.tools.find((t) => t.name === 'deleteItem');
     expect(deleteTool).toBeDefined();
     // Safety annotations must be nested under annotations
-    expect(deleteTool.annotations).toBeDefined();
-    expect(deleteTool.annotations.destructiveHint).toBe(true);
-    expect(deleteTool.annotations.readOnlyHint).toBe(false);
+    const deleteAnnotations = deleteTool?.annotations as ToolAnnotations | undefined;
+    expect(deleteAnnotations).toBeDefined();
+    expect(deleteAnnotations?.destructiveHint).toBe(true);
+    expect(deleteAnnotations?.readOnlyHint).toBe(false);
 
-    const listTool = result.tools.find((t: any) => t.name === 'listItems');
-    expect(listTool.annotations.readOnlyHint).toBe(true);
-    expect(listTool.annotations.destructiveHint).toBe(false);
+    const listTool = result.tools.find((t) => t.name === 'listItems');
+    const listAnnotations = listTool?.annotations as ToolAnnotations | undefined;
+    expect(listAnnotations?.readOnlyHint).toBe(true);
+    expect(listAnnotations?.destructiveHint).toBe(false);
 
-    const macroTool = result.tools.find((t: any) => t.name === 'macro_cleanupWorkflow');
-    expect(macroTool.annotations).toBeDefined();
-    expect(macroTool.annotations.destructiveHint).toBe(true);
+    const macroTool = result.tools.find((t) => t.name === 'macro_cleanupWorkflow');
+    const macroAnnotations = macroTool?.annotations as ToolAnnotations | undefined;
+    expect(macroAnnotations).toBeDefined();
+    expect(macroAnnotations?.destructiveHint).toBe(true);
   });
 
   it('should support JIT tool_search meta-tool and block unmounted calls (Finding 1)', async () => {
     const postServer = new PostMcpServer({ spec: sampleSpec, jit: true });
     const mcpServer = postServer.getServerInstance();
 
-    const listHandler = (mcpServer as any)._requestHandlers?.get('tools/list');
-    const callHandler = (mcpServer as any)._requestHandlers?.get('tools/call');
+    const listHandler = getMcpHandler<{ tools: Tool[] }>(mcpServer, 'tools/list');
+    const callHandler = getMcpHandler<CallToolResult>(mcpServer, 'tools/call');
 
     // List tools in JIT mode -> tool_search + macro are advertised
     const listResult = await listHandler({ method: 'tools/list', params: {} });
-    expect(listResult.tools.some((t: any) => t.name === 'tool_search')).toBe(true);
+    expect(listResult.tools.some((t) => t.name === 'tool_search')).toBe(true);
 
     // Trying to call deleteItem directly before mounting -> should return error
     const directCallResult = await callHandler({
@@ -97,25 +122,27 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
       params: { name: 'deleteItem', arguments: { id: '123' } },
     });
     expect(directCallResult.isError).toBe(true);
-    expect(directCallResult.content[0].text).toContain('is not currently mounted');
+    const directContent = directCallResult.content[0] as TextContent;
+    expect(directContent.text).toContain('is not currently mounted');
 
     // Mount tool via tool_search
     const searchCallResult = await callHandler({
       method: 'tools/call',
       params: { name: 'tool_search', arguments: { query: 'delete item' } },
     });
-    expect(searchCallResult.content[0].text).toContain('deleteItem');
-    expect(searchCallResult.content[0].text).toContain('Mounted');
+    const searchContent = searchCallResult.content[0] as TextContent;
+    expect(searchContent.text).toContain('deleteItem');
+    expect(searchContent.text).toContain('Mounted');
 
     // Now deleteItem is mounted and accessible
     const postSearchList = await listHandler({ method: 'tools/list', params: {} });
-    expect(postSearchList.tools.some((t: any) => t.name === 'deleteItem')).toBe(true);
+    expect(postSearchList.tools.some((t) => t.name === 'deleteItem')).toBe(true);
   });
 
   it('should generate dry-run simulations and support DELETE request bodies', async () => {
     const postServer = new PostMcpServer({ spec: sampleSpec, jit: false, dryRun: true });
     const mcpServer = postServer.getServerInstance();
-    const callHandler = (mcpServer as any)._requestHandlers?.get('tools/call');
+    const callHandler = getMcpHandler<CallToolResult>(mcpServer, 'tools/call');
 
     const dryRunResult = await callHandler({
       method: 'tools/call',
@@ -123,7 +150,8 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
     });
 
     expect(dryRunResult.isError).toBeFalsy();
-    const simJson = JSON.parse(dryRunResult.content[0].text);
+    const resultContent = dryRunResult.content[0] as TextContent;
+    const simJson = JSON.parse(resultContent.text);
     expect(simJson.isDryRun).toBe(true);
     expect(simJson.method).toBe('DELETE');
     expect(simJson.targetUrl).toBe('https://api.example.com/items/item_999');
@@ -141,7 +169,7 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
       expect(url).toContain('/mcp');
 
       // Test OPTIONS request (CORS)
-      const port = (httpServer.address() as any).port;
+      const port = (httpServer.address() as AddressInfo).port;
       const optionsRes = await new Promise<http.IncomingMessage>((resolve, reject) => {
         const req = http.request(
           {
@@ -231,18 +259,20 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
     };
 
     const postServer = new PostMcpServer({ spec: tenantSpec, jit: false });
-    let capturedParams: any = null;
-    (postServer as any).httpClient.request = async (options: any) => {
-      capturedParams = options.params;
+    let capturedParams: Record<string, unknown> | undefined;
+    postServer.getHttpClient().request = async (options: HttpRequestConfig): Promise<HttpResponseResult> => {
+      capturedParams = options.params as Record<string, unknown> | undefined;
       return {
         isError: false,
         status: 200,
+        statusText: 'OK',
+        headers: {},
         data: { projects: [{ id: 'proj_1', name: 'Alpha' }] },
       };
     };
 
     const mcpServer = postServer.getServerInstance();
-    const callHandler = (mcpServer as any)._requestHandlers?.get('tools/call');
+    const callHandler = getMcpHandler<CallToolResult>(mcpServer, 'tools/call');
 
     // Case A: omitted org_id
     const resA = await callHandler({
@@ -250,7 +280,7 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
       params: { name: 'listProjects', arguments: {} },
     });
     expect(resA.isError).toBeFalsy();
-    expect(capturedParams.org_id).toBe('org-auto-12345');
+    expect(capturedParams?.org_id).toBe('org-auto-12345');
 
     // Case B: dummy org-unknown
     const resB = await callHandler({
@@ -258,7 +288,7 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
       params: { name: 'listProjects', arguments: { org_id: 'org-unknown' } },
     });
     expect(resB.isError).toBeFalsy();
-    expect(capturedParams.org_id).toBe('org-auto-12345');
+    expect(capturedParams?.org_id).toBe('org-auto-12345');
 
     delete process.env.NEON_ORG_ID;
   });
@@ -299,11 +329,13 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
     };
 
     const postServer = new PostMcpServer({ spec: multiTenantSpec, jit: false });
-    (postServer as any).httpClient.request = async (options: any) => {
+    postServer.getHttpClient().request = async (options: HttpRequestConfig): Promise<HttpResponseResult> => {
       if (options.url === '/users/me/organizations') {
         return {
           isError: false,
           status: 200,
+          statusText: 'OK',
+          headers: {},
           data: {
             organizations: [
               { id: 'org-empty-default' },
@@ -313,17 +345,22 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
         };
       }
       if (options.url === '/projects') {
-        if (options.params?.org_id === 'org-empty-default') {
+        const params = options.params as Record<string, unknown> | undefined;
+        if (params?.org_id === 'org-empty-default') {
           return {
             isError: false,
             status: 200,
+            statusText: 'OK',
+            headers: {},
             data: { projects: [] },
           };
         }
-        if (options.params?.org_id === 'org-active-projects') {
+        if (params?.org_id === 'org-active-projects') {
           return {
             isError: false,
             status: 200,
+            statusText: 'OK',
+            headers: {},
             data: {
               projects: [
                 { id: 'proj_100', name: 'Real Project' },
@@ -332,11 +369,11 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
           };
         }
       }
-      return { isError: true, status: 404 };
+      return { isError: true, status: 404, statusText: 'Not Found', headers: {}, data: null };
     };
 
     const mcpServer = postServer.getServerInstance();
-    const callHandler = (mcpServer as any)._requestHandlers?.get('tools/call');
+    const callHandler = getMcpHandler<CallToolResult>(mcpServer, 'tools/call');
 
     const res = await callHandler({
       method: 'tools/call',
@@ -344,7 +381,8 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
     });
 
     expect(res.isError).toBeFalsy();
-    expect(res.content[0].text).toContain('Real Project');
+    const resContent = res.content[0] as TextContent;
+    expect(resContent.text).toContain('Real Project');
   });
 
   it('should auto-paginate and consolidate up to 3 pages internally', async () => {
@@ -369,12 +407,15 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
     };
 
     const postServer = new PostMcpServer({ spec: paginateSpec, jit: false });
-    (postServer as any).httpClient.request = async (options: any) => {
-      const cursor = options.params?.cursor;
+    postServer.getHttpClient().request = async (options: HttpRequestConfig): Promise<HttpResponseResult> => {
+      const params = options.params as Record<string, unknown> | undefined;
+      const cursor = params?.cursor;
       if (!cursor) {
         return {
           isError: false,
           status: 200,
+          statusText: 'OK',
+          headers: {},
           data: {
             projects: [{ id: 'p1', name: 'Project 1' }],
             pagination: { cursor: 'cursor-page-2' },
@@ -385,6 +426,8 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
         return {
           isError: false,
           status: 200,
+          statusText: 'OK',
+          headers: {},
           data: {
             projects: [{ id: 'p2', name: 'Project 2' }],
             pagination: { cursor: 'cursor-page-3' },
@@ -395,17 +438,19 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
         return {
           isError: false,
           status: 200,
+          statusText: 'OK',
+          headers: {},
           data: {
             projects: [{ id: 'p3', name: 'Project 3' }],
             pagination: { cursor: null },
           },
         };
       }
-      return { isError: true };
+      return { isError: true, status: 500, statusText: 'Error', headers: {}, data: null };
     };
 
     const mcpServer = postServer.getServerInstance();
-    const callHandler = (mcpServer as any)._requestHandlers?.get('tools/call');
+    const callHandler = getMcpHandler<CallToolResult>(mcpServer, 'tools/call');
 
     const res = await callHandler({
       method: 'tools/call',
@@ -413,16 +458,17 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
     });
 
     expect(res.isError).toBeFalsy();
-    expect(res.content[0].text).toContain('Project 1');
-    expect(res.content[0].text).toContain('Project 2');
-    expect(res.content[0].text).toContain('Project 3');
+    const pageContent = res.content[0] as TextContent;
+    expect(pageContent.text).toContain('Project 1');
+    expect(pageContent.text).toContain('Project 2');
+    expect(pageContent.text).toContain('Project 3');
   });
 
   it('should include PostMCP Token Diet instructions in MCP server initialize response', async () => {
     const postServer = new PostMcpServer({ spec: sampleSpec });
     const mcpServer = postServer.getServerInstance();
 
-    const initHandler = (mcpServer as any)._requestHandlers?.get('initialize');
+    const initHandler = getMcpHandler<{ instructions?: string }>(mcpServer, 'initialize');
     expect(initHandler).toBeDefined();
 
     const res = await initHandler({
@@ -447,7 +493,7 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
     });
     const mcpServer = postServer.getServerInstance();
 
-    const initHandler = (mcpServer as any)._requestHandlers?.get('initialize');
+    const initHandler = getMcpHandler<{ instructions?: string }>(mcpServer, 'initialize');
     const res = await initHandler({
       method: 'initialize',
       params: {
@@ -468,7 +514,7 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
     });
     const mcpServer = postServer.getServerInstance();
 
-    const initHandler = (mcpServer as any)._requestHandlers?.get('initialize');
+    const initHandler = getMcpHandler<{ instructions?: string }>(mcpServer, 'initialize');
     const res = await initHandler({
       method: 'initialize',
       params: {

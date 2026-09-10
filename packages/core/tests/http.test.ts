@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import axios from 'axios';
+import axios, { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { isSameOriginOrAllowed, applyAuth } from '../src/http/auth.js';
 import { serializeParameters, validateInputArguments } from '../src/http/serialize.js';
 import { isIdempotentMethod, parseRetryAfter } from '../src/http/retry.js';
@@ -7,6 +7,18 @@ import { getExtensionFromContentType } from '../src/media/binary.js';
 import { csvToMarkdownTable } from '../src/media/csv.js';
 import { pollAsyncJob } from '../src/http/async202.js';
 import { ResilientHttpClient } from '../src/http/client.js';
+import type { SecurityScheme } from '../src/parser/types.js';
+
+function createMockResponse(overrides: Partial<AxiosResponse>): AxiosResponse {
+  return {
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    config: {} as InternalAxiosRequestConfig,
+    data: {},
+    ...overrides,
+  };
+}
 
 describe('Resilient HTTP, Auth, and Parameter Serialization', () => {
   it('should protect credentials from cross-origin SSRF leakage (Finding 3)', () => {
@@ -18,7 +30,7 @@ describe('Resilient HTTP, Auth, and Parameter Serialization', () => {
     expect(isSameOriginOrAllowed(attackerUrl, baseUrl)).toBe(false);
 
     const headers: Record<string, string> = {};
-    const query: Record<string, any> = {};
+    const query: Record<string, unknown> = {};
     const authConfig = { bearerToken: 'secret_token_123' };
 
     // Same origin receives auth
@@ -46,7 +58,7 @@ describe('Resilient HTTP, Auth, and Parameter Serialization', () => {
     expect(headers2.Cookie).toBe('sess_id=xyz123');
 
     // 3. API Key in Query
-    const query3: Record<string, any> = {};
+    const query3: Record<string, string> = {};
     applyAuth({}, query3, { apiKey: { name: 'api_key', value: 'key_abc', in: 'query' } }, 'https://api.example.com/data', baseUrl);
     expect(query3.api_key).toBe('key_abc');
   });
@@ -155,19 +167,18 @@ describe('Resilient HTTP, Auth, and Parameter Serialization', () => {
   });
 
   it('should poll 202 Accepted background jobs with JSON arraybuffer bodies and complete successfully', async () => {
-    const initialResponse: any = {
+    const initialResponse = createMockResponse({
       status: 202,
       statusText: 'Accepted',
-      headers: {},
       data: Buffer.from(JSON.stringify({ status_url: '/api/v1/jobs/job_123', status: 'pending' })),
-    };
+    });
 
-    const spyGet = vi.spyOn(axios, 'get').mockResolvedValueOnce({
+    const spyGet = vi.spyOn(axios, 'get').mockResolvedValueOnce(createMockResponse({
       status: 200,
       statusText: 'OK',
       headers: { 'content-type': 'application/json' },
       data: Buffer.from(JSON.stringify({ status: 'completed', result: { id: 123, status: 'done' } })),
-    } as any);
+    }));
 
     const result = await pollAsyncJob(initialResponse, 'https://api.example.com', { headers: {} }, 5000);
     expect(result.timedOut).toBe(false);
@@ -177,19 +188,18 @@ describe('Resilient HTTP, Auth, and Parameter Serialization', () => {
   });
 
   it('should set isPollingTimeout: true when 202 background job polling times out', async () => {
-    const initialResponse: any = {
+    const initialResponse = createMockResponse({
       status: 202,
       statusText: 'Accepted',
-      headers: {},
       data: Buffer.from(JSON.stringify({ status_url: '/api/v1/jobs/slow_job', status: 'queued' })),
-    };
+    });
 
-    const spyGet = vi.spyOn(axios, 'get').mockResolvedValue({
+    const spyGet = vi.spyOn(axios, 'get').mockResolvedValue(createMockResponse({
       status: 200,
       statusText: 'OK',
       headers: { 'content-type': 'application/json' },
       data: Buffer.from(JSON.stringify({ status: 'running' })),
-    } as any);
+    }));
 
     // Very short timeout (50ms) to trigger timeout condition immediately
     const result = await pollAsyncJob(initialResponse, 'https://api.example.com', { headers: {} }, 50);
@@ -221,19 +231,19 @@ describe('Resilient HTTP, Auth, and Parameter Serialization', () => {
   });
 
   it('should complete 202 polling immediately when status endpoint returns HTTP 200 payload without status field', async () => {
-    const initialResponse: any = {
+    const initialResponse = createMockResponse({
       status: 202,
       statusText: 'Accepted',
       headers: { location: '/api/v1/jobs/finished_job' },
       data: Buffer.from(JSON.stringify({ message: 'Job accepted' })),
-    };
+    });
 
-    const spyGet = vi.spyOn(axios, 'get').mockResolvedValueOnce({
+    const spyGet = vi.spyOn(axios, 'get').mockResolvedValueOnce(createMockResponse({
       status: 200,
       statusText: 'OK',
       headers: { 'content-type': 'application/json' },
       data: Buffer.from(JSON.stringify({ id: 'res_999', download_url: 'https://example.com/file.zip' })),
-    } as any);
+    }));
 
     const result = await pollAsyncJob(initialResponse, 'https://api.example.com', { headers: {} }, 5000);
     expect(result.timedOut).toBe(false);
@@ -243,7 +253,7 @@ describe('Resilient HTTP, Auth, and Parameter Serialization', () => {
   });
 
   it('should enforce per-operation security schemes and respect public security: [] overrides', () => {
-    const specSecuritySchemes: any = {
+    const specSecuritySchemes: Record<string, SecurityScheme> = {
       ApiKeyHeader: { type: 'apiKey', in: 'header', name: 'X-API-KEY' },
       CookieAuth: { type: 'apiKey', in: 'cookie', name: 'session_id' },
       QueryAuth: { type: 'apiKey', in: 'query', name: 'api_token' },
@@ -264,26 +274,26 @@ describe('Resilient HTTP, Auth, and Parameter Serialization', () => {
 
     // 1. Operation requiring ApiKeyHeader
     const headers1: Record<string, string> = {};
-    const query1: Record<string, any> = {};
+    const query1: Record<string, unknown> = {};
     applyAuth(headers1, query1, authConfig, targetUrl, baseUrl, [{ ApiKeyHeader: [] }], specSecuritySchemes);
     expect(headers1['X-API-KEY']).toBe('header_secret_123');
     expect(headers1['Authorization']).toBeUndefined();
 
     // 2. Operation requiring CookieAuth
     const headers2: Record<string, string> = {};
-    const query2: Record<string, any> = {};
+    const query2: Record<string, unknown> = {};
     applyAuth(headers2, query2, authConfig, targetUrl, baseUrl, [{ CookieAuth: [] }], specSecuritySchemes);
     expect(headers2['Cookie']).toBe('session_id=cookie_secret_456');
 
     // 3. Operation requiring QueryAuth
     const headers3: Record<string, string> = {};
-    const query3: Record<string, any> = {};
+    const query3: Record<string, unknown> = {};
     applyAuth(headers3, query3, authConfig, targetUrl, baseUrl, [{ QueryAuth: [] }], specSecuritySchemes);
     expect(query3['api_token']).toBe('query_secret_789');
 
     // 4. Operation with security: [] (public endpoint) -> NO auth injected
     const headers4: Record<string, string> = {};
-    const query4: Record<string, any> = {};
+    const query4: Record<string, unknown> = {};
     applyAuth(headers4, query4, authConfig, targetUrl, baseUrl, [], specSecuritySchemes);
     expect(headers4['X-API-KEY']).toBeUndefined();
     expect(headers4['Authorization']).toBeUndefined();
@@ -305,7 +315,7 @@ describe('Resilient HTTP, Auth, and Parameter Serialization', () => {
   });
 
   it('should throw error when required security scheme is unsatisfied', () => {
-    const specSecuritySchemes: any = {
+    const specSecuritySchemes: Record<string, SecurityScheme> = {
       BearerAuth: { type: 'http', scheme: 'bearer' },
     };
 
@@ -329,7 +339,7 @@ describe('Resilient HTTP, Auth, and Parameter Serialization', () => {
   });
 
   it('should reject empty credentials and unset environment variables', () => {
-    const specSecuritySchemes: any = {
+    const specSecuritySchemes: Record<string, SecurityScheme> = {
       BearerAuth: { type: 'http', scheme: 'bearer' },
       ApiKeyHeader: { type: 'apiKey', in: 'header', name: 'X-API-KEY' },
     };

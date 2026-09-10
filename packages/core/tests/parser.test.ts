@@ -1,7 +1,18 @@
 import { describe, it, expect, vi } from 'vitest';
 import * as path from 'node:path';
-import axios from 'axios';
+import axios, { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { parseOpenAPI, dereferenceSpec } from '../src/parser/index.js';
+
+function createMockResponse(overrides: Partial<AxiosResponse>): AxiosResponse {
+  return {
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    config: {} as InternalAxiosRequestConfig,
+    data: {},
+    ...overrides,
+  };
+}
 
 describe('OpenAPI Parser & AST Normalizer', () => {
   it('should parse and normalize a complex OpenAPI 3 spec with circular references', async () => {
@@ -105,10 +116,12 @@ describe('OpenAPI Parser & AST Normalizer', () => {
       },
     };
 
-    const spyGet = vi.spyOn(axios, 'get').mockResolvedValueOnce({
-      status: 200,
-      data: JSON.stringify(remoteSchemaDoc),
-    } as any);
+    const spyGet = vi.spyOn(axios, 'get').mockResolvedValueOnce(
+      createMockResponse({
+        status: 200,
+        data: JSON.stringify(remoteSchemaDoc),
+      })
+    );
 
     const specJson = {
       openapi: '3.0.0',
@@ -136,7 +149,7 @@ describe('OpenAPI Parser & AST Normalizer', () => {
     const spec = await parseOpenAPI(specJson);
     const userOp = spec.operations[0];
     expect(userOp.responseSchema).toBeDefined();
-    expect((userOp.responseSchema as any).properties.name.type).toBe('string');
+    expect(userOp.responseSchema?.properties?.name?.type).toBe('string');
 
     spyGet.mockRestore();
   });
@@ -152,10 +165,12 @@ User:
       type: string
 `;
 
-    const spyGet = vi.spyOn(axios, 'get').mockResolvedValueOnce({
-      status: 200,
-      data: remoteYaml,
-    } as any);
+    const spyGet = vi.spyOn(axios, 'get').mockResolvedValueOnce(
+      createMockResponse({
+        status: 200,
+        data: remoteYaml,
+      })
+    );
 
     const specJson = {
       openapi: '3.0.0',
@@ -183,7 +198,7 @@ User:
     const spec = await parseOpenAPI(specJson);
     const profileOp = spec.operations[0];
     expect(profileOp.responseSchema).toBeDefined();
-    expect((profileOp.responseSchema as any).properties.role.type).toBe('string');
+    expect(profileOp.responseSchema?.properties?.role?.type).toBe('string');
 
     spyGet.mockRestore();
   });

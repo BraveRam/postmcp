@@ -8,6 +8,17 @@ import pc from 'picocolors';
 
 export type { ExportCommandOptions };
 
+export interface McpServerConfig {
+  command: string;
+  args: string[];
+  env?: Record<string, string>;
+}
+
+export interface McpClientConfigFile {
+  mcpServers?: Record<string, McpServerConfig>;
+  [key: string]: unknown;
+}
+
 export function getClientConfigPath(client: 'cursor' | 'claude' | 'windsurf'): string {
   const home = os.homedir();
   if (client === 'cursor') {
@@ -33,7 +44,7 @@ export function buildClientConfigSnippet(
   serverKey: string,
   specPath: string,
   options: ExportCommandOptions
-): object {
+): McpClientConfigFile {
   const env: Record<string, string> = {};
   if (options.bearer) {
     env['API_KEY'] = options.bearer;
@@ -100,14 +111,20 @@ export async function exportCommand(specArg: string, options: ExportCommandOptio
 
     if (options.write) {
       try {
-        let existingConfig: any = {};
+        let existingConfig: McpClientConfigFile = {};
         if (fs.existsSync(configPath)) {
           const raw = fs.readFileSync(configPath, 'utf-8');
-          existingConfig = JSON.parse(raw);
+          try {
+            existingConfig = JSON.parse(raw) as McpClientConfigFile;
+          } catch {
+            existingConfig = {};
+          }
         }
 
         existingConfig.mcpServers = existingConfig.mcpServers || {};
-        existingConfig.mcpServers[serverKey] = (snippet as any).mcpServers[serverKey];
+        if (snippet.mcpServers?.[serverKey]) {
+          existingConfig.mcpServers[serverKey] = snippet.mcpServers[serverKey];
+        }
 
         const parentDir = path.dirname(configPath);
         if (!fs.existsSync(parentDir)) {
@@ -116,8 +133,9 @@ export async function exportCommand(specArg: string, options: ExportCommandOptio
 
         fs.writeFileSync(configPath, JSON.stringify(existingConfig, null, 2), 'utf-8');
         console.log(pc.green(`  Successfully merged and written to ${configPath}`));
-      } catch (err: any) {
-        console.error(pc.red(`  Failed to write to ${configPath}: ${err.message}`));
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error(pc.red(`  Failed to write to ${configPath}: ${errMsg}`));
       }
       console.log();
     }

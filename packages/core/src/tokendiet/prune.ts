@@ -25,7 +25,7 @@ export function stripHtml(str: string): string {
     .trim();
 }
 
-export function pruneNullsAndNoise(data: any, maxProseLength: number = 1000): any {
+export function pruneNullsAndNoise<T = unknown>(data: T, maxProseLength: number = 1000): unknown {
   if (data === null || data === undefined) {
     return undefined;
   }
@@ -51,10 +51,10 @@ export function pruneNullsAndNoise(data: any, maxProseLength: number = 1000): an
     return cleanedArray.length > 0 ? cleanedArray : undefined;
   }
 
-  const result: Record<string, any> = {};
+  const result: Record<string, unknown> = {};
   let hasValidKeys = false;
 
-  for (const [key, value] of Object.entries(data)) {
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
     if (BOILERPLATE_KEYS.has(key.toLowerCase())) {
       continue; // Skip boilerplate
     }

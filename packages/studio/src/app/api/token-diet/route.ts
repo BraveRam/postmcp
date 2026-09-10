@@ -21,11 +21,11 @@ export async function POST(request: Request) {
       success: true,
       result,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
       {
         success: false,
-        error: err.message || 'Token Diet computation failed.',
+        error: err instanceof Error ? err.message : 'Token Diet computation failed.',
       },
       { status: 500 }
     );

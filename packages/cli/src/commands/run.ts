@@ -1,5 +1,5 @@
 import { parseOpenAPI, startStdioServer, startHttpServer, AuthConfig, NormalizedSpec } from '@postmcp/core';
-import type { RunCommandOptions } from '@postmcp/types';
+import type { RunCommandOptions, NormalizedOperation } from '@postmcp/types';
 import { loadEnvFile, loadConfigFile, parseHeaderFlags, parseApiKeyFlag } from '../config/loader.js';
 import { resolvePresetSpec, getPreset, buildPresetAuthConfig, ALL_PRESETS, Preset } from '../presets/index.js';
 import pc from 'picocolors';
@@ -23,8 +23,9 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
     preset = getPreset(specPath);
     try {
       specPath = await resolvePresetSpec(specPath);
-    } catch (err: any) {
-      console.error(pc.red(`Error resolving preset: ${err.message}`));
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error(pc.red(`Error resolving preset: ${errMsg}`));
       process.exit(1);
       return;
     }
@@ -41,8 +42,9 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
   let parsedSpec: NormalizedSpec;
   try {
     parsedSpec = await parseOpenAPI(specPath);
-  } catch (err: any) {
-    console.error(pc.red(`Failed to parse OpenAPI specification: ${err.message}`));
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error(pc.red(`Failed to parse OpenAPI specification: ${errMsg}`));
     process.exit(1);
     return;
   }
@@ -58,7 +60,7 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
   // If config defines enabledOperations, filter out disabled operations (Finding 5)
   if (fileConfig.enabledOperations && Object.keys(fileConfig.enabledOperations).length > 0) {
     parsedSpec.operations = parsedSpec.operations.filter(
-      (op: any) => fileConfig.enabledOperations![op.id] !== false
+      (op: NormalizedOperation) => fileConfig.enabledOperations![op.id] !== false
     );
   }
 

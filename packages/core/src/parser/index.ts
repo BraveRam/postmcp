@@ -11,7 +11,7 @@ export { dereferenceSpec } from './dereference.js';
 export { normalizeSpec } from './normalizer.js';
 
 export async function parseOpenAPI(input: string | object, basePath?: string): Promise<NormalizedSpec> {
-  let rawDoc: any;
+  let rawDoc: unknown;
   let detectedBasePath = basePath;
 
   if (typeof input === 'object' && input !== null) {
@@ -79,10 +79,16 @@ export async function parseOpenAPI(input: string | object, basePath?: string): P
   }
 
   // If the document is already a NormalizedSpec, return directly
-  if (rawDoc && typeof rawDoc === 'object' && Array.isArray(rawDoc.operations) && !rawDoc.paths) {
+  if (
+    rawDoc &&
+    typeof rawDoc === 'object' &&
+    'operations' in rawDoc &&
+    Array.isArray((rawDoc as Record<string, unknown>).operations) &&
+    !('paths' in rawDoc)
+  ) {
     return rawDoc as NormalizedSpec;
   }
 
   const dereferenced = await dereferenceSpec(rawDoc, detectedBasePath);
-  return normalizeSpec(dereferenced);
+  return normalizeSpec(dereferenced as Record<string, unknown>);
 }

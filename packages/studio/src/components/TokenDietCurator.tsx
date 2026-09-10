@@ -48,7 +48,7 @@ export function TokenDietCurator({
       };
     }
 
-    const item: Record<string, any> = {};
+    const item: Record<string, string | number> = {};
     for (const f of availableFields) {
       item[f] =
         f === 'id' || f.endsWith('_id')

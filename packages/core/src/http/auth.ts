@@ -1,4 +1,5 @@
 import { SecurityScheme, NormalizedOperation } from '../parser/types.js';
+import type { SecuritySchemeConfig } from '@postmcp/types';
 
 export interface AuthConfig {
   headers?: Record<string, string>;
@@ -14,7 +15,7 @@ export interface AuthConfig {
         password?: string;
       }
     | string;
-  securitySchemes?: Record<string, any>;
+  securitySchemes?: Record<string, SecuritySchemeConfig>;
   allowedExternalHosts?: string[];
   allowCrossOriginAuth?: boolean;
 }
@@ -26,7 +27,7 @@ export function substituteEnvVars(value: string): string {
   });
 }
 
-function getNonEmptySecret(val: any): string | null {
+function getNonEmptySecret(val: unknown): string | null {
   if (val === undefined || val === null) return null;
   const substituted = substituteEnvVars(String(val)).trim();
   return substituted.length > 0 ? substituted : null;
@@ -57,8 +58,8 @@ export function isSameOriginOrAllowed(targetUrl: string, baseUrl: string, allowe
 }
 
 export function stripSensitiveAuth(
-  headers: Record<string, any>,
-  queryParams?: Record<string, any>
+  headers: Record<string, unknown>,
+  queryParams?: Record<string, unknown>
 ): void {
   const sensitiveHeaderRegex =
     /^(authorization|proxy-authorization|cookie|x-api-key|api-key|x-token|api_key|token|auth|x-auth|session|x-session)/i;
@@ -81,7 +82,7 @@ export function stripSensitiveAuth(
 
 function applyGeneralAuth(
   headers: Record<string, string>,
-  queryParams: Record<string, any>,
+  queryParams: Record<string, unknown>,
   config: AuthConfig
 ): void {
   // Custom headers
@@ -141,7 +142,7 @@ function applyGeneralAuth(
 
 export function applyAuth(
   headers: Record<string, string>,
-  queryParams: Record<string, any>,
+  queryParams: Record<string, unknown>,
   config: AuthConfig | undefined,
   targetUrl: string,
   baseUrl: string,

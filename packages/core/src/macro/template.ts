@@ -1,8 +1,8 @@
 import { JSONPath } from 'jsonpath-plus';
 
-export function interpolateString(template: string, context: Record<string, any>, uriEncode: boolean = false): string {
+export function interpolateString(template: string, context: Record<string, unknown>, uriEncode: boolean = false): string {
   return template.replace(/\{\{([a-zA-Z0-9_$.\[\]]+)\}\}/g, (_, key) => {
-    let val: any;
+    let val: unknown;
     if (context[key] !== undefined) {
       val = context[key];
     } else {
@@ -21,7 +21,7 @@ export function interpolateString(template: string, context: Record<string, any>
   });
 }
 
-export function interpolateAction(action: string, context: Record<string, any>): string {
+export function interpolateAction(action: string, context: Record<string, unknown>): string {
   const trimmed = action.trim();
   const firstSpaceIdx = trimmed.indexOf(' ');
   let method = 'GET';
@@ -38,7 +38,7 @@ export function interpolateAction(action: string, context: Record<string, any>):
 
   const replaceWithEncoding = (str: string): string => {
     return str.replace(/\{\{([a-zA-Z0-9_$.\[\]]+)\}\}/g, (_, key) => {
-      let val: any;
+      let val: unknown;
       if (context[key] !== undefined) {
         val = context[key];
       } else {
@@ -63,24 +63,24 @@ export function interpolateAction(action: string, context: Record<string, any>):
   return `${method.toUpperCase()} ${resolvedUrl}`;
 }
 
-export function interpolateObject(obj: any, context: Record<string, any>): any {
+export function interpolateObject<T>(obj: T, context: Record<string, unknown>): T {
   if (obj === null || obj === undefined) return obj;
-  if (typeof obj === 'string') return interpolateString(obj, context, false);
-  if (Array.isArray(obj)) return obj.map((item) => interpolateObject(item, context));
+  if (typeof obj === 'string') return interpolateString(obj, context, false) as unknown as T;
+  if (Array.isArray(obj)) return obj.map((item) => interpolateObject(item, context)) as unknown as T;
   if (typeof obj === 'object') {
-    const res: Record<string, any> = {};
-    for (const [k, v] of Object.entries(obj)) {
+    const res: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
       res[k] = interpolateObject(v, context);
     }
-    return res;
+    return res as unknown as T;
   }
   return obj;
 }
 
-export function extractExports(response: any, exportMap?: Record<string, string>): Record<string, any> {
+export function extractExports(response: unknown, exportMap?: Record<string, string>): Record<string, unknown> {
   if (!exportMap || !response) return {};
 
-  const extracted: Record<string, any> = {};
+  const extracted: Record<string, unknown> = {};
   for (const [varName, pathExpr] of Object.entries(exportMap)) {
     try {
       const path = pathExpr.startsWith('$') ? pathExpr : `$.${pathExpr}`;
@@ -90,8 +90,8 @@ export function extractExports(response: any, exportMap?: Record<string, string>
       }
     } catch {
       // Fallback: direct property read
-      if (response[pathExpr] !== undefined) {
-        extracted[varName] = response[pathExpr];
+      if (typeof response === 'object' && response !== null && pathExpr in (response as Record<string, unknown>)) {
+        extracted[varName] = (response as Record<string, unknown>)[pathExpr];
       }
     }
   }

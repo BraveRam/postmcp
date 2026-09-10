@@ -1,4 +1,4 @@
-import axios, { AxiosResponse, AxiosRequestConfig } from 'axios';
+import axios, { AxiosResponse, AxiosRequestConfig, RawAxiosRequestHeaders } from 'axios';
 import { sleepWithJitter } from './retry.js';
 import { isSameOriginOrAllowed, stripSensitiveAuth } from './auth.js';
 
@@ -7,7 +7,7 @@ export interface AsyncPollResult {
   timedOut: boolean;
 }
 
-function parseBodyAsObject(data: any): any {
+function parseBodyAsObject(data: unknown): Record<string, unknown> | null {
   if (data === null || data === undefined) return null;
   if (Buffer.isBuffer(data)) {
     try {
@@ -31,7 +31,7 @@ function parseBodyAsObject(data: any): any {
     }
   }
   if (typeof data === 'object') {
-    return data;
+    return data as Record<string, unknown>;
   }
   return null;
 }
@@ -75,9 +75,9 @@ export async function pollAsyncJob(
   }
 
   // Cross-origin auth header stripping (Finding 19)
-  const pollHeaders: Record<string, any> = { ...requestConfig.headers };
+  const pollHeaders: RawAxiosRequestHeaders = { ...(requestConfig.headers as RawAxiosRequestHeaders) };
   if (!isSameOriginOrAllowed(statusUrl, baseUrl)) {
-    stripSensitiveAuth(pollHeaders);
+    stripSensitiveAuth(pollHeaders as Record<string, unknown>);
   }
 
   const startTime = Date.now();

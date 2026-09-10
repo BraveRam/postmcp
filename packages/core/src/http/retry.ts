@@ -17,7 +17,7 @@ export function parseRetryAfter(headerValue?: string, maxCapMs: number = 10000):
   return null;
 }
 
-export function isIdempotentMethod(method: string, headers: Record<string, any> = {}): boolean {
+export function isIdempotentMethod(method: string, headers: Record<string, unknown> = {}): boolean {
   const m = method.toLowerCase();
   if (['get', 'head', 'put', 'delete', 'options'].includes(m)) {
     return true;

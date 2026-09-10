@@ -7,23 +7,27 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { spec, presetId, url } = body;
 
-    let targetSpec: any = null;
+    let targetSpec: string | object | null = null;
 
     if (presetId) {
       const preset = getPreset(presetId);
       if (!preset) {
         return NextResponse.json({ error: `Preset '${presetId}' not found.` }, { status: 404 });
       }
-      targetSpec = preset.bundledSpec || preset.specUrl;
+      targetSpec = (preset.bundledSpec || preset.specUrl) ?? null;
       if (!targetSpec) {
         return NextResponse.json({ error: `Preset '${presetId}' has no specification.` }, { status: 404 });
       }
     } else if (url) {
       targetSpec = url;
     } else if (spec) {
-      targetSpec = typeof spec === 'string' ? spec : spec;
+      targetSpec = typeof spec === 'string' ? spec : (spec as object);
     } else {
       return NextResponse.json({ error: 'No spec, presetId, or url provided.' }, { status: 400 });
+    }
+
+    if (!targetSpec) {
+      return NextResponse.json({ error: 'No valid spec resolved.' }, { status: 400 });
     }
 
     const workspaceRoot = process.env.POSTMCP_WORKSPACE || process.env.WORKSPACE_CWD || process.cwd();
@@ -53,11 +57,11 @@ export async function POST(request: Request) {
       spec: parsed,
       operationsCount: parsed.operations.length,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
       {
         success: false,
-        error: err.message || 'Failed to parse OpenAPI specification.',
+        error: err instanceof Error ? err.message : 'Failed to parse OpenAPI specification.',
       },
       { status: 422 }
     );

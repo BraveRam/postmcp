@@ -1,10 +1,22 @@
 import { NextResponse } from 'next/server';
 import { createOpenAI } from '@ai-sdk/openai';
-import { generateText, streamText, tool, jsonSchema, stepCountIs } from 'ai';
-import { NormalizedSpec, NormalizedOperation } from '@postmcp/types';
+import { generateText, streamText, tool, jsonSchema, stepCountIs, type ToolSet, type JSONSchema7 } from 'ai';
+import { NormalizedSpec, NormalizedOperation, AuthConfig } from '@postmcp/types';
 import { applyTokenDiet, DEFAULT_POSTMCP_INSTRUCTIONS } from '@postmcp/core';
 import { ResilientHttpClient } from '@postmcp/core';
 import { getScopedEnvKey } from '@/lib/env-scope';
+
+export interface IncomingAuthConfig {
+  headers?: Record<string, string>;
+  customFields?: Array<{ key: string; value?: unknown; val?: unknown }> | Record<string, unknown>;
+  bearerToken?: string;
+  [key: string]: unknown;
+}
+
+export interface ResolvedTargetAuthConfig extends IncomingAuthConfig {
+  bearerToken?: string;
+  headers: Record<string, string>;
+}
 
 interface SandboxExecutionResult {
   operationId: string;
@@ -50,9 +62,9 @@ export function isPrivateOrBlockedHost(urlStr: string): boolean {
 }
 
 export function resolveTargetAuthConfig(
-  incomingAuth?: any,
+  incomingAuth?: IncomingAuthConfig,
   spec?: NormalizedSpec
-): any {
+): ResolvedTargetAuthConfig {
   const headers: Record<string, string> = { ...(incomingAuth?.headers || {}) };
 
   // If customFields are provided (array of { key, value } or plain object), merge into headers
@@ -115,9 +127,9 @@ export function resolveTargetAuthConfig(
 
 async function executeMcpOperation(
   op: NormalizedOperation,
-  args: any,
+  args: Record<string, unknown>,
   spec: NormalizedSpec,
-  authConfig?: any,
+  authConfig?: ResolvedTargetAuthConfig | AuthConfig,
   dryRun: boolean = true
 ): Promise<SandboxExecutionResult> {
   const isCritical = op.riskTier === 'CRITICAL';
@@ -151,8 +163,8 @@ async function executeMcpOperation(
       });
 
       let targetUrl = op.path;
-      const queryParams: Record<string, any> = {};
-      const bodyData: Record<string, any> = {};
+      const queryParams: Record<string, unknown> = {};
+      const bodyData: Record<string, unknown> = {};
 
       if (args) {
         for (const [k, v] of Object.entries(args)) {
@@ -171,7 +183,7 @@ async function executeMcpOperation(
       const isBodyMethod = ['post', 'put', 'patch', 'delete'].includes(op.method.toLowerCase());
       const res = await client.request({
         url: targetUrl,
-        method: op.method.toUpperCase() as any,
+        method: op.method.toUpperCase(),
         data: isBodyMethod
           ? args.requestBody !== undefined
             ? args.requestBody
@@ -194,18 +206,18 @@ async function executeMcpOperation(
         result: diet.text,
         savings: diet.savingsPercentage,
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       return {
         operationId: op.id,
         status: 500,
-        result: `Failed to execute live endpoint: ${err.message}`,
+        result: `Failed to execute live endpoint: ${err instanceof Error ? err.message : String(err)}`,
         savings: 0,
       };
     }
   }
 
   // Default simulated execution
-  const mockItem: Record<string, any> = {
+  const mockItem: Record<string, unknown> = {
     id: args?.id || 'res_' + Math.floor(Math.random() * 100000),
     status: 'active',
     ...args,
@@ -275,24 +287,31 @@ export async function POST(request: Request) {
     const resolvedAuth = resolveTargetAuthConfig(authConfig, spec);
 
     // Dynamically mount tools for active operations
-    const dynamicTools: Record<string, any> = {};
+    const dynamicTools: ToolSet = {};
     const operationsToMount: NormalizedOperation[] = spec.operations.slice(0, 20);
 
     const executedToolCalls: Array<{
       name: string;
-      args: any;
+      args: Record<string, unknown>;
       result: { text: string; savings?: number };
     }> = [];
 
-    let onToolExecutionEvent: ((event: any) => void) | null = null;
+    interface ToolExecutionEvent {
+      type: 'tool-call' | 'tool-result';
+      toolCallId?: string;
+      name?: string;
+      args?: Record<string, unknown>;
+      result?: { text: string; savings?: number } | string;
+    }
+
+    let onToolExecutionEvent: ((event: ToolExecutionEvent) => void) | null = null;
 
     for (const op of operationsToMount) {
-      const opSchema = (op.inputSchema || { type: 'object', properties: {} }) as any;
+      const opSchema = (op.inputSchema || { type: 'object', properties: {} }) as JSONSchema7;
       dynamicTools[op.id] = tool({
         description: op.description || op.summary || `Execute ${op.method.toUpperCase()} ${op.path}`,
-        inputSchema: jsonSchema(opSchema),
-        parameters: jsonSchema(opSchema),
-        execute: async (args: any) => {
+        inputSchema: jsonSchema<Record<string, unknown>>(opSchema),
+        execute: async (args: Record<string, unknown>) => {
           const execRes = await executeMcpOperation(op, args, spec, resolvedAuth, dryRun);
           const toolData = {
             name: op.id,
@@ -305,7 +324,7 @@ export async function POST(request: Request) {
           executedToolCalls.push(toolData);
           return execRes;
         },
-      } as any);
+      });
     }
 
     // 1. Live LLM Generation via Vercel AI Gateway if gateway key is available
@@ -314,7 +333,7 @@ export async function POST(request: Request) {
     if (gatewayModel) {
       try {
         if (stream) {
-          const activeToolCalls = new Map<string, { name: string; args: any }>();
+          const activeToolCalls = new Map<string, { name: string; args: Record<string, unknown> }>();
           const emittedToolResults = new Set<string>();
 
           const streamResult = streamText({
@@ -324,29 +343,30 @@ export async function POST(request: Request) {
             tools: dynamicTools,
             stopWhen: stepCountIs(5),
             onToolExecutionStart: ({ toolCall }) => {
+              const inputArgs = (toolCall.input || {}) as Record<string, unknown>;
               activeToolCalls.set(toolCall.toolCallId, {
                 name: toolCall.toolName,
-                args: toolCall.input,
+                args: inputArgs,
               });
               if (onToolExecutionEvent) {
                 onToolExecutionEvent({
                   type: 'tool-call',
                   toolCallId: toolCall.toolCallId,
                   name: toolCall.toolName,
-                  args: toolCall.input,
+                  args: inputArgs,
                 });
               }
             },
             onToolExecutionEnd: ({ toolCall, toolOutput }) => {
               emittedToolResults.add(toolCall.toolCallId);
-              const out = (toolOutput as any)?.output ?? toolOutput;
+              const output = toolOutput as { output?: unknown; result?: string; text?: string; savings?: number } | undefined;
+              const out = (output?.output ?? toolOutput) as { result?: string; text?: string; savings?: number } | string | undefined;
               const text =
-                out?.result ??
-                (typeof out === 'string'
+                typeof out === 'object' && out !== null
+                  ? out.result ?? out.text ?? JSON.stringify(out)
+                  : typeof out === 'string'
                   ? out
-                  : typeof out?.text === 'string'
-                  ? out.text
-                  : JSON.stringify(out ?? {}));
+                  : JSON.stringify(out ?? {});
               if (onToolExecutionEvent) {
                 onToolExecutionEvent({
                   type: 'tool-result',
@@ -355,7 +375,7 @@ export async function POST(request: Request) {
                   args: toolCall.input ?? {},
                   result: {
                     text,
-                    savings: out?.savings,
+                    savings: typeof out === 'object' && out !== null ? out.savings : undefined,
                   },
                 });
               }
@@ -374,10 +394,11 @@ export async function POST(request: Request) {
               try {
                 for await (const chunk of streamResult.fullStream) {
                   if (chunk.type === 'tool-call') {
+                    const inputArgs = (chunk.input || {}) as Record<string, unknown>;
                     if (!activeToolCalls.has(chunk.toolCallId)) {
                       activeToolCalls.set(chunk.toolCallId, {
                         name: chunk.toolName,
-                        args: chunk.input,
+                        args: inputArgs,
                       });
                       controller.enqueue(
                         encoder.encode(
@@ -385,7 +406,7 @@ export async function POST(request: Request) {
                             type: 'tool-call',
                             toolCallId: chunk.toolCallId,
                             name: chunk.toolName,
-                            args: chunk.input,
+                            args: inputArgs,
                           })}\n\n`
                         )
                       );
@@ -393,21 +414,24 @@ export async function POST(request: Request) {
                   } else if (chunk.type === 'tool-result') {
                     if (!emittedToolResults.has(chunk.toolCallId)) {
                       emittedToolResults.add(chunk.toolCallId);
-                      const out = (chunk.output ?? (chunk as any).result) as any;
+                      const rawChunk = chunk as { output?: unknown; result?: unknown; input?: Record<string, unknown>; args?: Record<string, unknown> };
+                      const rawOut = rawChunk.output ?? rawChunk.result;
+                      const out = typeof rawOut === 'object' && rawOut !== null
+                        ? (rawOut as { result?: string; text?: string; savings?: number })
+                        : undefined;
                       const text =
                         out?.result ??
-                        (typeof out === 'string'
-                          ? out
-                          : typeof out?.text === 'string'
-                          ? out.text
-                          : JSON.stringify(out ?? {}));
+                        out?.text ??
+                        (typeof rawOut === 'string'
+                          ? rawOut
+                          : JSON.stringify(rawOut ?? {}));
                       controller.enqueue(
                         encoder.encode(
                           `data: ${JSON.stringify({
                             type: 'tool-result',
                             toolCallId: chunk.toolCallId,
                             name: chunk.toolName,
-                            args: chunk.input ?? (chunk as any).args ?? {},
+                            args: (rawChunk.input ?? rawChunk.args ?? {}) as Record<string, unknown>,
                             result: {
                               text,
                               savings: out?.savings,
@@ -449,12 +473,12 @@ export async function POST(request: Request) {
 
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
                 controller.close();
-              } catch (streamErr: any) {
+              } catch (streamErr: unknown) {
                 controller.enqueue(
                   encoder.encode(
                     `data: ${JSON.stringify({
                       type: 'error',
-                      error: streamErr.message || 'Streaming failed',
+                      error: streamErr instanceof Error ? streamErr.message : 'Streaming failed',
                     })}\n\n`
                   )
                 );
@@ -486,18 +510,20 @@ export async function POST(request: Request) {
         const sdkToolCalls =
           executedToolCalls.length > 0
             ? executedToolCalls
-            : (result.toolResults || []).map((tr: any) => {
-                const out = tr.output ?? tr.result;
+            : (result.toolResults || []).map((tr: { toolName: string; input?: unknown; args?: unknown; output?: unknown; result?: unknown }) => {
+                const rawOut = tr.output ?? tr.result;
+                const out = typeof rawOut === 'object' && rawOut !== null
+                  ? (rawOut as { result?: string; text?: string; savings?: number })
+                  : undefined;
                 const text =
                   out?.result ??
-                  (typeof out === 'string'
-                    ? out
-                    : typeof out?.text === 'string'
-                    ? out.text
-                    : JSON.stringify(out ?? {}));
+                  out?.text ??
+                  (typeof rawOut === 'string'
+                    ? rawOut
+                    : JSON.stringify(rawOut ?? {}));
                 return {
                   name: tr.toolName,
-                  args: tr.input ?? tr.args ?? {},
+                  args: ((tr.input ?? tr.args ?? {}) as Record<string, unknown>),
                   result: {
                     text,
                     savings: out?.savings,
@@ -512,8 +538,8 @@ export async function POST(request: Request) {
           toolCall: sdkToolCalls[0] ? { name: sdkToolCalls[0].name, args: sdkToolCalls[0].args } : undefined,
           result: sdkToolCalls[0]?.result,
         });
-      } catch (gatewayError: any) {
-        console.warn('Vercel AI Gateway request failed, falling back to simulated execution:', gatewayError.message);
+      } catch (gatewayError: unknown) {
+        console.warn('Vercel AI Gateway request failed, falling back to simulated execution:', gatewayError instanceof Error ? gatewayError.message : String(gatewayError));
       }
     }
 
@@ -548,12 +574,12 @@ export async function POST(request: Request) {
 
     const simulatedToolCalls: Array<{
       name: string;
-      args: any;
+      args: Record<string, unknown>;
       result: { text: string; savings?: number };
     }> = [];
 
     for (const targetOp of matchedOps) {
-      const mockArgs: Record<string, any> = {};
+      const mockArgs: Record<string, unknown> = {};
       if (targetOp.parameters) {
         for (const p of targetOp.parameters.slice(0, 2)) {
           mockArgs[p.name] = p.name.includes('id')
@@ -639,12 +665,12 @@ export async function POST(request: Request) {
 
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
             controller.close();
-          } catch (simErr: any) {
+          } catch (simErr: unknown) {
             controller.enqueue(
               encoder.encode(
                 `data: ${JSON.stringify({
                   type: 'error',
-                  error: simErr.message || 'Simulation streaming error',
+                  error: simErr instanceof Error ? simErr.message : 'Simulation streaming error',
                 })}\n\n`
               )
             );
@@ -672,9 +698,9 @@ export async function POST(request: Request) {
       },
       result: simulatedToolCalls[0].result,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message || 'Sandbox execution error' },
+      { error: error instanceof Error ? error.message : 'Sandbox execution error' },
       { status: 500 }
     );
   }

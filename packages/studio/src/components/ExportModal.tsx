@@ -114,7 +114,7 @@ export function ExportModal({
       if (data.success) {
         setPersistSuccess(data.message || 'Saved postmcp.config.json to workspace disk');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to persist config:', err);
     } finally {
       setIsPersisting(false);
@@ -135,7 +135,7 @@ export function ExportModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          <Tabs value={activeTab} onValueChange={(val: any) => setActiveTab(val)}>
+          <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'cursor' | 'claude' | 'windsurf' | 'postmcp')}>
             <TabsList className="grid grid-cols-4 w-full">
               <TabsTrigger value="cursor">Cursor</TabsTrigger>
               <TabsTrigger value="claude">Claude Desktop</TabsTrigger>

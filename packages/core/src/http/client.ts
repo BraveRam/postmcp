@@ -22,8 +22,8 @@ export interface HttpRequestConfig extends AxiosRequestConfig {
 export interface HttpResponseResult {
   status: number;
   statusText: string;
-  headers: Record<string, any>;
-  data: any;
+  headers: Record<string, unknown>;
+  data: unknown;
   contentType?: string;
   isError: boolean;
   errorMessage?: string;
@@ -58,9 +58,9 @@ export class ResilientHttpClient {
   public async request(config: HttpRequestConfig): Promise<HttpResponseResult> {
     const headers: Record<string, string> = {
       Accept: 'application/json, text/plain, */*',
-      ...(config.headers as any),
+      ...(config.headers as Record<string, string>),
     };
-    const queryParams: Record<string, any> = { ...config.params };
+    const queryParams: Record<string, unknown> = { ...config.params };
 
     let url = config.url || '';
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -113,7 +113,8 @@ export class ResilientHttpClient {
         }
 
         break;
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
         if (!canRetry || attempts >= this.maxRetries) {
           return {
             status: 500,
@@ -121,7 +122,7 @@ export class ResilientHttpClient {
             headers: {},
             data: null,
             isError: true,
-            errorMessage: `Network request failed after ${attempts} attempts: ${err.message}`,
+            errorMessage: `Network request failed after ${attempts} attempts: ${msg}`,
           };
         }
         await sleepWithJitter(500 * attempts);
@@ -140,7 +141,7 @@ export class ResilientHttpClient {
     }
 
     const contentType = response.headers?.['content-type'] ? String(response.headers['content-type']) : '';
-    let parsedData: any = response.data;
+    let parsedData: unknown = response.data;
 
     // Decode response body based on content-type (Finding 12)
     if (Buffer.isBuffer(response.data) || response.data instanceof ArrayBuffer) {

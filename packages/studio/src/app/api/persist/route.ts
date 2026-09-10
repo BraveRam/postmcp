@@ -29,11 +29,11 @@ export async function POST(request: Request) {
       path: targetFile,
       message: `Successfully saved postmcp.config.json to ${targetFile}`,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
       {
         success: false,
-        error: err.message || 'Failed to save configuration file to workspace.',
+        error: err instanceof Error ? err.message : 'Failed to save configuration file to workspace.',
       },
       { status: 500 }
     );

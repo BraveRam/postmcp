@@ -3,8 +3,9 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   Tool,
+  CallToolResult,
 } from '@modelcontextprotocol/sdk/types.js';
-import { NormalizedSpec, NormalizedOperation } from '../parser/types.js';
+import { NormalizedSpec, NormalizedOperation, HttpMethod } from '../parser/types.js';
 import { ToolRegistry, ToolRegistryOptions } from '../jit/registry.js';
 import {
   TOOL_SEARCH_NAME,
@@ -46,7 +47,7 @@ function isTenantParam(name: string): boolean {
   return TENANT_PARAM_NAMES.has(norm);
 }
 
-function isDummyTenantValue(val: any): boolean {
+function isDummyTenantValue(val: unknown): boolean {
   if (val === undefined || val === null || val === '') return true;
   if (typeof val === 'string') {
     const trimmed = val.trim().toLowerCase();
@@ -122,6 +123,10 @@ export class PostMcpServer {
     return this.registry;
   }
 
+  public getHttpClient(): ResilientHttpClient {
+    return this.httpClient;
+  }
+
   private setupHandlers(): void {
     // 1. List Tools Handler
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -132,7 +137,7 @@ export class PostMcpServer {
         tools.push({
           name: TOOL_SEARCH_NAME,
           description: TOOL_SEARCH_DESCRIPTION,
-          inputSchema: TOOL_SEARCH_INPUT_SCHEMA as any,
+          inputSchema: TOOL_SEARCH_INPUT_SCHEMA as Tool['inputSchema'],
         });
       }
 
@@ -142,8 +147,8 @@ export class PostMcpServer {
         tools.push({
           name: op.id,
           description: op.description || op.summary,
-          inputSchema: op.inputSchema as any,
-          annotations: annotations as any,
+          inputSchema: op.inputSchema as Tool['inputSchema'],
+          annotations: annotations as Tool['annotations'],
         });
       }
 
@@ -154,8 +159,8 @@ export class PostMcpServer {
           tools.push({
             name: `macro_${macro.name}`,
             description: `[COMPOSITE WORKFLOW] ${macro.description}`,
-            inputSchema: macro.parameters as any,
-            annotations: annotations as any,
+            inputSchema: macro.parameters as Tool['inputSchema'],
+            annotations: annotations as Tool['annotations'],
           });
         }
       }
@@ -254,7 +259,7 @@ export class PostMcpServer {
     });
   }
 
-  private async executeOperation(op: NormalizedOperation, args: Record<string, any>): Promise<any> {
+  private async executeOperation(op: NormalizedOperation, args: Record<string, unknown>): Promise<CallToolResult> {
     // 0. Auto-Inject Tenant Context (e.g. org_id, team_id) if missing or dummy
     await this.autoInjectTenantContext(op, args);
 
@@ -276,9 +281,10 @@ export class PostMcpServer {
     let serialized: ReturnType<typeof serializeParameters>;
     try {
       serialized = serializeParameters(op.path, op.parameters, args);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
       return {
-        content: [{ type: 'text', text: `Parameter Error: ${err.message}` }],
+        content: [{ type: 'text', text: `Parameter Error: ${errMsg}` }],
         isError: true,
       };
     }
@@ -299,11 +305,11 @@ export class PostMcpServer {
     }
 
     // Build Request Body (support POST, PUT, PATCH, and DELETE with bodies)
-    let bodyData: any = undefined;
+    let bodyData: unknown = undefined;
     if (args['requestBody'] !== undefined) {
       bodyData = args['requestBody'];
     } else if (['post', 'put', 'patch', 'delete'].includes(op.method)) {
-      const bodyObj: Record<string, any> = {};
+      const bodyObj: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(args)) {
         if (!op.parameters.some((p) => p.name === k)) {
           bodyObj[k] = v;
@@ -317,7 +323,7 @@ export class PostMcpServer {
     // If URL-encoded content type, serialize body (Finding 10)
     if (op.contentType === 'application/x-www-form-urlencoded' && bodyData && typeof bodyData === 'object') {
       const formParams = new URLSearchParams();
-      for (const [k, v] of Object.entries(bodyData)) {
+      for (const [k, v] of Object.entries(bodyData as Record<string, unknown>)) {
         formParams.append(k, String(v));
       }
       bodyData = formParams.toString();
@@ -328,7 +334,7 @@ export class PostMcpServer {
       !(bodyData instanceof FormData)
     ) {
       const formData = new FormData();
-      for (const [k, v] of Object.entries(bodyData)) {
+      for (const [k, v] of Object.entries(bodyData as Record<string, unknown>)) {
         if (v instanceof Blob || typeof v === 'string') {
           formData.append(k, v);
         } else if (Buffer.isBuffer(v)) {
@@ -355,7 +361,7 @@ export class PostMcpServer {
 
     // 4. Dispatch real HTTP request
     let response = await this.httpClient.request({
-      method: op.method as any,
+      method: op.method as HttpMethod,
       url: path,
       params: queryParams,
       headers: headerParams,
@@ -377,7 +383,7 @@ export class PostMcpServer {
         try {
           const altSerialized = serializeParameters(op.path, op.parameters, altArgs);
           const altRes = await this.httpClient.request({
-            method: op.method as any,
+            method: op.method as HttpMethod,
             url: altSerialized.path,
             params: altSerialized.queryParams,
             headers: { ...headerParams, ...altSerialized.headerParams },
@@ -470,7 +476,7 @@ export class PostMcpServer {
     };
   }
 
-  private async autoInjectTenantContext(op: NormalizedOperation, args: Record<string, any>): Promise<string | null> {
+  private async autoInjectTenantContext(op: NormalizedOperation, args: Record<string, unknown>): Promise<string | null> {
     const tenantParam = op.parameters.find((p) => isTenantParam(p.name));
     if (!tenantParam) return null;
 
@@ -584,12 +590,13 @@ export class PostMcpServer {
     return [];
   }
 
-  private extractTenantIdsFromData(data: any): string[] {
+  private extractTenantIdsFromData(data: unknown): string[] {
     const ids: string[] = [];
-    const extractFromItem = (item: any) => {
+    const extractFromItem = (item: unknown) => {
       if (!item || typeof item !== 'object') return;
+      const record = item as Record<string, unknown>;
       const candidateId =
-        item.id || item.org_id || item.organization_id || item.team_id || item.account_id || item.slug;
+        record.id || record.org_id || record.organization_id || record.team_id || record.account_id || record.slug;
       if (typeof candidateId === 'string' && candidateId.trim().length > 0 && !isDummyTenantValue(candidateId)) {
         if (!ids.includes(candidateId.trim())) {
           ids.push(candidateId.trim());
@@ -600,10 +607,11 @@ export class PostMcpServer {
     if (Array.isArray(data)) {
       data.forEach(extractFromItem);
     } else if (data && typeof data === 'object') {
+      const record = data as Record<string, unknown>;
       const keys = ['organizations', 'orgs', 'teams', 'accounts', 'data', 'items', 'workspaces'];
       for (const k of keys) {
-        if (Array.isArray(data[k])) {
-          data[k].forEach(extractFromItem);
+        if (Array.isArray(record[k])) {
+          (record[k] as unknown[]).forEach(extractFromItem);
         }
       }
       if (ids.length === 0) {
@@ -614,15 +622,16 @@ export class PostMcpServer {
     return ids;
   }
 
-  private isResponseDataEmpty(data: any): boolean {
+  private isResponseDataEmpty(data: unknown): boolean {
     if (!data) return true;
     if (Array.isArray(data)) return data.length === 0;
     if (typeof data === 'object') {
-      const keys = Object.keys(data);
+      const record = data as Record<string, unknown>;
+      const keys = Object.keys(record);
       if (keys.length === 0) return true;
       let hasArray = false;
       let allArraysEmpty = true;
-      for (const val of Object.values(data)) {
+      for (const val of Object.values(record)) {
         if (Array.isArray(val)) {
           hasArray = true;
           if (val.length > 0) {
@@ -636,21 +645,30 @@ export class PostMcpServer {
     return false;
   }
 
-  private extractNextCursor(data: any): string | null {
+  private extractNextCursor(data: unknown): string | null {
     if (!data || typeof data !== 'object') return null;
+    const record = data as Record<string, unknown>;
 
-    if (data.pagination && typeof data.pagination === 'object') {
-      if (typeof data.pagination.cursor === 'string' && data.pagination.cursor) return data.pagination.cursor;
-      if (typeof data.pagination.next_cursor === 'string' && data.pagination.next_cursor) return data.pagination.next_cursor;
+    if (record.pagination && typeof record.pagination === 'object') {
+      const pagination = record.pagination as Record<string, unknown>;
+      if (typeof pagination.cursor === 'string' && pagination.cursor) return pagination.cursor;
+      if (typeof pagination.next_cursor === 'string' && pagination.next_cursor) return pagination.next_cursor;
     }
 
-    if (typeof data.next_cursor === 'string' && data.next_cursor) return data.next_cursor;
-    if (typeof data.cursor === 'string' && data.cursor) return data.cursor;
+    if (typeof record.next_cursor === 'string' && record.next_cursor) return record.next_cursor;
+    if (typeof record.cursor === 'string' && record.cursor) return record.cursor;
 
-    if (data.has_more === true) {
-      const list = Array.isArray(data.data) ? data.data : (Array.isArray(data.items) ? data.items : null);
-      if (list && list.length > 0 && list[list.length - 1]?.id) {
-        return String(list[list.length - 1].id);
+    if (record.has_more === true) {
+      const list = Array.isArray(record.data)
+        ? (record.data as unknown[])
+        : Array.isArray(record.items)
+          ? (record.items as unknown[])
+          : null;
+      if (list && list.length > 0) {
+        const lastItem = list[list.length - 1];
+        if (lastItem && typeof lastItem === 'object' && 'id' in lastItem && (lastItem as Record<string, unknown>).id !== undefined) {
+          return String((lastItem as Record<string, unknown>).id);
+        }
       }
     }
 
@@ -660,21 +678,22 @@ export class PostMcpServer {
   private async autoPaginateResponse(
     op: NormalizedOperation,
     path: string,
-    queryParams: Record<string, any>,
+    queryParams: Record<string, unknown>,
     headerParams: Record<string, string>,
-    initialData: any
-  ): Promise<any> {
+    initialData: unknown
+  ): Promise<unknown> {
     if (op.method !== 'get' || !initialData || typeof initialData !== 'object') {
       return initialData;
     }
 
+    const dataObj = initialData as Record<string, unknown>;
     let primaryArrayKey: string | null = null;
-    let targetArray: any[] | null = null;
+    let targetArray: unknown[] | null = null;
 
     if (Array.isArray(initialData)) {
       targetArray = initialData;
     } else {
-      for (const [k, v] of Object.entries(initialData)) {
+      for (const [k, v] of Object.entries(dataObj)) {
         if (Array.isArray(v)) {
           primaryArrayKey = k;
           targetArray = v;
@@ -714,9 +733,10 @@ export class PostMcpServer {
         break;
       }
 
-      let newItems: any[] | null = null;
-      if (primaryArrayKey && Array.isArray(nextRes.data[primaryArrayKey])) {
-        newItems = nextRes.data[primaryArrayKey];
+      let newItems: unknown[] | null = null;
+      const nextDataObj = nextRes.data && typeof nextRes.data === 'object' ? (nextRes.data as Record<string, unknown>) : null;
+      if (primaryArrayKey && nextDataObj && Array.isArray(nextDataObj[primaryArrayKey])) {
+        newItems = nextDataObj[primaryArrayKey] as unknown[];
       } else if (Array.isArray(nextRes.data)) {
         newItems = nextRes.data;
       }
@@ -735,16 +755,17 @@ export class PostMcpServer {
       currentCursor = nextCursor;
     }
 
-    if (initialData.pagination && typeof initialData.pagination === 'object') {
-      if ('cursor' in initialData.pagination) {
-        initialData.pagination.cursor = currentCursor || undefined;
+    if (dataObj.pagination && typeof dataObj.pagination === 'object') {
+      const pagination = dataObj.pagination as Record<string, unknown>;
+      if ('cursor' in pagination) {
+        pagination.cursor = currentCursor || undefined;
       }
-      if ('next_cursor' in initialData.pagination) {
-        initialData.pagination.next_cursor = currentCursor || undefined;
+      if ('next_cursor' in pagination) {
+        pagination.next_cursor = currentCursor || undefined;
       }
     }
-    if ('next_cursor' in initialData) {
-      initialData.next_cursor = currentCursor || undefined;
+    if ('next_cursor' in dataObj) {
+      dataObj.next_cursor = currentCursor || undefined;
     }
 
     return initialData;

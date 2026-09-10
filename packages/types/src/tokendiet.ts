@@ -9,7 +9,7 @@ export interface TokenDietOptions {
 
 export interface TokenDietResult {
   text: string;
-  structured: any;
+  structured: unknown;
   rawEstimatedTokens: number;
   dietEstimatedTokens: number;
   savingsPercentage: number;

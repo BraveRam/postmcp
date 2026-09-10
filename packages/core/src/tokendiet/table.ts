@@ -2,14 +2,14 @@
  * Adaptive JSON Array to GitHub-flavored Markdown Table Converter.
  */
 
-function formatCellValue(val: any): string {
+function formatCellValue(val: unknown): string {
   if (val === null || val === undefined) return '';
   if (typeof val === 'object') {
     if (Array.isArray(val)) {
       return val.map((v) => (typeof v === 'object' ? JSON.stringify(v) : String(v))).join(', ');
     }
     // Format small object inline, e.g. { code: "USD", amount: 100 } -> USD 100
-    const entries = Object.values(val);
+    const entries = Object.values(val as Record<string, unknown>);
     if (entries.length <= 3 && entries.every((e) => typeof e !== 'object')) {
       return entries.join(' ');
     }
@@ -19,12 +19,12 @@ function formatCellValue(val: any): string {
   return str.length > 80 ? str.slice(0, 77) + '...' : str;
 }
 
-export function isHomogeneousObjectArray(arr: any[]): boolean {
+export function isHomogeneousObjectArray(arr: unknown[]): arr is Record<string, unknown>[] {
   if (!Array.isArray(arr) || arr.length === 0) return false;
   return arr.every((item) => item !== null && typeof item === 'object' && !Array.isArray(item));
 }
 
-export function arrayToMarkdownTable(arr: any[]): string {
+export function arrayToMarkdownTable(arr: unknown[]): string {
   if (!isHomogeneousObjectArray(arr)) {
     return JSON.stringify(arr, null, 2);
   }

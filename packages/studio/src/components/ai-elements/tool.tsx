@@ -136,7 +136,7 @@ export function ToolContent({
 }
 
 export interface ToolInputProps extends React.HTMLAttributes<HTMLDivElement> {
-  input: any;
+  input: unknown;
 }
 
 export function ToolInput({ input, className, ...props }: ToolInputProps) {
@@ -173,7 +173,7 @@ export function ToolInput({ input, className, ...props }: ToolInputProps) {
 }
 
 export interface ToolOutputProps extends React.HTMLAttributes<HTMLDivElement> {
-  output?: any;
+  output?: unknown;
   savings?: number;
   status?: 'running' | 'complete' | 'error';
 }

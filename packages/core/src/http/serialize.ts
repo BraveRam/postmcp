@@ -2,14 +2,14 @@ import { NormalizedParameter, JSONSchemaObject } from '../parser/types.js';
 
 export interface SerializedRequestParameters {
   path: string;
-  queryParams: Record<string, any>;
+  queryParams: Record<string, unknown>;
   headerParams: Record<string, string>;
   cookieParams: Record<string, string>;
 }
 
 function validateValueAgainstSchema(
   schema: JSONSchemaObject,
-  value: any,
+  value: unknown,
   propPath: string,
   errors: string[]
 ): void {
@@ -43,12 +43,12 @@ function validateValueAgainstSchema(
   if (allowedTypes.length > 0 && !allowedTypes.includes('any')) {
     const jsType = typeof value;
     const matchesType = allowedTypes.some((t) => {
-      if (t === 'string') return jsType === 'string';
-      if (t === 'number') return jsType === 'number' && !isNaN(value);
-      if (t === 'integer') return jsType === 'number' && Number.isInteger(value);
-      if (t === 'boolean') return jsType === 'boolean';
+      if (t === 'string') return typeof value === 'string';
+      if (t === 'number') return typeof value === 'number' && !Number.isNaN(value);
+      if (t === 'integer') return typeof value === 'number' && Number.isInteger(value);
+      if (t === 'boolean') return typeof value === 'boolean';
       if (t === 'array') return Array.isArray(value);
-      if (t === 'object') return jsType === 'object' && value !== null && !Array.isArray(value);
+      if (t === 'object') return typeof value === 'object' && value !== null && !Array.isArray(value);
       if (t === 'null') return value === null;
       return true;
     });
@@ -165,45 +165,46 @@ function validateValueAgainstSchema(
     }
     if (schema.items) {
       for (let i = 0; i < value.length; i++) {
-        validateValueAgainstSchema(schema.items as any, value[i], `${propPath}[${i}]`, errors);
+        validateValueAgainstSchema(schema.items, value[i], `${propPath}[${i}]`, errors);
       }
     }
   }
 
   // 6. Object Details
   if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    const obj = value as Record<string, unknown>;
     if (Array.isArray(schema.required)) {
       for (const req of schema.required) {
-        if (value[req] === undefined) {
+        if (obj[req] === undefined) {
           errors.push(`Missing required property '${req}' at '${propPath}'`);
         }
       }
     }
-    if (schema.minProperties !== undefined && Object.keys(value).length < schema.minProperties) {
+    if (schema.minProperties !== undefined && Object.keys(obj).length < schema.minProperties) {
       errors.push(`Object '${propPath}' must have at least ${schema.minProperties} properties`);
     }
-    if (schema.maxProperties !== undefined && Object.keys(value).length > schema.maxProperties) {
+    if (schema.maxProperties !== undefined && Object.keys(obj).length > schema.maxProperties) {
       errors.push(`Object '${propPath}' must have at most ${schema.maxProperties} properties`);
     }
     if (schema.properties) {
       for (const [k, propSchema] of Object.entries(schema.properties)) {
-        if (value[k] !== undefined) {
-          validateValueAgainstSchema(propSchema as any, value[k], `${propPath}.${k}`, errors);
+        if (obj[k] !== undefined) {
+          validateValueAgainstSchema(propSchema, obj[k], `${propPath}.${k}`, errors);
         }
       }
     }
     if (schema.additionalProperties === false) {
-      for (const k of Object.keys(value)) {
+      for (const k of Object.keys(obj)) {
         if (!schema.properties || !(k in schema.properties)) {
           errors.push(`Unexpected property '${k}' at '${propPath}' (additionalProperties is false)`);
         }
       }
     } else if (typeof schema.additionalProperties === 'object' && schema.additionalProperties !== null) {
-      for (const k of Object.keys(value)) {
+      for (const k of Object.keys(obj)) {
         if (!schema.properties || !(k in schema.properties)) {
           validateValueAgainstSchema(
-            schema.additionalProperties as any,
-            value[k],
+            schema.additionalProperties as JSONSchemaObject,
+            obj[k],
             `${propPath}.${k}`,
             errors
           );
@@ -216,7 +217,7 @@ function validateValueAgainstSchema(
   if (Array.isArray(schema.anyOf)) {
     const anyMatches = schema.anyOf.some((subSchema) => {
       const subErrors: string[] = [];
-      validateValueAgainstSchema(subSchema as any, value, propPath, subErrors);
+      validateValueAgainstSchema(subSchema, value, propPath, subErrors);
       return subErrors.length === 0;
     });
     if (!anyMatches) {
@@ -227,7 +228,7 @@ function validateValueAgainstSchema(
   if (Array.isArray(schema.oneOf)) {
     const matchCount = schema.oneOf.filter((subSchema) => {
       const subErrors: string[] = [];
-      validateValueAgainstSchema(subSchema as any, value, propPath, subErrors);
+      validateValueAgainstSchema(subSchema, value, propPath, subErrors);
       return subErrors.length === 0;
     }).length;
     if (matchCount !== 1) {
@@ -238,7 +239,7 @@ function validateValueAgainstSchema(
 
 export function validateInputArguments(
   inputSchema: JSONSchemaObject,
-  args: Record<string, any>
+  args: Record<string, unknown>
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
@@ -255,7 +256,7 @@ export function validateInputArguments(
   if (inputSchema.properties) {
     for (const [key, propSchema] of Object.entries(inputSchema.properties)) {
       if (args[key] !== undefined) {
-        validateValueAgainstSchema(propSchema as any, args[key], key, errors);
+        validateValueAgainstSchema(propSchema, args[key], key, errors);
       }
     }
   }
@@ -278,18 +279,18 @@ export function validateInputArguments(
 export function serializeParameters(
   rawPath: string,
   parameters: NormalizedParameter[],
-  args: Record<string, any>
+  args: Record<string, unknown>
 ): SerializedRequestParameters {
   let path = rawPath;
-  const queryParams: Record<string, any> = {};
+  const queryParams: Record<string, unknown> = {};
   const headerParams: Record<string, string> = {};
   const cookieParams: Record<string, string> = {};
 
   for (const param of parameters) {
     let val = args[param.name];
     if (val === undefined || val === null) {
-      if (param.schema && (param.schema as any).default !== undefined) {
-        val = (param.schema as any).default;
+      if (param.schema && param.schema.default !== undefined) {
+        val = param.schema.default;
       } else {
         continue;
       }
@@ -304,7 +305,7 @@ export function serializeParameters(
 
       if (style === 'deepObject' && typeof val === 'object' && !Array.isArray(val)) {
         // deepObject: filter[status]=active
-        for (const [k, v] of Object.entries(val)) {
+        for (const [k, v] of Object.entries(val as Record<string, unknown>)) {
           queryParams[`${param.name}[${k}]`] = v;
         }
       } else if (Array.isArray(val)) {

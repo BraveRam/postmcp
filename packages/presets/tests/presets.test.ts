@@ -39,7 +39,11 @@ describe('Curated Presets Catalog (@postmcp/presets)', () => {
       expect(hasSpec).toBe(true);
 
       if (preset.bundledSpec) {
-        const doc = preset.bundledSpec as any;
+        const doc = preset.bundledSpec as {
+          openapi?: string;
+          info?: { title?: string };
+          paths?: Record<string, unknown>;
+        };
         expect(doc.openapi).toBeTruthy();
         expect(doc.info?.title).toBeTruthy();
         expect(doc.paths).toBeDefined();

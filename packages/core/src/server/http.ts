@@ -1,6 +1,7 @@
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { PostMcpServer, PostMcpServerOptions } from './runtime.js';
 import * as http from 'node:http';
+import type { AddressInfo } from 'node:net';
 
 export interface HttpServerOptions extends PostMcpServerOptions {
   port?: number;
@@ -33,7 +34,8 @@ export async function startHttpServer(
       return;
     }
 
-    const currentPort = (httpServer.address() as any)?.port || port;
+    const addr = httpServer.address();
+    const currentPort = typeof addr === 'object' && addr !== null ? (addr as AddressInfo).port : port;
     const url = new URL(req.url || '', `http://${host}:${currentPort}`);
 
     if (url.pathname === endpointPath) {
@@ -54,7 +56,8 @@ export async function startHttpServer(
     });
   });
 
-  const actualPort = (httpServer.address() as any)?.port || port;
+  const actualAddr = httpServer.address();
+  const actualPort = typeof actualAddr === 'object' && actualAddr !== null ? (actualAddr as AddressInfo).port : port;
 
   return {
     server: postMcpServer,

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 
 export interface PromptInputMessage {
   text: string;
-  files?: any[];
+  files?: File[];
 }
 
 export interface PromptInputProps extends Omit<React.FormHTMLAttributes<HTMLFormElement>, 'onSubmit'> {

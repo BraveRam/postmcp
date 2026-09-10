@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { NormalizedOperation } from '@postmcp/types';
-import { Badge } from './ui/Badge';
+import { Badge, type BadgeProps } from './ui/Badge';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import {
@@ -161,7 +161,7 @@ export function ApiExplorer({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <Badge
-                      variant={op.method.toLowerCase() as any}
+                      variant={(op.method.toLowerCase() as BadgeProps['variant']) || 'default'}
                       className="text-[9px] uppercase px-1 py-0 font-bold tracking-wider"
                     >
                       {op.method}

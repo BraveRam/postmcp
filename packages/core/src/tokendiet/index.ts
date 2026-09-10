@@ -15,7 +15,7 @@ export function estimateTokenCount(str: string): number {
   return Math.ceil(str.length / 3.8);
 }
 
-export function applyTokenDiet(data: any, options: TokenDietOptions = {}): TokenDietResult {
+export function applyTokenDiet(data: unknown, options: TokenDietOptions = {}): TokenDietResult {
   const enabled = options.enabled !== false;
   const maxTokens = options.maxTokens !== undefined ? options.maxTokens : 2500;
   const convertToMarkdown = options.convertToMarkdownTable !== false;
@@ -65,7 +65,7 @@ export function applyTokenDiet(data: any, options: TokenDietOptions = {}): Token
   // Detect primary array property (e.g. data, items, projects, charges, issues, results)
   let primaryArrayKey: string | null = null;
   if (processed && typeof processed === 'object' && !Array.isArray(processed)) {
-    for (const [k, v] of Object.entries(processed)) {
+    for (const [k, v] of Object.entries(processed as Record<string, unknown>)) {
       if (Array.isArray(v) && v.length > 0 && isHomogeneousObjectArray(v)) {
         primaryArrayKey = k;
         break;
@@ -76,9 +76,9 @@ export function applyTokenDiet(data: any, options: TokenDietOptions = {}): Token
   if (Array.isArray(processed) && convertToMarkdown && isHomogeneousObjectArray(processed)) {
     textOutput = arrayToMarkdownTable(processed);
   } else if (primaryArrayKey && convertToMarkdown) {
-    const { [primaryArrayKey]: list, ...rest } = processed;
+    const { [primaryArrayKey]: list, ...rest } = processed as Record<string, unknown>;
     const header = Object.keys(rest).length > 0 ? `**Metadata:** ${JSON.stringify(rest)}\n\n` : '';
-    textOutput = header + arrayToMarkdownTable(list);
+    textOutput = header + arrayToMarkdownTable(list as unknown[]);
   } else {
     textOutput = typeof processed === 'string' ? processed : JSON.stringify(processed, null, 2);
   }

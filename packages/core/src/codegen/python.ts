@@ -1,4 +1,4 @@
-import { NormalizedSpec, NormalizedOperation, GeneratedProject } from '@postmcp/types';
+import { NormalizedSpec, NormalizedOperation, GeneratedProject, JSONSchemaObject, SecurityScheme } from '@postmcp/types';
 
 const PYTHON_KEYWORDS = new Set([
   'False', 'None', 'True', 'and', 'as', 'assert', 'async', 'await',
@@ -45,11 +45,11 @@ interface PydanticModelDefinition {
 export class PythonSchemaConverter {
   private models: Map<string, PydanticModelDefinition> = new Map();
 
-  public convert(schema: any, typeNameHint: string = 'Model'): string {
+  public convert(schema: JSONSchemaObject | undefined | null, typeNameHint: string = 'Model'): string {
     if (!schema) return 'Any';
 
     if (schema.enum && Array.isArray(schema.enum) && schema.enum.length > 0) {
-      const literals = schema.enum.map((val: any) => JSON.stringify(val)).join(', ');
+      const literals = schema.enum.map((val: unknown) => JSON.stringify(val)).join(', ');
       return `Literal[${literals}]`;
     }
 
@@ -74,14 +74,14 @@ export class PythonSchemaConverter {
     }
 
     if (schema.oneOf && Array.isArray(schema.oneOf) && schema.oneOf.length > 0) {
-      const unionTypes = schema.oneOf.map((sub: any, idx: number) =>
+      const unionTypes = schema.oneOf.map((sub: JSONSchemaObject, idx: number) =>
         this.convert(sub, `${typeNameHint}Variant${idx + 1}`)
       );
       return `Union[${unionTypes.join(', ')}]`;
     }
 
     if (schema.anyOf && Array.isArray(schema.anyOf) && schema.anyOf.length > 0) {
-      const unionTypes = schema.anyOf.map((sub: any, idx: number) =>
+      const unionTypes = schema.anyOf.map((sub: JSONSchemaObject, idx: number) =>
         this.convert(sub, `${typeNameHint}Option${idx + 1}`)
       );
       return `Union[${unionTypes.join(', ')}]`;
@@ -90,7 +90,7 @@ export class PythonSchemaConverter {
     return 'Any';
   }
 
-  public generatePydanticModel(schema: any, preferredName: string): string {
+  public generatePydanticModel(schema: JSONSchemaObject, preferredName: string): string {
     const modelName = toPascalCase(preferredName);
 
     if (this.models.has(modelName)) {
@@ -104,7 +104,7 @@ export class PythonSchemaConverter {
     // Register placeholder to avoid infinite recursion on circular schemas
     this.models.set(modelName, { name: modelName, code: '' });
 
-    for (const [propKey, propSchema] of Object.entries<any>(properties)) {
+    for (const [propKey, propSchema] of Object.entries(properties)) {
       const pyFieldName = toPythonIdentifier(propKey);
       const isRequired = requiredList.includes(propKey);
       const fieldType = this.convert(propSchema, `${modelName}_${toPascalCase(propKey)}`);
@@ -198,10 +198,10 @@ export function generatePythonProject(spec: NormalizedSpec): GeneratedProject {
     let isBodyRequired = false;
 
     if (op.inputSchema && op.inputSchema.properties && Object.keys(op.inputSchema.properties).length > 0) {
-      const nonParamProperties: Record<string, any> = {};
+      const nonParamProperties: Record<string, JSONSchemaObject> = {};
       const knownParamNames = new Set((op.parameters || []).map((p) => p.name));
 
-      for (const [propName, propSchema] of Object.entries<any>(op.inputSchema.properties)) {
+      for (const [propName, propSchema] of Object.entries(op.inputSchema.properties)) {
         if (!knownParamNames.has(propName)) {
           nonParamProperties[propName] = propSchema;
         }
@@ -395,7 +395,7 @@ build-backend = "hatchling.build"
 
   // Detect security schemes (Bearer, ApiKey header, Basic)
   const secSchemes = spec.securitySchemes || {};
-  const primaryScheme = Object.values(secSchemes)[0] as any;
+  const primaryScheme: SecurityScheme | undefined = Object.values(secSchemes)[0];
   let authHeaderCode = '';
   if (primaryScheme) {
     if (primaryScheme.type === 'http' && primaryScheme.scheme === 'bearer') {

@@ -9,8 +9,8 @@ export interface DryRunResult {
   operationId: string;
   method: string;
   targetUrl: string;
-  queryParams?: Record<string, any>;
+  queryParams?: Record<string, unknown>;
   headers: Record<string, string>;
-  body?: any;
+  body?: unknown;
   message: string;
 }

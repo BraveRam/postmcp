@@ -21,7 +21,7 @@ describe('Presets Catalog & Runtime Integration', () => {
       const spec = await resolvePresetSpec(`@${preset.id}`);
       expect(spec).toBeDefined();
 
-      const parsed = await parseOpenAPI(spec as any);
+      const parsed = await parseOpenAPI(spec);
       expect(parsed.title).toBeTruthy();
       expect(parsed.operations.length).toBeGreaterThan(0);
       for (const op of parsed.operations) {

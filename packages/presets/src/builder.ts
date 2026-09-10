@@ -2,6 +2,47 @@ import type { EndpointDef } from '@postmcp/types';
 
 export type { EndpointDef };
 
+export interface OpenAPIOperation {
+  operationId: string;
+  summary: string;
+  description: string;
+  parameters: Array<{
+    name: string;
+    in: string;
+    required: boolean;
+    schema: { type: string; format?: string; default?: unknown };
+    description?: string;
+  }>;
+  responses: Record<string, {
+    description: string;
+    content?: Record<string, { schema: unknown }>;
+  }>;
+  requestBody?: {
+    required: boolean;
+    content: Record<string, { schema: { type: string; properties: Record<string, unknown> } }>;
+  };
+  security?: Array<Record<string, string[]>>;
+}
+
+export interface OpenAPISpecDoc {
+  openapi: string;
+  info: {
+    title: string;
+    version: string;
+    description: string;
+  };
+  servers: Array<{ url: string }>;
+  paths: Record<string, Record<string, OpenAPIOperation>>;
+  components?: {
+    securitySchemes: Record<string, {
+      type: string;
+      scheme?: string;
+      in?: string;
+      name?: string;
+    }>;
+  };
+}
+
 export function buildOpenAPISpec(opts: {
   title: string;
   version?: string;
@@ -15,12 +56,12 @@ export function buildOpenAPISpec(opts: {
     in?: 'header' | 'query';
     headerName?: string;
   };
-}): object {
-  const pathsObj: Record<string, any> = {};
+}): OpenAPISpecDoc {
+  const pathsObj: Record<string, Record<string, OpenAPIOperation>> = {};
 
   for (const ep of opts.endpoints) {
     pathsObj[ep.path] = pathsObj[ep.path] || {};
-    const opObj: any = {
+    const opObj: OpenAPIOperation = {
       operationId: ep.operationId,
       summary: ep.summary,
       description: ep.description || ep.summary,
@@ -64,7 +105,7 @@ export function buildOpenAPISpec(opts: {
     pathsObj[ep.path][ep.method.toLowerCase()] = opObj;
   }
 
-  const specDoc: any = {
+  const specDoc: OpenAPISpecDoc = {
     openapi: '3.0.3',
     info: {
       title: opts.title,

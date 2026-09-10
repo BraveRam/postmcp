@@ -125,9 +125,9 @@ export async function GET(request: Request) {
       hasValue: Boolean(activeValue),
       customHeaders,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
-      { error: err.message || 'Failed to check environment variables.' },
+      { error: err instanceof Error ? err.message : 'Failed to check environment variables.' },
       { status: 500 }
     );
   }
@@ -181,9 +181,9 @@ export async function POST(request: Request) {
       updatedKeys: Object.keys(updates),
       message: `Successfully saved ${Object.keys(updates).join(', ')} to ${envPath}`,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
-      { error: err.message || 'Failed to save to .env file.' },
+      { error: err instanceof Error ? err.message : 'Failed to save to .env file.' },
       { status: 500 }
     );
   }

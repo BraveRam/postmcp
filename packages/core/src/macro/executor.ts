@@ -1,4 +1,4 @@
-import { MacroDefinition } from '../parser/types.js';
+import { MacroDefinition, HttpMethod } from '../parser/types.js';
 import { interpolateAction, interpolateObject, extractExports } from './template.js';
 import { ResilientHttpClient } from '../http/client.js';
 import { isSameOriginOrAllowed } from '../http/auth.js';
@@ -11,19 +11,19 @@ export interface MacroExecutionResult {
     stepId: string;
     action: string;
     status: number;
-    data: any;
+    data: unknown;
   }>;
-  finalData: any;
+  finalData: unknown;
   errorMessage?: string;
 }
 
 export async function executeMacro(
   macro: MacroDefinition,
-  inputArgs: Record<string, any>,
+  inputArgs: Record<string, unknown>,
   httpClient: ResilientHttpClient,
   isDryRun: boolean = false
 ): Promise<MacroExecutionResult> {
-  const context: Record<string, any> = { ...inputArgs };
+  const context: Record<string, unknown> = { ...inputArgs };
   const stepResults: MacroExecutionResult['stepResults'] = [];
 
   for (const step of macro.steps) {
@@ -78,7 +78,7 @@ export async function executeMacro(
 
     // Real execution
     const response = await httpClient.request({
-      method: method as any,
+      method: method as HttpMethod,
       url: pathWithQuery,
       data: interpolatedBody,
     });

@@ -1,6 +1,19 @@
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import type { SecurityScheme } from './parser.js';
 
+export type SecuritySchemeConfig =
+  | string
+  | {
+      token?: string;
+      value?: string;
+      username?: string;
+      password?: string;
+      header?: string;
+      query?: string;
+      cookie?: string;
+      [key: string]: unknown;
+    };
+
 export interface AuthConfig {
   headers?: Record<string, string>;
   bearerToken?: string;
@@ -15,7 +28,7 @@ export interface AuthConfig {
         password?: string;
       }
     | string;
-  securitySchemes?: Record<string, any>;
+  securitySchemes?: Record<string, SecuritySchemeConfig>;
   allowedExternalHosts?: string[];
   allowCrossOriginAuth?: boolean;
 }
@@ -53,8 +66,8 @@ export interface HttpRequestConfig extends AxiosRequestConfig {
 export interface HttpResponseResult {
   status: number;
   statusText: string;
-  headers: Record<string, any>;
-  data: any;
+  headers: Record<string, unknown>;
+  data: unknown;
   contentType?: string;
   isError: boolean;
   errorMessage?: string;
@@ -63,7 +76,7 @@ export interface HttpResponseResult {
 
 export interface SerializedRequestParameters {
   path: string;
-  queryParams: Record<string, any>;
+  queryParams: Record<string, unknown>;
   headerParams: Record<string, string>;
   cookieParams: Record<string, string>;
 }

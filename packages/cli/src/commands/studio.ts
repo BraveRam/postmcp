@@ -53,7 +53,7 @@ export function findStudioDir(): string {
 
   // 3. Try resolving via Node module resolution (published npx postmcp)
   try {
-    const customRequire = typeof createRequire !== 'undefined' ? createRequire(__filename) : (require as any);
+    const customRequire = typeof createRequire !== 'undefined' ? createRequire(__filename) : (require as NodeRequire);
     const pkgPath = customRequire.resolve('@postmcp/studio/package.json');
     if (fs.existsSync(pkgPath)) {
       const resolved = path.dirname(pkgPath);
@@ -160,8 +160,9 @@ export async function studioCommand(specArg?: string, options: StudioCommandOpti
       process.on('SIGINT', cleanup);
       process.on('SIGTERM', cleanup);
       process.on('exit', cleanup);
-    } catch (err: any) {
-      console.log(pc.yellow(`  Note: Running in detached standalone mode: ${err.message}`));
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.log(pc.yellow(`  Note: Running in detached standalone mode: ${errMsg}`));
     }
   }
 

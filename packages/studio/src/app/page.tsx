@@ -92,7 +92,7 @@ export default function StudioPage() {
       } else {
         throw new Error(data.error || 'Failed to parse spec.');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to parse spec:', err);
       throw err;
     } finally {

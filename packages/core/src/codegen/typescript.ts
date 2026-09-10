@@ -1,4 +1,4 @@
-import { NormalizedSpec, NormalizedOperation, GeneratedProject } from '@postmcp/types';
+import { NormalizedSpec, NormalizedOperation, GeneratedProject, JSONSchemaObject, SecurityScheme } from '@postmcp/types';
 
 export function sanitizeIdentifier(name: string): string {
   let s = name.replace(/[^a-zA-Z0-9_]/g, '_');
@@ -8,16 +8,16 @@ export function sanitizeIdentifier(name: string): string {
   return s || 'tool';
 }
 
-export function convertSchemaToZod(schema: any, depth: number = 0): string {
+export function convertSchemaToZod(schema: JSONSchemaObject | undefined | null, depth: number = 0): string {
   if (!schema || depth > 8) {
     return 'z.any()';
   }
 
   // 1. Enum types
   if (schema.enum && Array.isArray(schema.enum) && schema.enum.length > 0) {
-    const isAllStrings = schema.enum.every((v: any) => typeof v === 'string');
+    const isAllStrings = schema.enum.every((v: unknown) => typeof v === 'string');
     if (isAllStrings) {
-      const literals = schema.enum.map((v: any) => JSON.stringify(v)).join(', ');
+      const literals = schema.enum.map((v: unknown) => JSON.stringify(v)).join(', ');
       let zod = `z.enum([${literals}])`;
       if (schema.description) zod += `.describe(${JSON.stringify(schema.description)})`;
       return zod;
@@ -28,7 +28,7 @@ export function convertSchemaToZod(schema: any, depth: number = 0): string {
       if (schema.description) zod += `.describe(${JSON.stringify(schema.description)})`;
       return zod;
     }
-    const literals = schema.enum.map((v: any) => `z.literal(${JSON.stringify(v)})`).join(', ');
+    const literals = schema.enum.map((v: unknown) => `z.literal(${JSON.stringify(v)})`).join(', ');
     let zod = `z.union([${literals}])`;
     if (schema.description) zod += `.describe(${JSON.stringify(schema.description)})`;
     return zod;
@@ -76,7 +76,7 @@ export function convertSchemaToZod(schema: any, depth: number = 0): string {
     const requiredSet = new Set(Array.isArray(schema.required) ? schema.required : []);
     const shapeEntries: string[] = [];
 
-    for (const [key, propSchema] of Object.entries<any>(props)) {
+    for (const [key, propSchema] of Object.entries(props)) {
       const isReq = requiredSet.has(key);
       const innerZod = convertSchemaToZod(propSchema, depth + 1);
       const fieldZod = isReq ? innerZod : `${innerZod}.optional()`;
@@ -85,7 +85,7 @@ export function convertSchemaToZod(schema: any, depth: number = 0): string {
 
     if (shapeEntries.length === 0) {
       return schema.additionalProperties
-        ? `z.record(z.string(), ${convertSchemaToZod(schema.additionalProperties, depth + 1)})`
+        ? `z.record(z.string(), ${convertSchemaToZod(typeof schema.additionalProperties === 'object' ? schema.additionalProperties : undefined, depth + 1)})`
         : 'z.record(z.string(), z.any())';
     }
 
@@ -96,11 +96,11 @@ export function convertSchemaToZod(schema: any, depth: number = 0): string {
 
   // 5. Unions (oneOf / anyOf)
   if (schema.oneOf && Array.isArray(schema.oneOf) && schema.oneOf.length > 0) {
-    const members = schema.oneOf.map((m: any) => convertSchemaToZod(m, depth + 1));
+    const members = schema.oneOf.map((m: JSONSchemaObject) => convertSchemaToZod(m, depth + 1));
     return `z.union([${members.join(', ')}])`;
   }
   if (schema.anyOf && Array.isArray(schema.anyOf) && schema.anyOf.length > 0) {
-    const members = schema.anyOf.map((m: any) => convertSchemaToZod(m, depth + 1));
+    const members = schema.anyOf.map((m: JSONSchemaObject) => convertSchemaToZod(m, depth + 1));
     return `z.union([${members.join(', ')}])`;
   }
 
@@ -177,11 +177,11 @@ export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProjec
     const description = op.description || op.summary || `Execute ${op.id}`;
 
     // Collect all parameters
-    const pathParams: { name: string; schema: any; required: boolean }[] = [];
-    const queryParams: { name: string; schema: any; required: boolean }[] = [];
-    const headerParams: { name: string; schema: any; required: boolean }[] = [];
-    const cookieParams: { name: string; schema: any; required: boolean }[] = [];
-    const bodyProps: { name: string; schema: any; required: boolean }[] = [];
+    const pathParams: { name: string; schema: JSONSchemaObject; required: boolean }[] = [];
+    const queryParams: { name: string; schema: JSONSchemaObject; required: boolean }[] = [];
+    const headerParams: { name: string; schema: JSONSchemaObject; required: boolean }[] = [];
+    const cookieParams: { name: string; schema: JSONSchemaObject; required: boolean }[] = [];
+    const bodyProps: { name: string; schema: JSONSchemaObject; required: boolean }[] = [];
     let isDirectBody = false;
     let directBodyPropName: string | null = null;
 
@@ -210,7 +210,7 @@ export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProjec
     if (op.inputSchema && op.inputSchema.properties) {
       const knownParamNames = new Set((op.parameters || []).map((p) => p.name));
       const requiredBodySet = new Set(Array.isArray(op.inputSchema.required) ? op.inputSchema.required : []);
-      const nonParamEntries = Object.entries<any>(op.inputSchema.properties).filter(([k]) => !knownParamNames.has(k));
+      const nonParamEntries = Object.entries(op.inputSchema.properties).filter(([k]) => !knownParamNames.has(k));
 
       // Check if this is a direct single primitive/array body property named 'requestBody' or 'body'
       if (
@@ -250,7 +250,7 @@ export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProjec
     }
 
     if (queryParams.length > 0) {
-      executionLines.push('      const query: Record<string, any> = {};');
+      executionLines.push('      const query: Record<string, unknown> = {};');
       for (const p of queryParams) {
         executionLines.push(`      if (args[${JSON.stringify(p.name)}] !== undefined) query[${JSON.stringify(p.name)}] = args[${JSON.stringify(p.name)}];`);
       }
@@ -273,7 +273,7 @@ export function generateTypeScriptProject(spec: NormalizedSpec): GeneratedProjec
     if (isDirectBody && directBodyPropName) {
       executionLines.push(`      const bodyData = args[${JSON.stringify(directBodyPropName)}];`);
     } else if (bodyProps.length > 0) {
-      executionLines.push('      const bodyData: Record<string, any> = {};');
+      executionLines.push('      const bodyData: Record<string, unknown> = {};');
       for (const p of bodyProps) {
         executionLines.push(`      if (args[${JSON.stringify(p.name)}] !== undefined) bodyData[${JSON.stringify(p.name)}] = args[${JSON.stringify(p.name)}];`);
       }
@@ -295,7 +295,7 @@ server.tool(
   {
 ${schemaFields.join('\n')}
   },
-  async (args: any) => {
+  async (args: Record<string, unknown>) => {
 ${executionLines.join('\n')}
 
       const res = await httpClient.request({
@@ -310,8 +310,8 @@ ${executionLines.join('\n')}
       return {
         content: [{ type: 'text', text: formatted }],
       };
-    } catch (err: any) {
-      const msg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err) && err.response?.data ? JSON.stringify(err.response.data) : (err instanceof Error ? err.message : String(err));
       return {
         isError: true,
         content: [{ type: 'text', text: \`Error executing \${${JSON.stringify(toolId)}}: \${msg}\` }],
@@ -323,7 +323,7 @@ ${executionLines.join('\n')}
 
   // Detect security schemes (Bearer, ApiKey header, Basic)
   const secSchemes = spec.securitySchemes || {};
-  const primaryScheme = Object.values(secSchemes)[0] as any;
+  const primaryScheme: SecurityScheme | undefined = Object.values(secSchemes)[0];
   let authHeaderCode = '';
   if (primaryScheme) {
     if (primaryScheme.type === 'http' && primaryScheme.scheme === 'bearer') {
@@ -365,13 +365,14 @@ const httpClient = axios.create({
   },
 });
 
-function formatTokenDiet(data: any): string {
+function formatTokenDiet(data: unknown): string {
   if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
-    const keys = Object.keys(data[0]).slice(0, 8);
+    const records = data as Record<string, unknown>[];
+    const keys = Object.keys(records[0]).slice(0, 8);
     const headerRow = '| ' + keys.join(' | ') + ' |';
     const sepRow = '| ' + keys.map(() => '---').join(' | ') + ' |';
     const rows = [headerRow, sepRow];
-    for (const item of data.slice(0, 25)) {
+    for (const item of records.slice(0, 25)) {
       rows.push('| ' + keys.map(k => String(item[k] ?? '').replace(/\\n/g, ' ')).join(' | ') + ' |');
     }
     return rows.join('\\n');

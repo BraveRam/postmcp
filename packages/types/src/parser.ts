@@ -4,19 +4,39 @@ export type RiskTier = 'READ_ONLY' | 'MUTATION' | 'CRITICAL';
 
 export interface JSONSchemaObject {
   type?: string | string[];
+  title?: string;
   description?: string;
   properties?: Record<string, JSONSchemaObject>;
   required?: string[];
   items?: JSONSchemaObject;
-  enum?: any[];
-  default?: any;
+  enum?: unknown[];
+  default?: unknown;
   oneOf?: JSONSchemaObject[];
   anyOf?: JSONSchemaObject[];
   allOf?: JSONSchemaObject[];
   $ref?: string;
   additionalProperties?: boolean | JSONSchemaObject;
   format?: string;
-  [key: string]: any;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  minimum?: number;
+  maximum?: number;
+  exclusiveMinimum?: boolean | number;
+  exclusiveMaximum?: boolean | number;
+  multipleOf?: number;
+  minItems?: number;
+  maxItems?: number;
+  uniqueItems?: boolean;
+  minProperties?: number;
+  maxProperties?: number;
+  nullable?: boolean;
+  readOnly?: boolean;
+  writeOnly?: boolean;
+  example?: unknown;
+  examples?: unknown[];
+  deprecated?: boolean;
+  [key: string]: unknown;
 }
 
 export interface NormalizedParameter {
@@ -43,7 +63,7 @@ export interface NormalizedOperation {
   security?: Array<Record<string, string[]>>;
   isDeprecated?: boolean;
   contentType?: string;
-  extensions?: Record<string, any>;
+  extensions?: Record<string, unknown>;
 }
 
 export interface SecurityScheme {
@@ -58,7 +78,7 @@ export interface SecurityScheme {
 export interface MacroStep {
   id: string;
   action: string; // e.g. "GET /v1/customers?email={{email}}" or "POST /v1/refunds"
-  body?: Record<string, any>;
+  body?: Record<string, unknown>;
   export?: Record<string, string>; // e.g. { customerId: "data[0].id" }
 }
 

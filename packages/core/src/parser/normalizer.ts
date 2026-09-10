@@ -70,17 +70,18 @@ function classifyRiskTier(method: HttpMethod, path: string, summary: string): Ri
   return 'MUTATION';
 }
 
-function sanitizeSchema(schema: any, maxDepth = 6, currentDepth = 0): any {
+function sanitizeSchema(schema: unknown, maxDepth = 6, currentDepth = 0): unknown {
   if (!schema || typeof schema !== 'object') return schema;
   if (Array.isArray(schema)) {
     return schema.slice(0, 30).map((item) => sanitizeSchema(item, maxDepth, currentDepth + 1));
   }
   if (currentDepth >= maxDepth) {
-    return { type: schema.type || 'object' };
+    const s = schema as Record<string, unknown>;
+    return { type: s.type || 'object' };
   }
 
-  const result: Record<string, any> = {};
-  for (const [key, value] of Object.entries(schema)) {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(schema as Record<string, unknown>)) {
     if (key === 'example' || key === 'examples' || key === 'xml' || key === 'externalDocs') {
       continue;
     }
@@ -93,7 +94,7 @@ function sanitizeSchema(schema: any, maxDepth = 6, currentDepth = 0): any {
   return result;
 }
 
-function extractObjectProperties(schema?: any): {
+function extractObjectProperties(schema?: unknown): {
   properties: Record<string, JSONSchemaObject>;
   required: string[];
 } {
@@ -104,9 +105,11 @@ function extractObjectProperties(schema?: any): {
     return { properties, required };
   }
 
+  const s = schema as Record<string, unknown>;
+
   // Handle allOf composition
-  if (Array.isArray(schema.allOf)) {
-    for (const sub of schema.allOf) {
+  if (Array.isArray(s.allOf)) {
+    for (const sub of s.allOf) {
       const ext = extractObjectProperties(sub);
       Object.assign(properties, ext.properties);
       for (const r of ext.required) {
@@ -116,28 +119,28 @@ function extractObjectProperties(schema?: any): {
   }
 
   // Handle anyOf / oneOf composition
-  if (Array.isArray(schema.oneOf)) {
-    for (const sub of schema.oneOf) {
+  if (Array.isArray(s.oneOf)) {
+    for (const sub of s.oneOf) {
       const ext = extractObjectProperties(sub);
       Object.assign(properties, ext.properties);
     }
   }
-  if (Array.isArray(schema.anyOf)) {
-    for (const sub of schema.anyOf) {
+  if (Array.isArray(s.anyOf)) {
+    for (const sub of s.anyOf) {
       const ext = extractObjectProperties(sub);
       Object.assign(properties, ext.properties);
     }
   }
 
   // Direct properties
-  if (schema.properties && typeof schema.properties === 'object') {
-    for (const [k, v] of Object.entries(schema.properties)) {
+  if (s.properties && typeof s.properties === 'object') {
+    for (const [k, v] of Object.entries(s.properties as Record<string, unknown>)) {
       properties[k] = v as JSONSchemaObject;
     }
   }
 
-  if (Array.isArray(schema.required)) {
-    for (const r of schema.required) {
+  if (Array.isArray(s.required)) {
+    for (const r of s.required) {
       if (typeof r === 'string' && !required.includes(r)) {
         required.push(r);
       }
@@ -192,26 +195,27 @@ function buildUnifiedInputSchema(
   };
 }
 
-export function normalizeSpec(spec: any): NormalizedSpec {
+export function normalizeSpec(spec: Record<string, unknown>): NormalizedSpec {
   const isSwagger2 = spec.swagger === '2.0';
   const isOAS3 = typeof spec.openapi === 'string' && spec.openapi.startsWith('3.');
 
-  const title = spec.info?.title || 'OpenAPI Service';
-  const version = spec.info?.version || '1.0.0';
-  const description = spec.info?.description || '';
+  const info = spec.info as Record<string, unknown> | undefined;
+  const title = (info?.title as string) || 'OpenAPI Service';
+  const version = (info?.version as string) || '1.0.0';
+  const description = (info?.description as string) || '';
 
   // Extract Servers
   const servers: Array<{ url: string; description?: string }> = [];
   if (isOAS3 && Array.isArray(spec.servers) && spec.servers.length > 0) {
-    for (const server of spec.servers) {
+    for (const server of spec.servers as Array<{ url?: string; description?: string }>) {
       if (server.url) {
         servers.push({ url: server.url, description: server.description });
       }
     }
   } else if (isSwagger2) {
-    const host = spec.host || 'localhost';
-    const basePath = spec.basePath || '';
-    const schemes = Array.isArray(spec.schemes) && spec.schemes.length > 0 ? spec.schemes : ['https'];
+    const host = (spec.host as string) || 'localhost';
+    const basePath = (spec.basePath as string) || '';
+    const schemes = Array.isArray(spec.schemes) && spec.schemes.length > 0 ? (spec.schemes as string[]) : ['https'];
     for (const scheme of schemes) {
       servers.push({ url: `${scheme}://${host}${basePath}`, description: `${scheme.toUpperCase()} Server` });
     }
@@ -223,46 +227,82 @@ export function normalizeSpec(spec: any): NormalizedSpec {
 
   // Extract Security Schemes
   const securitySchemes: Record<string, SecurityScheme> = {};
-  if (isOAS3 && spec.components?.securitySchemes) {
-    for (const [key, sec] of Object.entries<any>(spec.components.securitySchemes)) {
+  const specComponents = spec.components as Record<string, unknown> | undefined;
+  const specSecSchemes = specComponents?.securitySchemes as Record<string, Record<string, unknown>> | undefined;
+  if (isOAS3 && specSecSchemes) {
+    for (const [key, sec] of Object.entries(specSecSchemes)) {
       securitySchemes[key] = {
-        type: sec.type,
-        description: sec.description,
-        name: sec.name,
-        in: sec.in,
-        scheme: sec.scheme,
-        bearerFormat: sec.bearerFormat,
+        type: sec.type as SecurityScheme['type'],
+        description: sec.description as string | undefined,
+        name: sec.name as string | undefined,
+        in: sec.in as SecurityScheme['in'],
+        scheme: sec.scheme as string | undefined,
+        bearerFormat: sec.bearerFormat as string | undefined,
       };
     }
   } else if (isSwagger2 && spec.securityDefinitions) {
-    for (const [key, sec] of Object.entries<any>(spec.securityDefinitions)) {
+    const specSecDefs = spec.securityDefinitions as Record<string, Record<string, unknown>>;
+    for (const [key, sec] of Object.entries(specSecDefs)) {
       securitySchemes[key] = {
         type: sec.type === 'basic' ? 'http' : sec.type === 'apiKey' ? 'apiKey' : 'oauth2',
-        description: sec.description,
-        name: sec.name,
-        in: sec.in,
+        description: sec.description as string | undefined,
+        name: sec.name as string | undefined,
+        in: sec.in as SecurityScheme['in'],
         scheme: sec.type === 'basic' ? 'basic' : undefined,
       };
     }
   }
 
+interface RawParameter {
+  name?: string;
+  in?: 'path' | 'query' | 'header' | 'cookie' | 'body';
+  description?: string;
+  required?: boolean;
+  schema?: JSONSchemaObject;
+  type?: string;
+  format?: string;
+  enum?: unknown[];
+  default?: unknown;
+  style?: string;
+  explode?: boolean;
+}
+
+interface RawOperation {
+  operationId?: string;
+  summary?: string;
+  description?: string;
+  tags?: string[];
+  parameters?: RawParameter[];
+  requestBody?: {
+    required?: boolean;
+    content?: Record<string, { schema?: JSONSchemaObject }>;
+  };
+  responses?: Record<string, {
+    schema?: JSONSchemaObject;
+    content?: Record<string, { schema?: JSONSchemaObject }>;
+  }>;
+  security?: Array<Record<string, string[]>>;
+  deprecated?: boolean;
+  [key: string]: unknown;
+}
+
   // Extract Operations
   const operations: NormalizedOperation[] = [];
   const usedOperationIds = new Set<string>();
-  const paths = spec.paths || {};
+  const paths = (spec.paths || {}) as Record<string, Record<string, unknown> & { parameters?: RawParameter[] }>;
 
   const httpMethods: HttpMethod[] = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options'];
 
-  for (const [pathKey, pathItem] of Object.entries<any>(paths)) {
+  for (const [pathKey, pathItem] of Object.entries(paths)) {
     if (!pathItem || typeof pathItem !== 'object') continue;
 
-    const commonParams = Array.isArray(pathItem.parameters) ? pathItem.parameters : [];
+    const commonParams: RawParameter[] = Array.isArray(pathItem.parameters) ? pathItem.parameters : [];
 
     for (const method of httpMethods) {
-      const op = pathItem[method];
+      const op = pathItem[method] as RawOperation | undefined;
       if (!op || typeof op !== 'object') continue;
 
-      let opId = cleanOperationId(method, pathKey, op.operationId);
+      const opId = cleanOperationId(method, pathKey, op.operationId);
       // Ensure uniqueness
       let uniqueId = opId;
       let counter = 1;
@@ -279,7 +319,7 @@ export function normalizeSpec(spec: any): NormalizedSpec {
       const riskTier = classifyRiskTier(method, pathKey, summary + ' ' + desc);
 
       // Collect parameters
-      const mergedParams = [...commonParams, ...(Array.isArray(op.parameters) ? op.parameters : [])];
+      const mergedParams: RawParameter[] = [...commonParams, ...(Array.isArray(op.parameters) ? op.parameters : [])];
       const normalizedParams: NormalizedParameter[] = [];
 
       let requestBodySchema: JSONSchemaObject | undefined;
@@ -294,7 +334,7 @@ export function normalizeSpec(spec: any): NormalizedSpec {
         } else {
           normalizedParams.push({
             name: param.name,
-            in: param.in,
+            in: param.in || 'query',
             description: param.description,
             required: Boolean(param.required),
             schema: sanitizeSchema(param.schema || {
@@ -302,7 +342,7 @@ export function normalizeSpec(spec: any): NormalizedSpec {
               format: param.format,
               enum: param.enum,
               default: param.default,
-            }, 3),
+            }, 3) as JSONSchemaObject,
             style: param.style,
             explode: param.explode,
           });
@@ -330,16 +370,16 @@ export function normalizeSpec(spec: any): NormalizedSpec {
         }
       }
 
-      const inputSchema = sanitizeSchema(buildUnifiedInputSchema(normalizedParams, requestBodySchema), 6);
+      const inputSchema = sanitizeSchema(buildUnifiedInputSchema(normalizedParams, requestBodySchema), 6) as JSONSchemaObject;
 
       // Extract 200/201 response schema if available
       const successResponse = op.responses?.['200'] || op.responses?.['201'] || op.responses?.['default'];
       const rawResponseSchema =
         successResponse?.content?.['application/json']?.schema || successResponse?.schema;
-      const responseSchema = rawResponseSchema ? sanitizeSchema(rawResponseSchema, 3) : undefined;
+      const responseSchema = rawResponseSchema ? (sanitizeSchema(rawResponseSchema, 3) as JSONSchemaObject) : undefined;
 
       // Extract vendor extensions (x-*) from pathItem and op
-      const extensions: Record<string, any> = {};
+      const extensions: Record<string, unknown> = {};
       for (const [key, val] of Object.entries(pathItem)) {
         if (key.startsWith('x-')) {
           extensions[key] = val;
@@ -362,7 +402,7 @@ export function normalizeSpec(spec: any): NormalizedSpec {
         inputSchema,
         responseSchema,
         riskTier,
-        security: op.security || spec.security,
+        security: op.security || (spec.security as Array<Record<string, string[]>> | undefined),
         isDeprecated: Boolean(op.deprecated),
         contentType,
         extensions: Object.keys(extensions).length > 0 ? extensions : undefined,

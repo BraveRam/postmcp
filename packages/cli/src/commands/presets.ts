@@ -1,4 +1,5 @@
 import { ALL_PRESETS, syncAllPresets } from '../presets/index.js';
+import type { Preset } from '@postmcp/types';
 import Table from 'cli-table3';
 import pc from 'picocolors';
 
@@ -11,7 +12,7 @@ export async function listPresetsCommand(categoryOrQuery?: string): Promise<void
   let displayedPresets = ALL_PRESETS;
   if (categoryOrQuery) {
     const q = categoryOrQuery.toLowerCase().trim();
-    displayedPresets = ALL_PRESETS.filter((p: any) => {
+    displayedPresets = ALL_PRESETS.filter((p: Preset) => {
       return (
         p.id.toLowerCase().includes(q) ||
         p.name.toLowerCase().includes(q) ||
@@ -51,7 +52,8 @@ export async function syncPresetsCommand(): Promise<void> {
     for (const id of synced) {
       console.log(`  ${pc.green('●')} @${id}`);
     }
-  } catch (err: any) {
-    console.error(pc.red(`Failed to sync presets: ${err.message}`));
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error(pc.red(`Failed to sync presets: ${errMsg}`));
   }
 }

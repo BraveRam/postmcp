@@ -1,13 +1,13 @@
 import { parseOpenAPI } from '@postmcp/core';
-import type { InspectCommandOptions } from '@postmcp/types';
+import type { InspectCommandOptions, NormalizedSpec, NormalizedOperation } from '@postmcp/types';
 import { resolvePresetSpec, getPreset } from '../presets/index.js';
 import Table from 'cli-table3';
 import pc from 'picocolors';
 
 export type { InspectCommandOptions };
 
-export function estimateSpecTokenSavings(spec: any): { rawTokens: number; optimizedTokens: number; savingsPct: number } {
-  const rawTokensPerOp = spec.operations.map((op: any) => {
+export function estimateSpecTokenSavings(spec: NormalizedSpec): { rawTokens: number; optimizedTokens: number; savingsPct: number } {
+  const rawTokensPerOp = spec.operations.map((op: NormalizedOperation) => {
     const descLen = (op.description || op.summary || '').length;
     const schemaLen = JSON.stringify(op.inputSchema || {}).length;
     return Math.ceil((descLen + schemaLen + 50) / 4);
@@ -42,8 +42,9 @@ export async function inspectCommand(specArg: string, options: InspectCommandOpt
     preset = getPreset(specPath);
     try {
       specPath = await resolvePresetSpec(specPath);
-    } catch (err: any) {
-      console.error(pc.red(`Error resolving preset: ${err.message}`));
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error(pc.red(`Error resolving preset: ${errMsg}`));
       process.exit(1);
       return;
     }
@@ -55,8 +56,9 @@ export async function inspectCommand(specArg: string, options: InspectCommandOpt
     if (preset && preset.macros && preset.macros.length > 0) {
       spec.macros = [...(spec.macros || []), ...preset.macros];
     }
-  } catch (err: any) {
-    console.error(pc.red(`Failed to parse specification: ${err.message}`));
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error(pc.red(`Failed to parse specification: ${errMsg}`));
     process.exit(1);
     return;
   }
@@ -98,7 +100,7 @@ export async function inspectCommand(specArg: string, options: InspectCommandOpt
     .join(' | ');
 
   const defaultUrl = spec.servers.length > 0 ? spec.servers[0].url : 'None declared';
-  const secSchemeEntries = Object.entries<any>(spec.securitySchemes || {});
+  const secSchemeEntries = Object.entries(spec.securitySchemes || {});
   let secSchemesDisplay = 'None declared';
   if (secSchemeEntries.length > 0) {
     secSchemesDisplay = secSchemeEntries

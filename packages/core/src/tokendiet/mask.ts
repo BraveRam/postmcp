@@ -1,6 +1,6 @@
 import { JSONPath } from 'jsonpath-plus';
 
-function setByPointer(target: any, pointer: string, value: any): void {
+function setByPointer(target: Record<string, unknown> | unknown[], pointer: string, value: unknown): void {
   const parts = pointer
     .replace(/^\//, '')
     .split('/')
@@ -10,7 +10,7 @@ function setByPointer(target: any, pointer: string, value: any): void {
     return;
   }
 
-  let current = target;
+  let current: Record<string, unknown> | unknown[] = target;
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];
     const nextPart = parts[i + 1];
@@ -21,12 +21,12 @@ function setByPointer(target: any, pointer: string, value: any): void {
       if (!current[idx] || typeof current[idx] !== 'object') {
         current[idx] = isNextNumeric ? [] : {};
       }
-      current = current[idx];
+      current = current[idx] as Record<string, unknown> | unknown[];
     } else {
       if (!current[part] || typeof current[part] !== 'object') {
         current[part] = isNextNumeric ? [] : {};
       }
-      current = current[part];
+      current = current[part] as Record<string, unknown> | unknown[];
     }
   }
 
@@ -43,7 +43,7 @@ function setByPointer(target: any, pointer: string, value: any): void {
  * Automatically expands intermediate array properties into wildcard [*] selectors
  * so that masks like 'projects.id' or 'issues.fields.summary' match elements within arrays.
  */
-export function normalizeJsonPath(rawMask: string, data: any): string {
+export function normalizeJsonPath(rawMask: string, data: unknown): string {
   let path = rawMask.trim();
   if (path.startsWith('.')) path = path.slice(1);
 
@@ -63,20 +63,16 @@ export function normalizeJsonPath(rawMask: string, data: any): string {
   }
 
   let parts = path.split('.');
-  if (
-    data &&
-    typeof data === 'object' &&
-    !Array.isArray(data) &&
-    !(parts[0] in data)
-  ) {
-    if (data.data && typeof data.data === 'object' && parts[0] in data.data) {
+  const dataObj = data && typeof data === 'object' && !Array.isArray(data) ? (data as Record<string, unknown>) : null;
+  if (dataObj && !(parts[0] in dataObj)) {
+    if (dataObj.data && typeof dataObj.data === 'object' && parts[0] in (dataObj.data as Record<string, unknown>)) {
       parts = ['data', ...parts];
-    } else if (data.result && typeof data.result === 'object' && parts[0] in data.result) {
+    } else if (dataObj.result && typeof dataObj.result === 'object' && parts[0] in (dataObj.result as Record<string, unknown>)) {
       parts = ['result', ...parts];
     }
   }
 
-  let currentObjs = [data];
+  let currentObjs: unknown[] = [data];
   const jsonPathParts = ['$'];
 
   for (let i = 0; i < parts.length; i++) {
@@ -84,10 +80,10 @@ export function normalizeJsonPath(rawMask: string, data: any): string {
     if (part.includes('[')) {
       jsonPathParts.push(part);
       const baseKey = part.split('[')[0];
-      const nextObjs: any[] = [];
+      const nextObjs: unknown[] = [];
       for (const obj of currentObjs) {
         if (obj && typeof obj === 'object') {
-          const val = obj[baseKey];
+          const val = (obj as Record<string, unknown>)[baseKey];
           if (Array.isArray(val)) {
             for (const item of val) {
               if (item && typeof item === 'object') nextObjs.push(item);
@@ -102,10 +98,10 @@ export function normalizeJsonPath(rawMask: string, data: any): string {
     }
 
     let isArrayProp = false;
-    const nextObjs: any[] = [];
+    const nextObjs: unknown[] = [];
     for (const obj of currentObjs) {
       if (obj && typeof obj === 'object') {
-        const val = obj[part];
+        const val = (obj as Record<string, unknown>)[part];
         if (Array.isArray(val)) {
           isArrayProp = true;
           for (const item of val) {
@@ -132,14 +128,13 @@ export function normalizeJsonPath(rawMask: string, data: any): string {
  * Extracts and filters only the specified fields/JSONPaths from the payload.
  * Preserves nested structure and does not fail open.
  */
-export function applyFieldMask(data: any, fieldMasks?: string[]): any {
+export function applyFieldMask<T = unknown>(data: T, fieldMasks?: string[]): unknown {
   if (!fieldMasks || fieldMasks.length === 0 || !data || typeof data !== 'object') {
     return data;
   }
 
   const isArray = Array.isArray(data);
-  const target = isArray ? [] : {};
-  let hasMatches = false;
+  const target: Record<string, unknown> | unknown[] = isArray ? [] : {};
 
   for (const rawMask of fieldMasks) {
     if (!rawMask || typeof rawMask !== 'string') continue;
@@ -147,11 +142,10 @@ export function applyFieldMask(data: any, fieldMasks?: string[]): any {
     const path = normalizeJsonPath(rawMask, data);
 
     try {
-      const pointers = JSONPath({ path, json: data, resultType: 'pointer' });
-      const values = JSONPath({ path, json: data, resultType: 'value' });
+      const pointers = JSONPath({ path, json: data as object, resultType: 'pointer' });
+      const values = JSONPath({ path, json: data as object, resultType: 'value' });
 
       if (Array.isArray(pointers) && pointers.length > 0) {
-        hasMatches = true;
         for (let i = 0; i < pointers.length; i++) {
           setByPointer(target, pointers[i], values[i]);
         }

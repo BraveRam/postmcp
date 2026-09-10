@@ -69,8 +69,8 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
         await onIngestSpec({ spec: rawSpec.trim() });
       }
       onClose();
-    } catch (err: any) {
-      setError(err.message || 'Failed to ingest OpenAPI spec.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to ingest OpenAPI spec.');
     } finally {
       setIsLoading(false);
     }
@@ -115,7 +115,7 @@ export function SpecIngestModal({ isOpen, onClose, onIngestSpec }: SpecIngestMod
             </div>
           )}
 
-          <Tabs value={activeTab} onValueChange={(val: any) => setActiveTab(val)}>
+          <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'file' | 'url' | 'paste')}>
             <TabsList className="grid grid-cols-3 w-full">
               <TabsTrigger value="file" disabled={isLoading} className="flex items-center gap-1.5">
                 <FileUp className="h-3.5 w-3.5" />

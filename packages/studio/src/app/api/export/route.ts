@@ -76,10 +76,10 @@ export async function POST(request: Request) {
       windsurf: JSON.stringify(windsurfConfig, null, 2),
       postmcp: JSON.stringify(postmcpConfig, null, 2),
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
       {
-        error: err.message || 'Failed to generate configuration export.',
+        error: err instanceof Error ? err.message : 'Failed to generate configuration export.',
       },
       { status: 500 }
     );

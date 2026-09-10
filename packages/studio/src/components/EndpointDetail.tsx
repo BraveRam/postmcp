@@ -1,6 +1,6 @@
 import React from 'react';
 import { NormalizedOperation } from '@postmcp/types';
-import { Badge } from './ui/Badge';
+import { Badge, type BadgeProps } from './ui/Badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/Card';
 import { Key, FileText, Code2, ShieldAlert } from 'lucide-react';
 
@@ -15,7 +15,7 @@ export function EndpointDetail({ operation }: EndpointDetailProps) {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2 mb-1">
-            <Badge variant={operation.method.toLowerCase() as any} className="text-xs px-2 py-0.5 uppercase">
+            <Badge variant={(operation.method.toLowerCase() as BadgeProps['variant']) || 'default'} className="text-xs px-2 py-0.5 uppercase">
               {operation.method}
             </Badge>
             <span className="font-sans text-sm font-semibold text-foreground">{operation.path}</span>

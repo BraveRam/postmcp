@@ -110,7 +110,7 @@ export function SandboxCredentialsModal({
               data.customHeaders.length > 0
             ) {
               setHeaders(
-                data.customHeaders.map((h: any, idx: number) => ({
+                data.customHeaders.map((h: { key: string; val: string }, idx: number) => ({
                   id: `hdr_${idx + 1}`,
                   key: h.key,
                   val: h.val,
@@ -195,8 +195,8 @@ export function SandboxCredentialsModal({
       } else {
         alert(data.error || 'Failed to save to .env');
       }
-    } catch (e: any) {
-      alert(e.message || 'Failed to save to .env');
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Failed to save to .env');
     } finally {
       setIsSavingEnv(false);
     }

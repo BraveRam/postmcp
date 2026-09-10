@@ -6,8 +6,8 @@ export interface MacroExecutionResult {
     stepId: string;
     action: string;
     status: number;
-    data: any;
+    data: unknown;
   }>;
-  finalData: any;
+  finalData: unknown;
   errorMessage?: string;
 }
