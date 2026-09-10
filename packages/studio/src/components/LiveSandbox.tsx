@@ -124,8 +124,25 @@ export function LiveSandbox({
     }
   };
 
+  const [hasEnvCredentials, setHasEnvCredentials] = useState(false);
+
+  useEffect(() => {
+    fetch(
+      `/api/env?specTitle=${encodeURIComponent(spec.title || '')}&serverUrl=${encodeURIComponent(spec.servers?.[0]?.url || '')}`
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && data.hasValue) {
+          setHasEnvCredentials(true);
+        }
+      })
+      .catch(() => {});
+  }, [spec.title, spec.servers]);
+
   const hasCredentials = Boolean(
-    bearerToken.trim() || customHeaders.some((h) => h.key.trim() && h.val.trim())
+    bearerToken.trim() ||
+      customHeaders.some((h) => h.key.trim() && h.val.trim()) ||
+      hasEnvCredentials
   );
 
   const [inputPrompt, setInputPrompt] = useState(
@@ -772,6 +789,8 @@ export function LiveSandbox({
         bearerToken={bearerToken}
         customHeaders={customHeaders}
         onSave={handleSaveCredentials}
+        specTitle={spec.title}
+        serverUrl={spec.servers?.[0]?.url}
       />
 
       {/* Clear Chat Confirmation Warning Modal */}

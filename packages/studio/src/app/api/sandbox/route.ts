@@ -4,6 +4,7 @@ import { generateText, streamText, tool, jsonSchema, stepCountIs } from 'ai';
 import { NormalizedSpec, NormalizedOperation } from '@postmcp/types';
 import { applyTokenDiet } from '@postmcp/core';
 import { ResilientHttpClient } from '@postmcp/core';
+import { getScopedEnvKey } from '@/lib/env-scope';
 
 interface SandboxExecutionResult {
   operationId: string;
@@ -81,16 +82,22 @@ export function resolveTargetAuthConfig(
   }
 
   // Auto-resolve env fallbacks if not provided in request
+  const scopedKey = getScopedEnvKey(spec?.title, spec?.servers?.[0]?.url);
   if (!bearerToken) {
-    const specTitleOrUrl = `${spec?.title || ''} ${spec?.servers?.[0]?.url || ''}`.toLowerCase();
-    if (specTitleOrUrl.includes('firecrawl')) {
-      bearerToken = process.env.FIRECRAWL_API_KEY || process.env.BEARER_TOKEN;
-    } else if (specTitleOrUrl.includes('stripe')) {
-      bearerToken = process.env.STRIPE_SECRET_KEY || process.env.BEARER_TOKEN;
-    } else if (specTitleOrUrl.includes('github')) {
-      bearerToken = process.env.GITHUB_TOKEN || process.env.BEARER_TOKEN;
-    } else {
-      bearerToken = process.env.BEARER_TOKEN || process.env.API_KEY;
+    bearerToken =
+      process.env[scopedKey] ||
+      (scopedKey !== 'BEARER_TOKEN' ? process.env.BEARER_TOKEN : undefined) ||
+      process.env.API_KEY;
+  }
+
+  // Auto-resolve any matching scoped headers from environment
+  const scopedPrefix = scopedKey.replace(/_(API_KEY|TOKEN|SECRET_KEY|KEY|AUTH_TOKEN)$/i, '');
+  for (const [envKey, envVal] of Object.entries(process.env)) {
+    if (envVal && envKey.startsWith(`${scopedPrefix}_HEADER_`)) {
+      const headerName = envKey.slice(`${scopedPrefix}_HEADER_`.length).replace(/_/g, '-');
+      if (!headers[headerName]) {
+        headers[headerName] = envVal;
+      }
     }
   }
 

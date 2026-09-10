@@ -19,7 +19,9 @@ import {
   EyeOff,
   Check,
   Info,
+  Save,
 } from 'lucide-react';
+import { getScopedEnvKey } from '@/lib/env-scope';
 
 export interface HeaderRow {
   id: string;
@@ -33,6 +35,8 @@ interface SandboxCredentialsModalProps {
   bearerToken: string;
   customHeaders: HeaderRow[];
   onSave: (bearerToken: string, customHeaders: HeaderRow[]) => void;
+  specTitle?: string;
+  serverUrl?: string;
 }
 
 export function SandboxCredentialsModal({
@@ -41,14 +45,24 @@ export function SandboxCredentialsModal({
   bearerToken: initialBearerToken,
   customHeaders: initialCustomHeaders,
   onSave,
+  specTitle,
+  serverUrl,
 }: SandboxCredentialsModalProps) {
   const [token, setToken] = useState(initialBearerToken);
   const [headers, setHeaders] = useState<HeaderRow[]>(initialCustomHeaders);
   const [showToken, setShowToken] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  const [envVarName, setEnvVarName] = useState(() => getScopedEnvKey(specTitle, serverUrl));
+  const [isSavingEnv, setIsSavingEnv] = useState(false);
+  const [envSavedSuccess, setEnvSavedSuccess] = useState(false);
+  const [envSavedMsg, setEnvSavedMsg] = useState('');
+  const [existingEnvInfo, setExistingEnvInfo] = useState<{ exists: boolean; maskedValue?: string } | null>(null);
+
   useEffect(() => {
     if (isOpen) {
+      const defaultEnvKey = getScopedEnvKey(specTitle, serverUrl);
+      setEnvVarName(defaultEnvKey);
       setToken(initialBearerToken);
       setHeaders(
         initialCustomHeaders.length > 0
@@ -56,8 +70,23 @@ export function SandboxCredentialsModal({
           : [{ id: 'hdr_1', key: '', val: '' }]
       );
       setSavedSuccess(false);
+      setEnvSavedSuccess(false);
+      setEnvSavedMsg('');
+
+      fetch(
+        `/api/env?specTitle=${encodeURIComponent(specTitle || '')}&serverUrl=${encodeURIComponent(serverUrl || '')}&envVarName=${encodeURIComponent(defaultEnvKey)}`
+      )
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && data.exists) {
+            setExistingEnvInfo({ exists: true, maskedValue: data.maskedValue });
+          } else {
+            setExistingEnvInfo(null);
+          }
+        })
+        .catch(() => setExistingEnvInfo(null));
     }
-  }, [isOpen, initialBearerToken, initialCustomHeaders]);
+  }, [isOpen, initialBearerToken, initialCustomHeaders, specTitle, serverUrl]);
 
   const handleAddHeader = () => {
     if (headers.length >= 10) return;
@@ -97,6 +126,43 @@ export function SandboxCredentialsModal({
     setToken('');
     setHeaders([{ id: 'hdr_1', key: '', val: '' }]);
     onSave('', []);
+  };
+
+  const handleSaveToEnv = async () => {
+    if (!envVarName.trim()) return;
+    setIsSavingEnv(true);
+    setEnvSavedMsg('');
+    const cleanedHeaders = headers.filter(
+      (h) => h.key.trim().length > 0 && h.val.trim().length > 0
+    );
+
+    try {
+      const res = await fetch('/api/env', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          specTitle,
+          serverUrl,
+          envVarName: envVarName.trim(),
+          token: token.trim(),
+          customHeaders: cleanedHeaders,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEnvSavedSuccess(true);
+        setEnvSavedMsg(`Saved to ${data.envPath}`);
+        setExistingEnvInfo({ exists: true, maskedValue: token.trim() ? `${token.slice(0, 4)}...` : undefined });
+        onSave(token.trim(), cleanedHeaders);
+        setTimeout(() => setEnvSavedSuccess(false), 3000);
+      } else {
+        alert(data.error || 'Failed to save to .env');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Failed to save to .env');
+    } finally {
+      setIsSavingEnv(false);
+    }
   };
 
   return (
@@ -207,6 +273,68 @@ export function SandboxCredentialsModal({
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Workspace .env Persistence */}
+          <div className="p-3 bg-muted/20 border border-border/80 rounded-md space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground font-sans">
+                <Save className="h-3.5 w-3.5 text-primary" />
+                <span>Save to Project .env File</span>
+              </div>
+              <span className="text-[10px] text-muted-foreground font-sans">
+                Permanent & shared with CLI
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                <span className="text-[11px] font-mono text-muted-foreground shrink-0">Key:</span>
+                <Input
+                  value={envVarName}
+                  onChange={(e) => setEnvVarName(e.target.value)}
+                  placeholder="ENV_VAR_NAME"
+                  className="bg-background font-mono text-xs h-8 flex-1"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSaveToEnv}
+                disabled={isSavingEnv || (!token.trim() && headers.every((h) => !h.key.trim()))}
+                className="text-xs h-8 flex items-center gap-1.5 shrink-0 hover:bg-muted/80 font-sans"
+              >
+                {envSavedSuccess ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 text-emerald-400" />
+                    <span className="text-emerald-400 font-medium">Saved to .env</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-3.5 w-3.5" />
+                    <span>Save to .env</span>
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {envSavedMsg && (
+              <p className="text-[10px] text-emerald-400/90 font-mono truncate">
+                {envSavedMsg}
+              </p>
+            )}
+
+            {existingEnvInfo?.exists && !token && (
+              <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 bg-muted/40 px-2 py-1 rounded border border-border/40 font-sans">
+                <Check className="h-3 w-3 text-emerald-400 shrink-0" />
+                <span>
+                  Currently active from environment:{' '}
+                  <code className="font-mono text-foreground font-semibold">{envVarName}</code>{' '}
+                  ({existingEnvInfo.maskedValue || 'set'})
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Environment Variable Fallback Notice */}

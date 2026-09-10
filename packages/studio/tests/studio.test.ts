@@ -9,6 +9,8 @@ import { POST as exportHandler } from '../src/app/api/export/route.js';
 import { POST as persistHandler } from '../src/app/api/persist/route.js';
 import { POST as sandboxHandler, isPrivateOrBlockedHost, resolveTargetAuthConfig } from '../src/app/api/sandbox/route.js';
 import { GET as initialSpecHandler } from '../src/app/api/initial-spec/route.js';
+import { GET as getEnvHandler, POST as postEnvHandler } from '../src/app/api/env/route.js';
+import { getScopedEnvKey } from '../src/lib/env-scope.js';
 
 describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
   it('GET /api/presets should return all 60+ curated presets with categories', async () => {
@@ -546,6 +548,66 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
     expect(toolResult.toolCallId).toBeDefined();
     expect(toolCall.toolCallId).toBe(toolResult.toolCallId);
     expect(toolResult.result.text).toBeDefined();
+  });
+
+  it('getScopedEnvKey should accurately map well-known services and sanitize custom titles', () => {
+    expect(getScopedEnvKey('Firecrawl API', 'https://api.firecrawl.dev')).toBe('FIRECRAWL_API_KEY');
+    expect(getScopedEnvKey('Stripe API', 'https://api.stripe.com')).toBe('STRIPE_SECRET_KEY');
+    expect(getScopedEnvKey('GitHub REST API', 'https://api.github.com')).toBe('GITHUB_TOKEN');
+    expect(getScopedEnvKey('Neon Console API', 'https://console.neon.tech/api/v2')).toBe('NEON_API_KEY');
+    expect(getScopedEnvKey('My Weather Service', 'https://weather.example.com')).toBe('MY_WEATHER_API_KEY');
+    expect(getScopedEnvKey(undefined, 'https://sub.mycorp.io/api')).toBe('MYCORP_API_KEY');
+    expect(getScopedEnvKey(undefined, undefined)).toBe('BEARER_TOKEN');
+  });
+
+  it('GET /api/env and POST /api/env should persist and inspect scoped credentials in workspace .env', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'postmcp-env-test-'));
+    process.env.POSTMCP_WORKSPACE = tmpDir;
+
+    try {
+      // 1. Initially check - should not exist
+      const checkReq1 = new Request('http://localhost:3000/api/env?specTitle=CustomTestAPI');
+      const checkRes1 = await getEnvHandler(checkReq1);
+      const checkData1 = await checkRes1.json();
+      expect(checkData1.exists).toBe(false);
+      expect(checkData1.envVarName).toBe('CUSTOM_TEST_API_KEY');
+
+      // 2. Save token and custom header via POST
+      const postReq = new Request('http://localhost:3000/api/env', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          specTitle: 'CustomTestAPI',
+          token: 'sec_test_secret_value_12345',
+          customHeaders: [{ key: 'X-App-Id', val: 'app_999' }],
+        }),
+      });
+      const postRes = await postEnvHandler(postReq);
+      const postData = await postRes.json();
+      expect(postData.success).toBe(true);
+      expect(postData.updatedKeys).toContain('CUSTOM_TEST_API_KEY');
+      expect(postData.updatedKeys).toContain('CUSTOM_TEST_HEADER_X_APP_ID');
+
+      // Verify file written to tmpDir
+      const envPath = path.join(tmpDir, '.env');
+      expect(fs.existsSync(envPath)).toBe(true);
+      const fileContent = fs.readFileSync(envPath, 'utf-8');
+      expect(fileContent).toContain('CUSTOM_TEST_API_KEY="sec_test_secret_value_12345"');
+      expect(fileContent).toContain('CUSTOM_TEST_HEADER_X_APP_ID="app_999"');
+
+      // 3. Query GET again - should now report exists with masked value
+      const checkReq2 = new Request('http://localhost:3000/api/env?specTitle=CustomTestAPI');
+      const checkRes2 = await getEnvHandler(checkReq2);
+      const checkData2 = await checkRes2.json();
+      expect(checkData2.exists).toBe(true);
+      expect(checkData2.hasValue).toBe(true);
+      expect(checkData2.maskedValue).toContain('sec_...2345');
+    } finally {
+      delete process.env.POSTMCP_WORKSPACE;
+      delete process.env.CUSTOM_TEST_API_KEY;
+      delete process.env.CUSTOM_TEST_HEADER_X_APP_ID;
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });
 
