@@ -35,7 +35,7 @@ export function pruneNullsAndNoise(data: any, maxProseLength: number = 1000): an
     if (trimmed === '') return undefined;
     const cleanStr = stripHtml(trimmed);
     if (cleanStr.length > maxProseLength) {
-      return cleanStr.slice(0, maxProseLength) + '... [truncated]';
+      return cleanStr.slice(0, maxProseLength) + '... [PostMCP: field truncated to save tokens]';
     }
     return cleanStr;
   }

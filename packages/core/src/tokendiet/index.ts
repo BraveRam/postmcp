@@ -87,7 +87,9 @@ export function applyTokenDiet(data: any, options: TokenDietOptions = {}): Token
   const maxChars = Math.floor(maxTokens * 3.8);
   if (textOutput.length > maxChars) {
     isTruncated = true;
-    const suffix = `\n\n... [Response capped at ~${maxTokens} tokens. Use pagination or filters to view more.]`;
+    const fullSuffix = `\n\n[PostMCP Notice: Output truncated by design to preserve context window limits (~${maxTokens} tokens). Refine query parameters, filters, or fetch specific resource IDs for complete details.]`;
+    const shortSuffix = `\n\n[PostMCP: Truncated by design (~${maxTokens} tokens)]`;
+    const suffix = maxChars > fullSuffix.length ? fullSuffix : shortSuffix;
     if (maxChars <= 0) {
       textOutput = '';
     } else if (maxChars <= suffix.length) {

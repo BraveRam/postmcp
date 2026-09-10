@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText, streamText, tool, jsonSchema, stepCountIs } from 'ai';
 import { NormalizedSpec, NormalizedOperation } from '@postmcp/types';
-import { applyTokenDiet } from '@postmcp/core';
+import { applyTokenDiet, DEFAULT_POSTMCP_INSTRUCTIONS } from '@postmcp/core';
 import { ResilientHttpClient } from '@postmcp/core';
 import { getScopedEnvKey } from '@/lib/env-scope';
 
@@ -319,6 +319,7 @@ export async function POST(request: Request) {
 
           const streamResult = streamText({
             model: gatewayModel,
+            system: DEFAULT_POSTMCP_INSTRUCTIONS,
             messages,
             tools: dynamicTools,
             stopWhen: stepCountIs(5),
@@ -475,6 +476,7 @@ export async function POST(request: Request) {
 
         const result = await generateText({
           model: gatewayModel,
+          system: DEFAULT_POSTMCP_INSTRUCTIONS,
           messages,
           tools: dynamicTools,
           stopWhen: stepCountIs(5),

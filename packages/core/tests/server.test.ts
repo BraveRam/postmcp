@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PostMcpServer } from '../src/server/runtime.js';
+import { PostMcpServer, DEFAULT_POSTMCP_INSTRUCTIONS } from '../src/server/runtime.js';
 import { startHttpServer } from '../src/server/http.js';
 import { NormalizedSpec } from '../src/parser/types.js';
 import * as http from 'node:http';
@@ -416,5 +416,68 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
     expect(res.content[0].text).toContain('Project 1');
     expect(res.content[0].text).toContain('Project 2');
     expect(res.content[0].text).toContain('Project 3');
+  });
+
+  it('should include PostMCP Token Diet instructions in MCP server initialize response', async () => {
+    const postServer = new PostMcpServer({ spec: sampleSpec });
+    const mcpServer = postServer.getServerInstance();
+
+    const initHandler = (mcpServer as any)._requestHandlers?.get('initialize');
+    expect(initHandler).toBeDefined();
+
+    const res = await initHandler({
+      method: 'initialize',
+      params: {
+        protocolVersion: '2024-11-05',
+        capabilities: {},
+        clientInfo: { name: 'test-agent', version: '1.0.0' },
+      },
+    });
+
+    expect(res.instructions).toBeDefined();
+    expect(res.instructions).toContain('PostMCP Token Diet is active for this server');
+    expect(res.instructions).toContain('compacted');
+    expect(res.instructions).toContain('by design');
+  });
+
+  it('should combine custom server instructions with PostMCP Token Diet instructions', async () => {
+    const postServer = new PostMcpServer({
+      spec: sampleSpec,
+      instructions: 'Always double check project IDs before deletion.',
+    });
+    const mcpServer = postServer.getServerInstance();
+
+    const initHandler = (mcpServer as any)._requestHandlers?.get('initialize');
+    const res = await initHandler({
+      method: 'initialize',
+      params: {
+        protocolVersion: '2024-11-05',
+        capabilities: {},
+        clientInfo: { name: 'test-agent', version: '1.0.0' },
+      },
+    });
+
+    expect(res.instructions).toContain(DEFAULT_POSTMCP_INSTRUCTIONS);
+    expect(res.instructions).toContain('Always double check project IDs before deletion.');
+  });
+
+  it('should omit PostMCP instructions when tokenDiet is explicitly disabled', async () => {
+    const postServer = new PostMcpServer({
+      spec: sampleSpec,
+      tokenDiet: { enabled: false },
+    });
+    const mcpServer = postServer.getServerInstance();
+
+    const initHandler = (mcpServer as any)._requestHandlers?.get('initialize');
+    const res = await initHandler({
+      method: 'initialize',
+      params: {
+        protocolVersion: '2024-11-05',
+        capabilities: {},
+        clientInfo: { name: 'test-agent', version: '1.0.0' },
+      },
+    });
+
+    expect(res.instructions).toBeUndefined();
   });
 });

@@ -30,7 +30,11 @@ export interface PostMcpServerOptions {
   dryRun?: boolean;
   serverName?: string;
   serverVersion?: string;
+  instructions?: string;
 }
+
+export const DEFAULT_POSTMCP_INSTRUCTIONS =
+  'PostMCP Token Diet is active for this server. Tool responses are compacted, pruned of boilerplate noise, and converted to concise representations (such as markdown tables) by design to minimize token consumption and protect your context window. Large collections and lengthy prose fields are truncated by design. If you need complete details or the full uncompacted content of a specific resource, query that specific resource directly by its ID or apply more specific filters rather than fetching broad listings.';
 
 const TENANT_PARAM_NAMES = new Set([
   'orgid', 'organizationid', 'organization',
@@ -85,12 +89,20 @@ export class PostMcpServer {
       specSecuritySchemes: this.spec.securitySchemes,
     });
 
+    const tokenDietActive = this.tokenDietOptions.enabled !== false;
+    const serverInstructions = tokenDietActive
+      ? options.instructions
+        ? `${DEFAULT_POSTMCP_INSTRUCTIONS}\n\n${options.instructions}`
+        : DEFAULT_POSTMCP_INSTRUCTIONS
+      : options.instructions;
+
     this.server = new Server(
       {
         name: options.serverName || this.spec.title || 'postmcp-server',
         version: options.serverVersion || this.spec.version || '1.0.0',
       },
       {
+        instructions: serverInstructions,
         capabilities: {
           tools: {
             listChanged: true,

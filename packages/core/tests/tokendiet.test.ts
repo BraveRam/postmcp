@@ -91,8 +91,8 @@ describe('Token Diet Engine', () => {
 
     const longProse = 'A'.repeat(2000);
     const cleaned = pruneNullsAndNoise({ desc: longProse }, 100);
-    expect(cleaned.desc.length).toBeLessThan(150);
-    expect(cleaned.desc).toContain('... [truncated]');
+    expect(cleaned.desc.length).toBeLessThan(160);
+    expect(cleaned.desc).toContain('... [PostMCP: field truncated to save tokens]');
   });
 
   it('should strictly enforce max token ceiling (Finding 18)', () => {
@@ -104,6 +104,7 @@ describe('Token Diet Engine', () => {
     const result = applyTokenDiet(hugeList, { maxTokens: 100 });
     expect(result.isTruncated).toBe(true);
     expect(result.dietEstimatedTokens).toBeLessThanOrEqual(100);
+    expect(result.text).toContain('[PostMCP Notice: Output truncated by design');
   });
 
   it('should strictly honor maxTokens: 1 ceiling without crashing', () => {

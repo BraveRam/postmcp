@@ -18,6 +18,7 @@ export interface PostMcpServerOptions {
   dryRun?: boolean;
   serverName?: string;
   serverVersion?: string;
+  instructions?: string;
 }
 
 export interface HttpServerOptions extends PostMcpServerOptions {
