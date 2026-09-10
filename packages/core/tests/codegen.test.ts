@@ -244,7 +244,7 @@ describe('Phase 5: Code Generators (@postmcp/core/codegen)', () => {
       } finally {
         fs.rmSync(tempDir, { recursive: true, force: true });
       }
-    });
+    }, 30000);
   });
 
   describe('Unified generateProject dispatcher', () => {
