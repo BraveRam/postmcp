@@ -28,8 +28,10 @@ export function Message({
     >
       <div
         className={cn(
-          'w-full max-w-[92%] sm:max-w-[85%] space-y-2 font-sans',
-          isUser ? 'items-end' : 'items-start'
+          'space-y-2 font-sans',
+          isUser
+            ? 'w-fit max-w-[50%] sm:max-w-[45%] ml-auto flex flex-col items-end'
+            : 'w-full max-w-[92%] sm:max-w-[85%] items-start'
         )}
       >
         {children}
@@ -53,7 +55,7 @@ export function MessageContent({
       className={cn(
         'rounded-lg p-3 sm:p-4 text-xs font-sans leading-relaxed transition-all',
         from === 'user'
-          ? 'bg-secondary text-foreground ml-auto border border-border/30 shadow-none outline-none'
+          ? 'w-fit max-w-full bg-secondary text-foreground ml-auto border border-border/30 shadow-none outline-none'
           : 'bg-muted/50 border border-border text-foreground mr-auto outline-none',
         className
       )}

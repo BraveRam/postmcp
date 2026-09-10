@@ -605,20 +605,6 @@ export function LiveSandbox({
                 <Trash2 className="h-3.5 w-3.5" />
                 <span>Clear Chat</span>
               </Button>
-
-              {onOpenModal && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={onOpenModal}
-                  className="h-7 text-xs flex items-center gap-1.5 font-sans"
-                  title="Expand chatbot to fullscreen modal"
-                >
-                  <Maximize2 className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Fullscreen</span>
-                </Button>
-              )}
             </div>
           </div>
         </Card>
