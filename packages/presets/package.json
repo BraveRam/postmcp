@@ -1,6 +1,6 @@
 {
   "name": "@postmcp/presets",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "description": "50+ Curated, context-optimized API presets for PostMCP",
   "publishConfig": {
     "access": "public"

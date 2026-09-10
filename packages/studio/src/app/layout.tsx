@@ -7,6 +7,13 @@ import { ThemeProvider } from "@/components/theme-provider"
 export const metadata: Metadata = {
   title: 'PostMCP Visual Web Studio',
   description: 'Context-optimized OpenAPI to MCP Workbench with Token Diet Curator & Live Sandbox',
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: '/apple-icon.png',
+  },
 };
 
 export default function RootLayout({
