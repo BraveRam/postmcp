@@ -1,0 +1,9 @@
+{
+  "title": "Token Diet Engine",
+  "pages": [
+    "index",
+    "levels",
+    "pipeline",
+    "truncation"
+  ]
+}

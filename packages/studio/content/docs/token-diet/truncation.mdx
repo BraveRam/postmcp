@@ -1,0 +1,41 @@
+---
+title: Safe Truncation & Agent Signaling
+description: How PostMCP enforces byte and token ceilings while explicitly signaling truncation to AI agents.
+---
+
+## The Problem with Silent Truncation
+
+Most API proxies and LLM wrappers truncate payloads abruptly when hitting size limits by simply cutting the string at the Nth byte. This creates two fatal problems:
+
+1. **Broken JSON Syntax**: A cut at byte 4096 produces an invalid JSON string (unclosed brackets and quotes), causing the client parser to throw an unrecoverable exception.
+2. **Hallucination Triggers**: When an agent receives an incomplete payload without being informed that data was trimmed, it falsely concludes that no more items exist.
+
+---
+
+## The PostMCP Solution: Intentional Truncation
+
+PostMCP enforces two strict ceilings on every tool response:
+- `maxResponseBytes`: Hard limit on payload byte length (default: 32,768 bytes).
+- `maxResponseTokens`: Estimated token limit (default: 4,096 tokens).
+
+### 1. Structural Truncation
+Rather than cutting raw strings mid-sentence, PostMCP's serializer trims arrays at whole object or table row boundaries. If an array contains 100 items but only 30 fit within the budget, exactly 30 complete items are rendered.
+
+### 2. Explicit Agent Signaling
+Whenever truncation occurs, PostMCP appends a standardized notification banner directly into the tool output:
+
+```text
+| id | name | status |
+| :--- | :--- | :--- |
+| prj_01 | Alpha | active |
+| ... | ... | ... |
+| prj_30 | Omega | active |
+
+[Notice: Output truncated by design to conserve context window. Showing 30 of 100 items. To retrieve specific items, refine your query parameters or apply filtering.]
+```
+
+### Why AI Agents Respond Better
+This explicit notice teaches the LLM that:
+- Truncation was intentional, not an error.
+- Additional items exist upstream.
+- The model should use query parameters (e.g. `limit`, `offset`, `search`, `status`) to narrow down results rather than retrying blindly.

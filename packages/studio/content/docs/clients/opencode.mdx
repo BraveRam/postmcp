@@ -1,0 +1,69 @@
+---
+title: OpenCode & CLI Agents
+description: Connect OpenCode, Claude Code, and terminal AI agents to PostMCP servers.
+---
+
+## OpenCode Integration
+
+OpenCode connects to MCP servers defined in `opencode.json` in your user home directory (`~/.opencode/opencode.json`) or in the root of your project:
+
+```json
+{
+  "$schema": "https://opencode.ai/schema.json",
+  "mcpServers": {
+    "neon": {
+      "command": "npx",
+      "args": ["postmcp", "run", "@neon"],
+      "env": {
+        "NEON_API_KEY": "${NEON_API_KEY}",
+        "NEON_ORG_ID": "${NEON_ORG_ID}"
+      }
+    },
+    "custom-api": {
+      "command": "npx",
+      "args": ["postmcp", "run", "./spec/api.json", "--diet", "aggressive"]
+    }
+  }
+}
+```
+
+---
+
+## Claude Code & Windsurf
+
+### Claude Code CLI
+
+For Claude Code, pass MCP server commands directly or via configuration:
+
+```bash
+claude mcp add neon -- npx postmcp run @neon
+```
+
+### Windsurf / Cascade
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "neon": {
+      "command": "npx",
+      "args": ["postmcp", "run", "@neon"],
+      "env": {
+        "NEON_API_KEY": "your_api_key"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Why PostMCP Excels with CLI Agents
+
+CLI agents have strict token limits and run in terminal environments where large JSON outputs clutter terminal history. 
+
+By delivering:
+1. **Markdown Table Serialization**: Output displays cleanly in terminal logs.
+2. **Turn-1 Hot Tools**: The agent executes immediately without wasting prompt turns on tool discovery.
+3. **Internal Auto-Pagination**: The agent gets complete results without writing terminal loop scripts.

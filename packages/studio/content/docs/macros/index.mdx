@@ -1,0 +1,77 @@
+---
+title: Composite Macros
+description: Compose multi-step API workflows into a single atomic MCP tool to collapse multi-turn latency.
+---
+
+## What Are Composite Macros?
+
+In standard agentic coding or automation, completing a routine task often requires multiple successive API calls. For example, creating a test environment might require:
+1. `createProject` -> returns `projectId`
+2. `createBranch` -> requires `projectId`, returns `branchId`
+3. `getDatabaseConnectionUri` -> requires `projectId` and `branchId`
+
+Executing this conventionally requires **3 roundtrips** between the AI agent and the MCP server.
+
+**Composite Macros** allow you to bundle these dependent operations into a **single, declarative MCP tool** that executes atomically on the server.
+
+---
+
+## Defining a Macro
+
+Macros can be created visually in the PostMCP Studio Macro Builder, or declared in `postmcp.config.json`:
+
+```json
+{
+  "macros": [
+    {
+      "name": "provisionStagingEnvironment",
+      "description": "Atomically creates a project, provisions a dev branch, and returns database credentials.",
+      "parameters": {
+        "projectName": { "type": "string", "description": "Name for the project" },
+        "branchName": { "type": "string", "description": "Branch name (default: dev)" }
+      },
+      "steps": [
+        {
+          "id": "step1",
+          "operationId": "createProject",
+          "args": {
+            "name": "{{projectName}}"
+          }
+        },
+        {
+          "id": "step2",
+          "operationId": "createProjectBranch",
+          "args": {
+            "projectId": "{{step1.output.id}}",
+            "name": "{{branchName}}"
+          }
+        },
+        {
+          "id": "step3",
+          "operationId": "getBranchConnectionUri",
+          "args": {
+            "projectId": "{{step1.output.id}}",
+            "branchId": "{{step2.output.id}}"
+          }
+        }
+      ],
+      "output": {
+        "projectId": "{{step1.output.id}}",
+        "branchId": "{{step2.output.id}}",
+        "connectionUri": "{{step3.output.uri}}"
+      }
+    }
+  ]
+}
+```
+
+---
+
+## Runtime Benefits
+
+| Metric | Individual Tools | Composite Macro |
+| :--- | :--- | :--- |
+| **Agent Prompt Turns** | 3 separate turns | **1 single turn** |
+| **Total Prompt Tokens** | ~12,000 tokens (re-sending tool definitions and outputs) | **~1,200 tokens** (90% reduction) |
+| **Total Latency** | ~9 to 15 seconds (LLM inference + network) | **~1.2 seconds** (Server-side pipeline) |
+| **Error Exposure** | Middle-step failure forces agent error recovery | Atomic server-side rollback / single error message |

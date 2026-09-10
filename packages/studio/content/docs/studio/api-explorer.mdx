@@ -1,0 +1,33 @@
+---
+title: API Explorer
+description: Navigating, filtering, and inspecting operations, parameters, and schemas in the Visual Studio.
+---
+
+## Endpoint Navigation
+
+The **API Explorer** sits on the left side of the Studio workbench and provides a complete inventory of every operation discovered in the active OpenAPI specification.
+
+### Search and Filtering
+
+- **Instant Search**: Search by operation ID (e.g. `listProjects`), path (e.g. `/v2/projects`), or human-readable description.
+- **Method Badges**: Filter endpoints by HTTP verb (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`).
+- **Risk Tier Badges**:
+  - `READ_ONLY` (Green): Safe idempotent reads.
+  - `MUTATION` (Amber): State modifying requests.
+  - `CRITICAL` (Red): Destructive or billing operations.
+- **Hot-Tool Indicators**: Endpoints marked with a lightning badge (`Hot`) are pre-mounted turn-1 operations in Hybrid JIT mode.
+
+---
+
+## Endpoint Inspector Panel
+
+Selecting any endpoint in the API Explorer opens the **Endpoint Inspector** in the center workbench:
+
+1. **Route Header**: Displays the full path template, HTTP method, operation ID, and tag category.
+2. **Parameters Table**:
+   - Lists query, path, and header parameters.
+   - Shows parameter types, required status, default values, and schema descriptions.
+3. **Request Body Schema**:
+   - Interactive tree viewer displaying JSON request body schemas, nested properties, and validation rules.
+4. **Responses Schema**:
+   - Details response HTTP status codes (`200`, `201`, `400`, `404`) and associated response payload schemas.

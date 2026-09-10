@@ -1,0 +1,61 @@
+---
+title: CLI Overview
+description: Command-line interface for running, inspecting, generating, and visualizing Model Context Protocol servers from OpenAPI.
+---
+
+## Installation & Execution
+
+PostMCP is distributed via npm as a zero-install binary via `npx` or as a globally installed package.
+
+### Zero-Install via npx (Recommended)
+
+```bash
+npx postmcp <command> [options]
+```
+
+### Global Installation
+
+```bash
+# Using npm
+npm install -g @postmcp/cli
+
+# Using pnpm
+pnpm add -g @postmcp/cli
+
+# Using bun
+bun add -g @postmcp/cli
+```
+
+Once installed globally, you can invoke the CLI directly:
+
+```bash
+postmcp --version
+```
+
+---
+
+## Command Matrix
+
+The PostMCP CLI provides five primary commands:
+
+| Command | Purpose | Typical Use Case |
+| :--- | :--- | :--- |
+| [`postmcp run`](/docs/cli/run) | Starts a live MCP proxy server. | Connecting to Claude Desktop, Cursor, or OpenCode via stdio or SSE. |
+| [`postmcp inspect`](/docs/cli/inspect) | Analyzes endpoints, parameters, and risk tiers. | Profiling token footprints and security classifications before deployment. |
+| [`postmcp generate`](/docs/cli/generate) | Exports a standalone TypeScript or Python MCP server codebase. | Creating production services with zero dependencies on PostMCP. |
+| [`postmcp studio`](/docs/cli/studio) | Launches the interactive Visual Web Studio. | Testing tools in a browser sandbox and visually tuning Token Diet rules. |
+| [`postmcp presets`](/docs/presets) | Lists and resolves bundled API presets. | Discovering pre-tuned configurations for Neon, Stripe, Linear, etc. |
+
+---
+
+## Global Options
+
+The following flags are available across all PostMCP CLI commands:
+
+| Option | Shorthand | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `--help` | `-h` | Display help information for the current command. | - |
+| `--version` | `-V` | Output the current version of the CLI. | - |
+| `--config <path>` | `-c` | Explicit path to a `postmcp.config.json` configuration file. | Auto-discovered |
+| `--verbose` | `-v` | Enable detailed debug logging and request tracing. | `false` |
+| `--quiet` | `-q` | Suppress non-essential output messages. | `false` |

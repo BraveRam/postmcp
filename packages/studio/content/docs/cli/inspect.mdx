@@ -1,0 +1,65 @@
+---
+title: postmcp inspect
+description: Profile endpoints, evaluate security risk tiers, and calculate token savings before server deployment.
+---
+
+## Usage
+
+```bash
+postmcp inspect <spec> [options]
+```
+
+The `inspect` command analyzes an OpenAPI specification without starting an active server. It prints a detailed structural report showing:
+- Total operation count and breakdown by HTTP method.
+- Security risk classification for every endpoint (`READ_ONLY`, `MUTATION`, `CRITICAL`).
+- Identified root collection operations recommended for turn-1 hot mounting.
+- Estimated schema token count and projected savings under each Token Diet level.
+
+---
+
+## Options
+
+| Flag | Type | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `--format <type>` | `string` | Output format: `table`, `json`, or `markdown`. | `table` |
+| `--risk <tier>` | `string` | Filter endpoints by risk tier (`read_only`, `mutation`, `critical`). | All tiers |
+| `--method <verb>` | `string` | Filter operations by HTTP method (`GET`, `POST`, `PUT`, `DELETE`). | All methods |
+| `--tag <name>` | `string` | Filter operations by OpenAPI tag. | All tags |
+
+---
+
+## Example Output
+
+```bash
+postmcp inspect @neon
+```
+
+```
+PostMCP Specification Analysis: Neon Serverless Postgres API
+Version: 1.0.0 | Base URL: https://console.neon.tech/api/v2
+
+Total Operations: 64
+- GET:    32 (50%)
+- POST:   18 (28%)
+- PATCH:   8 (12%)
+- DELETE:  6 (10%)
+
+Risk Tier Breakdown:
+- READ_ONLY:  32 operations (Safe for autonomous exploration)
+- MUTATION:   26 operations (State altering)
+- CRITICAL:    6 operations (Destructive: project deletion, branch drop)
+
+Turn-1 Hot Tools (Pre-mounted in Hybrid JIT):
+1. listProjects           (GET /projects)
+2. getCurrentUserInfo     (GET /users/me)
+3. listSharedAccounts     (GET /shared_accounts)
+4. listApiKeys            (GET /api_keys)
+5. listOrganizations      (GET /users/me/organizations)
+
+Token Diet Reduction Projection:
+- Raw Schema Size:        284,500 bytes (~71,125 tokens)
+- Minimal Diet:           192,000 bytes (~48,000 tokens, -32%)
+- Standard Diet:           74,000 bytes (~18,500 tokens, -74%)
+- Aggressive Diet:         38,000 bytes (~9,500 tokens,  -86%)
+- Ultra Diet:              18,200 bytes (~4,550 tokens,  -93%)
+```

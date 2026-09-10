@@ -1,0 +1,40 @@
+---
+title: Token Diet Curator
+description: Visualizing token savings with side-by-side payload diffs and interactive field mask tuning.
+---
+
+## Visual Token Optimization
+
+The **Token Diet Curator** allows you to see the exact transformation that upstream API responses undergo before reaching the LLM.
+
+```
++-----------------------------------+-----------------------------------+
+|       Raw Response (Left)         |       Dieted Payload (Right)      |
+|                                   |                                   |
+|  {                                |  | id    | name  | status |       |
+|    "status": 200,                 |  | :---  | :---  | :---   |       |
+|    "trace_id": "tr_91283",        |  | prj_1 | Alpha | active |       |
+|    "projects": [                  |  | prj_2 | Beta  | active |       |
+|      { "id": "prj_1", ... }       |                                   |
+|    ]                              |  [Output truncated by design:     |
+|  }                                |   showing 2 of 2 items]           |
+|                                   |                                   |
+|  Size: 12,400 bytes (3,100 tokens)|  Size: 780 bytes (195 tokens)     |
++-----------------------------------+-----------------------------------+
+|      Total Savings: -93.7% Token Reduction (2,905 tokens saved)       |
++-----------------------------------------------------------------------+
+```
+
+---
+
+## Interactive Controls
+
+1. **Diet Level Selector**: Switch between `None`, `Minimal`, `Standard`, `Aggressive`, and `Ultra` to observe how each compression level affects the output.
+2. **Custom JSONPath Field Masking**:
+   - Enter a custom expression (e.g. `items[*].{id,name,branch}`) to extract exact fields.
+   - Click **Apply Mask** to immediately re-render the dieted preview and recompute savings metrics.
+3. **Format Toggle**:
+   - Switch between **Markdown Table** and **Compact JSON** output representations.
+4. **Token & Byte Metrics**:
+   - Real-time token counter calculations comparing raw vs dieted tokens.
+   - Displays percentage reduction and estimated API inference cost savings.

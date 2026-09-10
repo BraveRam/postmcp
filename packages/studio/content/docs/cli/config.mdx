@@ -1,0 +1,88 @@
+---
+title: Configuration File
+description: Specification for postmcp.config.json to customize runtime behaviors, auth, and token diet rules.
+---
+
+## Overview
+
+You can persist server configurations, authentication credentials, and custom Token Diet field masks in a configuration file named `postmcp.config.json` in your project root, or specify a custom path via `--config <path>`.
+
+---
+
+## Schema Reference
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/BraveRam/postmcp/main/packages/types/schema.json",
+  "spec": "https://api.example.com/openapi.json",
+  "name": "example-service",
+  "transport": "stdio",
+  "port": 3000,
+  "baseUrl": "https://api.example.com/v1",
+  "auth": {
+    "type": "bearer",
+    "token": "${EXAMPLE_API_KEY}"
+  },
+  "tenant": {
+    "defaultId": "${DEFAULT_ORG_ID}",
+    "paramName": "org_id"
+  },
+  "jit": {
+    "enabled": true,
+    "maxMountedTools": 25,
+    "hotToolKeywords": ["project", "user", "organization", "account"]
+  },
+  "tokenDiet": {
+    "level": "standard",
+    "maxResponseBytes": 32768,
+    "maxResponseTokens": 4096,
+    "htmlStripping": true,
+    "markdownTables": true,
+    "fieldMasks": {
+      "listProjects": "projects[*].{id,name,region,created_at}",
+      "getUser": "user.{id,email,role}"
+    }
+  },
+  "safety": {
+    "dryRun": false,
+    "blockedOperations": ["deleteUser", "dropDatabase"]
+  }
+}
+```
+
+---
+
+## Property Details
+
+### `spec`
+- **Type**: `string`
+- **Description**: Path to a local JSON/YAML file, remote URL, or preset alias (e.g. `@neon`).
+
+### `auth`
+- **Type**: `object`
+- **Properties**:
+  - `type`: `"bearer" | "apiKey" | "basic" | "custom"`
+  - `token`: Environment variable template string (e.g. `"${API_KEY}"`).
+  - `header`: Header name when using `apiKey` (e.g. `"X-API-Key"`).
+  - `username` / `password`: For basic authentication.
+
+### `tenant`
+- **Type**: `object`
+- **Properties**:
+  - `defaultId`: Value or environment template string for tenant auto-injection.
+  - `paramName`: Parameter key name (default: `"org_id"`).
+
+### `jit`
+- **Type**: `object`
+- **Properties**:
+  - `enabled`: Enables Just-In-Time dynamic tool mounting.
+  - `maxMountedTools`: Maximum active tools before LRU unmounting triggers.
+  - `hotToolKeywords`: Array of strings used to rank root collections on startup.
+
+### `tokenDiet`
+- **Type**: `object`
+- **Properties**:
+  - `level`: `"none" | "minimal" | "standard" | "aggressive" | "ultra"`
+  - `maxResponseBytes`: Hard ceiling for raw response byte size before truncation.
+  - `maxResponseTokens`: Estimated token limit per tool execution.
+  - `fieldMasks`: Map of operation ID to JSONPath extraction queries.

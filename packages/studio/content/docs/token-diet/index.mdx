@@ -1,0 +1,70 @@
+---
+title: Token Diet Engine
+description: The core pruning and compression engine delivering up to 93% token reduction for LLM context windows.
+---
+
+## Why Token Diet Matters
+
+Large Language Models do not read APIs the way humans do. When an LLM receives API responses:
+1. **Context Space is Zero-Sum**: Every token consumed by JSON formatting, repeated keys, null fields, and verbose metadata directly robs the agent of conversation history and reasoning capacity.
+2. **Inference Latency Scales with Context**: Processing large prompt payloads introduces noticeable latency before the model can generate its next action.
+3. **Financial Cost**: Commercial LLM APIs charge per token. A bloated tool response that returns 10,000 tokens on every invocation can make an automated agent prohibitively expensive to operate.
+
+The **Token Diet Engine** is PostMCP's proprietary transformation pipeline that sits directly between upstream HTTP responses and the MCP client. It compresses and refines payloads with mathematical precision, discarding noise while strictly retaining primary semantic identifiers and values.
+
+```
++-------------------------------------------------------------+
+|               Raw Upstream HTTP Response                    |
+|  - Verbose JSON with repeated keys across 50 items          |
+|  - HTML tags, markdown blurbs, null fields, trace IDs       |
+|  - 45,000 bytes (~11,250 tokens)                            |
++-------------------------------------------------------------+
+                               |
+                               v
++-------------------------------------------------------------+
+|                   Token Diet Pipeline                       |
+|                                                             |
+|  [ Stage 1: Noise Removal ]                                 |
+|    - Strip HTML markup and styling                          |
+|    - Strip null, empty string, and trace fields             |
+|                                                             |
+|  [ Stage 2: JSONPath Field Masking ]                        |
+|    - Extract only essential fields per entity               |
+|                                                             |
+|  [ Stage 3: Markdown Serialization ]                        |
+|    - Transform repetitive array objects to markdown table   |
+|    - Eliminates repetitive JSON bracket and key overhead    |
+|                                                             |
+|  [ Stage 4: Guardrail Enforcer ]                            |
+|    - Apply byte ceiling & append intentional truncation msg |
++-------------------------------------------------------------+
+                               |
+                               v
++-------------------------------------------------------------+
+|                Dieted MCP Tool Output                       |
+|  - Clean Markdown table or compact JSON                     |
+|  - 3,100 bytes (~775 tokens) -> 93% Reduction               |
++-------------------------------------------------------------+
+```
+
+---
+
+## Benchmarks & Real-World Results
+
+Across popular enterprise and developer APIs, Token Diet achieves substantial reductions:
+
+| Target API | Operation | Raw Tokens | Dieted Tokens | Savings |
+| :--- | :--- | :--- | :--- | :--- |
+| **Neon** | `listProjects` (20 projects) | 14,200 | 920 | **93.5%** |
+| **Stripe** | `listCharges` (25 charges) | 28,400 | 2,100 | **92.6%** |
+| **GitHub** | `listRepositoryIssues` (30 issues) | 36,000 | 3,400 | **90.5%** |
+| **Linear** | `listTeamIssues` (50 issues) | 42,500 | 4,200 | **90.1%** |
+| **Supabase** | `listOrganizations` | 8,800 | 780 | **91.1%** |
+
+---
+
+## Key Principles
+
+- **Zero Semantic Degradation**: Field masks retain all IDs, names, statuses, and relations required for downstream tool calls.
+- **Explicit Agent Signaling**: When data is trimmed, PostMCP notifies the agent with `[Data truncated by design. Total items: N]` so the agent understands the truncation is intentional.
+- **Configurable per Operation**: Default global levels can be overridden with exact JSONPath queries for specific endpoints.

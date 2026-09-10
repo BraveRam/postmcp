@@ -1,0 +1,45 @@
+---
+title: SSRF & Network Defense
+description: Defense mechanisms preventing Server-Side Request Forgery and unauthorized internal network access.
+---
+
+## The Risk of Web-Exposed API Tools
+
+When running PostMCP Studio or an MCP server accessible over the network, malicious or compromised agents could attempt to target internal network endpoints. For example, an agent might supply a target URL pointing to:
+- `http://127.0.0.1:3000` (Local service loopbacks).
+- `http://169.254.169.254/latest/meta-data/` (AWS/GCP cloud instance metadata).
+- `http://10.0.0.1/admin` (Internal corporate VPC gateways).
+
+---
+
+## Private Network Blocking
+
+PostMCP incorporates an **SSRF Defense Guard** on all outgoing HTTP client dispatches.
+
+### Blocked Ranges
+
+The following address spaces are blocked by default in web-exposed and sandbox modes:
+
+| Range / Hostname | Type | Purpose |
+| :--- | :--- | :--- |
+| `127.0.0.0/8`, `localhost`, `::1` | Loopback | Blocks requests to services running on the host machine. |
+| `10.0.0.0/8` | RFC 1918 Private | Blocks internal private LAN services. |
+| `172.16.0.0/12` | RFC 1918 Private | Blocks Docker, Kubernetes, and private subnets. |
+| `192.168.0.0/16` | RFC 1918 Private | Blocks home and office router management interfaces. |
+| `169.254.169.254` | Link-Local / Metadata | Blocks AWS, Google Cloud, and Azure IMDS metadata endpoints. |
+| `0.0.0.0/8` | Broadcast / Zero | Blocks unroutable zero-network calls. |
+
+---
+
+## Behavior on Violation
+
+If an operation attempts to dispatch a request to a blocked address space, the call is terminated immediately:
+
+```json
+{
+  "error": "SSRF_BLOCKED",
+  "message": "Target address resolves to a private or internal network range (169.254.169.254). Request denied by PostMCP Security Guard."
+}
+```
+
+No connection is established, and the security violation is logged to the server audit trace.

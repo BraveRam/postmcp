@@ -42,6 +42,16 @@ export async function resolvePresetSpec(presetIdOrAlias: string): Promise<string
     return cacheFile;
   }
 
+  // If bundledSpec exists, write to cache and return
+  if (preset.bundledSpec) {
+    try {
+      fs.writeFileSync(cacheFile, JSON.stringify(preset.bundledSpec, null, 2), 'utf-8');
+      return cacheFile;
+    } catch {
+      return preset.bundledSpec;
+    }
+  }
+
   // If remote spec URL exists, try to fetch and cache it
   if (preset.specUrl) {
     try {
@@ -53,17 +63,7 @@ export async function resolvePresetSpec(presetIdOrAlias: string): Promise<string
         return res.data;
       }
     } catch {
-      // Remote fetch failed, fall through to bundledSpec
-    }
-  }
-
-  // If bundledSpec exists, write to cache and return
-  if (preset.bundledSpec) {
-    try {
-      fs.writeFileSync(cacheFile, JSON.stringify(preset.bundledSpec, null, 2), 'utf-8');
-      return cacheFile;
-    } catch {
-      return preset.bundledSpec;
+      // Remote fetch failed, fall through
     }
   }
 

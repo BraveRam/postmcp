@@ -1,0 +1,65 @@
+---
+title: Python FastMCP Server Export
+description: Generating high-performance standalone Python MCP servers using the FastMCP framework.
+---
+
+## Project Structure
+
+When exporting with `--lang python`, PostMCP generates an idiomatic Python package:
+
+```
+my-py-server/
+├── pyproject.toml
+├── README.md
+└── server/
+    ├── __init__.py
+    ├── app.py            # FastMCP app instance & entry point
+    ├── client.py         # Async httpx client with authentication
+    ├── diet.py           # Embedded Token Diet transformers
+    └── tools/            # Modular decorated tool functions
+        ├── __init__.py
+        ├── projects.py
+        └── ...
+```
+
+---
+
+## Generated Code Example
+
+Here is an excerpt of a generated tool handler in `server/tools/projects.py`:
+
+```python
+from typing import Optional
+from mcp.server.fastmcp import FastMCP
+from ..client import fetch_upstream
+from ..diet import apply_token_diet
+
+mcp = FastMCP("Neon Postgres MCP Server")
+
+@mcp.tool()
+async def list_projects(org_id: Optional[str] = None, limit: int = 20) -> str:
+    """
+    List all database projects for the active organization.
+    
+    :param org_id: Organization identifier
+    :param limit: Maximum items to return
+    """
+    params = {"limit": limit}
+    if org_id:
+        params["org_id"] = org_id
+
+    raw_response = await fetch_upstream("GET", "/projects", params=params)
+    return apply_token_diet(raw_response, mask="projects[*].{id,name,status}")
+```
+
+---
+
+## Installing & Running
+
+```bash
+cd my-py-server
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+python -m server.app
+```

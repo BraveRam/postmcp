@@ -1,0 +1,78 @@
+---
+title: Bundled Presets Catalog
+description: Over 60 curated and pre-tuned API presets ready for immediate use with zero configuration.
+---
+
+## What Are Presets?
+
+A **Preset** is an officially verified, pre-tuned configuration for a popular web service or cloud provider. Presets include:
+1. **Full-Fidelity OpenAPI Specification**: Comprehensive parameter validation, types, and operation definitions.
+2. **Pre-Tuned Token Diet Rules**: Tailored JSONPath field masks for high-volume endpoints (e.g. `listProjects`, `listCharges`).
+3. **Turn-1 Hot Tool Prioritization**: Verified root collection operations flagged for immediate mounting.
+4. **Automated Auth & Tenant Mapping**: Standard environment variable mappings (e.g. `NEON_API_KEY`, `STRIPE_SECRET_KEY`).
+
+---
+
+## Category Directory
+
+PostMCP bundles more than 60 presets categorized across six domains:
+
+### 1. Cloud Infrastructure & Databases
+- `@neon`: Serverless Postgres (branches, endpoints, databases, roles).
+- `@supabase`: Managed Postgres, Auth, Storage, and Edge Functions.
+- `@cloudflare`: Workers, DNS, Zones, and KV storage.
+- `@render`: Cloud web services, background workers, and static sites.
+- `@railway`: Ephemeral infrastructure, services, and environments.
+- `@upstash`: Serverless Redis, Kafka, and QStash.
+- `@planetscale`: Serverless MySQL databases and branching.
+
+### 2. Developer Platforms & Version Control
+- `@github`: Repositories, issues, pull requests, actions, and releases.
+- `@gitlab`: Projects, merge requests, CI pipelines, and snippets.
+- `@linear`: Software project management, issues, cycles, and teams.
+- `@sentry`: Error tracking, performance alerts, and issue triage.
+- `@postman`: Workspaces, collections, environments, and mocks.
+
+### 3. Payments & Commerce
+- `@stripe`: Customers, charges, invoices, subscriptions, and payment intents.
+- `@shopify`: Products, orders, inventory, and storefront webhooks.
+- `@paddle`: Billing, subscriptions, and customer checkouts.
+
+### 4. Communication & Notifications
+- `@resend`: Transactional email delivery and domain verification.
+- `@sendgrid`: Email marketing, templates, and analytics.
+- `@twilio`: SMS messaging, voice calls, and phone number lookup.
+- `@slack`: Channels, messages, user groups, and bot notifications.
+- `@discord`: Webhooks, channels, server moderation, and interactions.
+
+### 5. AI & Machine Learning Services
+- `@openai`: Chat completions, embeddings, fine-tuning, and assistants.
+- `@anthropic`: Messages, completions, and model endpoints.
+- `@cohere`: Embeddings, rerank, and text generation.
+- `@replicate`: Model inference, predictions, and weights hosting.
+- `@huggingface`: Inference endpoints and model repository lookup.
+
+### 6. Productivity & Operations
+- `@notion`: Pages, databases, blocks, and user workspace directories.
+- `@airtable`: Bases, tables, records, and schema metadata.
+- `@jira`: Issues, sprints, epics, and project workflows.
+
+---
+
+## Running a Preset
+
+To run any preset via the CLI:
+
+```bash
+# Using standard stdio transport
+postmcp run @neon
+
+# Using SSE transport with explicit auth
+postmcp run @stripe --transport sse --port 3001 --api-key "$STRIPE_SECRET_KEY"
+```
+
+To list all available presets from your terminal:
+
+```bash
+postmcp presets
+```

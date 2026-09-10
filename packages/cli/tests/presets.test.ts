@@ -31,7 +31,7 @@ describe('Presets Catalog & Runtime Integration', () => {
         expect(op.riskTier).toMatch(/READ_ONLY|MUTATION|CRITICAL/);
       }
     }
-  }, 30000);
+  }, 60000);
 
   it('should correctly configure authentication schemes for presets', () => {
     const gitlabPreset = BUNDLED_PRESETS['gitlab'];

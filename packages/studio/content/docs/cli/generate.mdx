@@ -1,0 +1,57 @@
+---
+title: postmcp generate
+description: Export standalone, dependency-free TypeScript or Python Model Context Protocol server code.
+---
+
+## Usage
+
+```bash
+postmcp generate <spec> [options]
+```
+
+The `generate` command converts any OpenAPI specification into a clean, standalone repository that can be run or published independently without any runtime dependency on PostMCP.
+
+---
+
+## Options
+
+| Flag | Type | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `-l, --lang <language>` | `string` | Target language: `typescript` or `python`. | `typescript` |
+| `-o, --output <dir>` | `string` | Output destination directory. | `./mcp-server` |
+| `--name <name>` | `string` | Package and server name. | Extracted from spec |
+| `--diet <level>` | `string` | Baked-in token reduction level. | `standard` |
+| `--include-masks` | `boolean` | Embed pre-tuned JSONPath response field masks into generated code. | `true` |
+
+---
+
+## Output Targets
+
+### 1. TypeScript Target (`--lang typescript`)
+Generates a complete Node.js project using the official `@modelcontextprotocol/server` SDK v2:
+- `package.json`: Configured with dependencies, build scripts (`tsup`), and type definitions.
+- `tsconfig.json`: Modern ESM TypeScript configuration.
+- `src/index.ts`: The main server entry point with registered tools and error handling.
+- `src/tools/`: Modular tool implementations with Zod schema validation.
+- `src/client.ts`: Typed HTTP client with auth headers and timeout safeguards.
+
+```bash
+postmcp generate https://api.stripe.com/v1/spec --lang typescript --output ./stripe-mcp
+cd ./stripe-mcp
+npm install
+npm run build
+npm start
+```
+
+### 2. Python Target (`--lang python`)
+Generates a Python package using the high-performance `fastmcp` framework:
+- `pyproject.toml`: Modern packaging with dependencies (`fastmcp`, `httpx`, `pydantic`).
+- `server.py`: Decorated `@mcp.tool()` definitions with type annotations and docstrings.
+- `client.py`: Async `httpx.AsyncClient` wrapper with authentication support.
+
+```bash
+postmcp generate ./openapi.yaml --lang python --output ./my-python-mcp
+cd ./my-python-mcp
+pip install -e .
+python -m server
+```

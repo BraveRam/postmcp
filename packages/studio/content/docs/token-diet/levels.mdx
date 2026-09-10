@@ -1,0 +1,49 @@
+---
+title: Reduction Levels
+description: "Guide to the 5 reduction levels: None, Minimal, Standard, Aggressive, and Ultra."
+---
+
+## Overview
+
+The Token Diet Engine provides five preset levels to match your agent's sensitivity and context constraints:
+
+| Level | Flag | Token Reduction | HTML Stripping | Markdown Tables | Field Masking | Default Max Tokens |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **None** | `--diet none` | 0% | Disabled | Disabled | Disabled | 16,384 |
+| **Minimal** | `--diet min` | ~30% | Enabled | Disabled | Strip nulls/traces | 8,192 |
+| **Standard** | `--diet standard` | ~75% | Enabled | Enabled | Primary fields | 4,096 |
+| **Aggressive** | `--diet agg` | ~85% | Enabled | Enabled | Key scalars only | 2,048 |
+| **Ultra** | `--diet ultra` | ~93% | Enabled | Compact tables | ID & name only | 1,024 |
+
+---
+
+## Detailed Level Behaviors
+
+### 1. Level: None (`none`)
+Preserves the complete, raw upstream response byte-for-byte.
+- **When to Use**: When debugging upstream API responses, during unit testing, or when an agent specifically requires raw, un-parsed headers or trace tokens.
+
+### 2. Level: Minimal (`min`)
+Removes obvious whitespace bloat and noise without altering structure:
+- Strips HTML tags and script content.
+- Removes top-level tracking fields (e.g. `request_id`, `trace_id`, `_links`).
+- Discards explicit `null` and empty string (`""`) attributes.
+- Retains full JSON nesting and all original object keys.
+
+### 3. Level: Standard (`standard`) (Default)
+The recommended baseline for production AI agents. Balances high token savings with complete structural clarity:
+- Transforms arrays of uniform objects into compact Markdown tables.
+- Drops internal audit timestamps (e.g. `updated_at`, `version`, `checksum`) while keeping `id`, `name`, `status`, and `created_at`.
+- Preserves primary entity relations.
+
+### 4. Level: Aggressive (`agg`)
+Optimized for high-throughput autonomous agents handling multi-step tasks:
+- Strips secondary metadata and long freeform descriptions.
+- Replaces nested objects with their primary scalar identifier (e.g. replacing `author: { id: "u_1", name: "Alice", email: "..." }` with `author_id: "u_1"`).
+- Restricts arrays to the top 20 most relevant items.
+
+### 5. Level: Ultra (`ultra`)
+Maximum possible compression, designed for models with small context windows or cost-critical high-frequency tool loops:
+- Retains only primary identifiers (`id`, `name`, `status`, `type`).
+- Formats arrays into single-line delimited Markdown rows.
+- Truncates individual scalar strings longer than 120 characters with ellipsis.

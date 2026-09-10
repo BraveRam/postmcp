@@ -1,0 +1,76 @@
+---
+title: postmcp run
+description: Start a live Model Context Protocol server from any OpenAPI specification or preset.
+---
+
+## Usage
+
+```bash
+postmcp run <spec> [options]
+```
+
+Where `<spec>` can be:
+- A local file path (`./swagger.json`, `./openapi.yaml`).
+- A remote HTTP or HTTPS URL (`https://api.example.com/openapi.json`).
+- A bundled preset alias (`@neon`, `@stripe`, `@github`, `@linear`, `@supabase`).
+
+---
+
+## Command-Line Options
+
+| Flag | Type | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `-t, --transport <mode>` | `string` | Communication transport: `stdio`, `sse`, or `http`. | `stdio` |
+| `-p, --port <number>` | `number` | Port for SSE or HTTP server mode. | `3000` |
+| `-b, --base-url <url>` | `string` | Override the upstream API base URL defined in the spec. | Extracted from spec |
+| `-k, --api-key <key>` | `string` | Provide an API key for authentication. | Read from env |
+| `-H, --header <kv...>` | `string[]` | Pass custom HTTP headers (e.g. `-H "X-Custom: value"`). | None |
+| `--jit` | `boolean` | Enable Just-In-Time tool mounting with `tool_search`. | Enabled if > 20 tools |
+| `--no-jit` | `boolean` | Disable JIT mode and mount all operations immediately. | - |
+| `--hot-tool-keywords <k...>` | `string[]` | Custom keywords to identify turn-1 hot tools. | Domain heuristics |
+| `-d, --diet <level>` | `string` | Token Diet reduction level: `none`, `min`, `standard`, `agg`, `ultra`. | `standard` |
+| `--dry-run` | `boolean` | Intercept mutations and return simulated responses. | `false` |
+| `--tenant-id <id>` | `string` | Default organization or tenant identifier to auto-inject. | Read from env |
+| `--name <name>` | `string` | Human-readable MCP server name reported to the client. | Extracted from spec |
+
+---
+
+## Examples
+
+### 1. Stdio Transport for Claude Desktop & Cursor
+
+Stdio is the standard communication transport for desktop AI applications. To launch a server over stdio:
+
+```bash
+postmcp run https://api.petstore.com/v2/openapi.json
+```
+
+### 2. SSE Mode with Custom Port
+
+Server-Sent Events (SSE) allows remote AI clients and microservices to communicate over standard HTTP streams:
+
+```bash
+postmcp run @neon --transport sse --port 8080 --api-key "$NEON_API_KEY"
+```
+
+The SSE server exposes two standard endpoints:
+- `GET /sse`: The streaming connection endpoint.
+- `POST /message`: The JSON-RPC message receipt endpoint.
+
+### 3. Overriding Base URL and Setting Diet Level
+
+```bash
+postmcp run ./internal-api.json \
+  --base-url https://staging.api.internal.net/v1 \
+  --diet ultra \
+  --dry-run
+```
+
+### 4. Custom Turn-1 Hot Tool Keywords
+
+Override the default keyword ranking heuristic so that operations matching specific domains are pre-mounted on turn 1:
+
+```bash
+postmcp run ./logistics-api.json \
+  --hot-tool-keywords shipment parcel tracking freight
+```

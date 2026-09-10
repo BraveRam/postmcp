@@ -1,0 +1,79 @@
+---
+title: Claude Desktop Setup
+description: Configure Anthropic Claude Desktop to connect with PostMCP servers via stdio.
+---
+
+## Configuration File Location
+
+Claude Desktop stores its MCP server definitions in `claude_desktop_config.json`:
+
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+---
+
+## Configuration Examples
+
+### 1. Neon Postgres Preset
+
+```json
+{
+  "mcpServers": {
+    "neon": {
+      "command": "npx",
+      "args": ["postmcp", "run", "@neon"],
+      "env": {
+        "NEON_API_KEY": "your_neon_api_key_here",
+        "NEON_ORG_ID": "org-your-organization-id"
+      }
+    }
+  }
+}
+```
+
+### 2. Stripe Preset with Dry-Run Safety
+
+```json
+{
+  "mcpServers": {
+    "stripe": {
+      "command": "npx",
+      "args": ["postmcp", "run", "@stripe", "--dry-run"],
+      "env": {
+        "STRIPE_SECRET_KEY": "sk_test_..."
+      }
+    }
+  }
+}
+```
+
+### 3. Custom Remote OpenAPI Specification
+
+```json
+{
+  "mcpServers": {
+    "internal-api": {
+      "command": "npx",
+      "args": [
+        "postmcp",
+        "run",
+        "https://internal.company.com/api/v1/swagger.json",
+        "--diet", "aggressive"
+      ],
+      "env": {
+        "POSTMCP_API_KEY": "your_internal_api_key"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Verification
+
+1. Restart Claude Desktop.
+2. Open a new chat session.
+3. Look for the hammer icon in the bottom right of the message box.
+4. You should immediately see the turn-1 hot tools (e.g. `listProjects`, `getCurrentUser`) without needing to search!

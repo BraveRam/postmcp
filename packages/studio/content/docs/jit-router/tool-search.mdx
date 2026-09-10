@@ -1,0 +1,61 @@
+---
+title: Dynamic Discovery (tool_search)
+description: The meta-tool enabling AI agents to search and mount operations from the unmounted catalog on demand.
+---
+
+## The tool_search Meta-Tool
+
+Whenever an OpenAPI specification contains more operations than the hot-tool budget (default: 20 operations), PostMCP registers the `tool_search` meta-tool.
+
+### Tool Definition
+
+```json
+{
+  "name": "tool_search",
+  "description": "Search for available API tools by keyword, tag, or HTTP method. Mounts matching tools into your active toolset for execution.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "Search keyword (e.g. 'branch', 'invoice', 'api key', 'billing')"
+      },
+      "tag": {
+        "type": "string",
+        "description": "Optional OpenAPI tag category to filter by"
+      },
+      "limit": {
+        "type": "number",
+        "description": "Maximum tools to return (default: 5)"
+      }
+    },
+    "required": ["query"]
+  }
+}
+```
+
+---
+
+## Dynamic Mounting Workflow
+
+When the agent invokes `tool_search`:
+
+1. **Fuzzy Search Execution**: Searches against operation IDs, summary blurbs, path templates, and parameter descriptions.
+2. **Immediate Tool Registration**: The top matching operations are dynamically added to the MCP server's active tool list.
+3. **Structured Response**: Returns a concise summary of the newly mounted tools and their parameters:
+
+```markdown
+Found and mounted 2 tools:
+
+1. `createProjectBranch`
+   - Description: Create a new Postgres branch in a project.
+   - Parameters: `projectId` (string, required), `name` (string, required)
+
+2. `deleteProjectBranch`
+   - Description: Delete an existing database branch.
+   - Parameters: `projectId` (string, required), `branchId` (string, required)
+
+You can now call these tools directly.
+```
+
+The AI agent can then immediately invoke `createProjectBranch` on its next action.

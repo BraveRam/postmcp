@@ -1,0 +1,76 @@
+---
+title: Transformation Pipeline
+description: "Deep dive into the 3 core stages: HTML Stripping, Markdown Table Serialization, and JSONPath Field Masking."
+---
+
+## Stage 1: HTML Stripping & Text Sanitization
+
+Many APIs (such as CMS platforms, issue trackers, and error gateways) return payloads containing HTML markup, styles, or even raw error pages.
+
+Raw HTML injects significant token overhead:
+```html
+<div class="error-banner" style="color:red;"><p>The requested entity was not found. Please check <a href="/docs/ids">ID conventions</a>.</p></div>
+```
+
+PostMCP converts this into plain, semantic text:
+```text
+The requested entity was not found. Please check ID conventions (/docs/ids).
+```
+
+- Strips `<script>`, `<style>`, and head metadata entirely.
+- Preserves hyperlink destinations in markdown notation `[text](url)`.
+- Normalizes excess consecutive whitespace and line breaks.
+
+---
+
+## Stage 2: Markdown Table Serialization
+
+When an endpoint returns an array of objects (for example, a list of 50 projects), standard JSON repeats every key name 50 times:
+
+```json
+[
+  { "id": "proj_1", "name": "Alpha", "status": "active", "region": "us-east-1" },
+  { "id": "proj_2", "name": "Beta", "status": "pending", "region": "eu-central-1" },
+  { "id": "proj_3", "name": "Gamma", "status": "active", "region": "ap-northeast-1" }
+]
+```
+
+PostMCP's table serializer detects uniform object collections and converts them into a clean Markdown table:
+
+| id | name | status | region |
+| :--- | :--- | :--- | :--- |
+| proj_1 | Alpha | active | us-east-1 |
+| proj_2 | Beta | pending | eu-central-1 |
+| proj_3 | Gamma | active | ap-northeast-1 |
+
+### Token Comparison
+- **JSON Format**: 142 tokens (curly brackets, double quotes on every key and value, commas).
+- **Markdown Table**: 48 tokens (**66% token reduction** on serialization alone).
+- LLMs parse Markdown tables natively and with exceptionally high comprehension.
+
+---
+
+## Stage 3: JSONPath Field Masking
+
+Field masking allows you to define declarative JSONPath extraction expressions for any operation.
+
+### Syntax Example
+
+In `postmcp.config.json` or preset definitions:
+
+```json
+{
+  "tokenDiet": {
+    "fieldMasks": {
+      "listUsers": "users[*].{id,username,email,tier}",
+      "getProject": "project.{id,name,branch,database_url}"
+    }
+  }
+}
+```
+
+### Expression Rules
+
+1. **Root Arrays**: `items[*].{id,name}` extracts only `id` and `name` from every object in the `items` array.
+2. **Nested Projection**: `data.records[*].{id,user:user.username}` flattens nested objects.
+3. **Array Slicing**: `items[0:10].{id,title}` limits results to the first 10 entries before formatting.

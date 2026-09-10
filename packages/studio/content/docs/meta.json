@@ -1,0 +1,21 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "architecture",
+    "---Core Capabilities---",
+    "token-diet",
+    "jit-router",
+    "safety",
+    "multi-tenant",
+    "pagination",
+    "macros",
+    "---Developer Tools---",
+    "cli",
+    "studio",
+    "codegen",
+    "presets",
+    "---Ecosystem---",
+    "clients"
+  ]
+}

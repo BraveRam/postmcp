@@ -1,0 +1,73 @@
+---
+title: TypeScript MCP Server Export
+description: Generating standalone TypeScript MCP servers using @modelcontextprotocol/server v2 and Zod.
+---
+
+## Project Structure
+
+When exporting with `--lang typescript`, PostMCP generates a complete Node.js ESM package:
+
+```
+my-ts-server/
+├── package.json
+├── tsconfig.json
+├── tsup.config.ts
+└── src/
+    ├── index.ts          # Server entry point & stdio/SSE initialization
+    ├── client.ts         # Axios/Fetch HTTP client with auth & timeout
+    ├── diet.ts           # Embedded Token Diet transformers & masks
+    └── tools/            # Generated tool handlers with Zod schemas
+        ├── listProjects.ts
+        ├── createProject.ts
+        └── ...
+```
+
+---
+
+## Generated Code Example
+
+Here is an excerpt of a generated tool handler in `src/tools/listProjects.ts`:
+
+```typescript
+import { z } from 'zod';
+import { McpServer } from '@modelcontextprotocol/server';
+import { apiClient } from '../client.js';
+import { applyTokenDiet } from '../diet.js';
+
+const inputSchema = {
+  org_id: z.string().optional().describe('Organization identifier'),
+  limit: z.number().int().min(1).max(100).default(20).describe('Max items to return'),
+};
+
+export function registerListProjectsTool(server: McpServer) {
+  server.tool(
+    'listProjects',
+    'List all database projects for the active organization.',
+    inputSchema,
+    async (args) => {
+      const response = await apiClient.get('/projects', { params: args });
+      const dieted = applyTokenDiet(response.data, 'projects[*].{id,name,status}');
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: dieted,
+          },
+        ],
+      };
+    }
+  );
+}
+```
+
+---
+
+## Building & Running
+
+```bash
+cd my-ts-server
+npm install
+npm run build
+npm start
+```

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
-import { Sparkles, Download, Upload, Layers, Terminal, Zap, Menu, Bot } from 'lucide-react';
+import { Sparkles, Download, Upload, Layers, Terminal, Zap, Menu, Bot, BookOpen } from 'lucide-react';
 import { NormalizedSpec } from '@postmcp/types';
 import { ModeToggle } from './mode-toggle';
 
@@ -115,6 +115,13 @@ export function Header({
           <span className="hidden sm:inline">Export MCP</span>
           <span className="sm:hidden">Export</span>
         </Button>
+
+        <a href="/docs" target="_blank" rel="noopener noreferrer">
+          <Button variant="outline" size="sm" className="px-2 sm:px-3 font-sans" title="PostMCP Documentation">
+            <BookOpen className="h-3.5 w-3.5 sm:mr-1" />
+            <span className="hidden sm:inline">Docs</span>
+          </Button>
+        </a>
 
         <ModeToggle />
       </div>

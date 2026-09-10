@@ -1,0 +1,57 @@
+---
+title: Cursor IDE Setup
+description: Connect Cursor to PostMCP servers to give AI agent Composer instant API tool execution.
+---
+
+## Setting Up in Cursor
+
+Cursor supports Model Context Protocol servers natively in Cursor Composer and Chat.
+
+### Option A: Via Cursor Settings UI
+
+1. Open **Cursor Settings** (`Cmd + ,` or `Ctrl + ,`).
+2. Navigate to **Features** -> **MCP Servers**.
+3. Click **Add New MCP Server**.
+4. Fill in the fields:
+   - **Name**: `postmcp-neon` (or any label)
+   - **Type**: `command`
+   - **Command**: `npx postmcp run @neon`
+
+---
+
+### Option B: Via Workspace Config (`.cursor/mcp.json`)
+
+You can commit MCP configurations directly into your project repository so your whole team shares the same tools:
+
+Create `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "neon": {
+      "command": "npx",
+      "args": ["postmcp", "run", "@neon"],
+      "env": {
+        "NEON_API_KEY": "${env:NEON_API_KEY}"
+      }
+    },
+    "github": {
+      "command": "npx",
+      "args": ["postmcp", "run", "@github"],
+      "env": {
+        "GITHUB_TOKEN": "${env:GITHUB_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Using Tools in Cursor Composer
+
+Once configured:
+1. Open Cursor Composer (`Cmd + I` or `Ctrl + I`).
+2. Type a prompt like:
+   `"List all active branches in our Neon database and check the latest migration status."`
+3. Cursor will immediately invoke `listProjects` and `listBranches` on turn 1, parse the compact Markdown table results, and propose the code changes.

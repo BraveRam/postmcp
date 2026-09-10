@@ -1,0 +1,9 @@
+{
+  "title": "Visual Web Studio",
+  "pages": [
+    "index",
+    "api-explorer",
+    "diet-curator",
+    "ai-sandbox"
+  ]
+}

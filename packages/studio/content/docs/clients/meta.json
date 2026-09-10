@@ -1,0 +1,9 @@
+{
+  "title": "Client Integrations",
+  "pages": [
+    "index",
+    "claude-desktop",
+    "cursor",
+    "opencode"
+  ]
+}

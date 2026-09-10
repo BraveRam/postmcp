@@ -1,0 +1,53 @@
+---
+title: LRU Eviction & Lifecycle
+description: Managing context window boundaries through Least Recently Used (LRU) tool eviction.
+---
+
+## Managing Active Tool Boundaries
+
+If an agent continuously performs `tool_search` across a massive API (e.g. AWS or Kubernetes with 800+ operations), mounting tools indefinitely would eventually exhaust the client's context window.
+
+To guarantee bounded memory and prompt consumption, PostMCP enforces a **Least Recently Used (LRU)** tool eviction policy.
+
+---
+
+## Eviction Lifecycle
+
+```
+[ Pre-Mounted Hot Tools ] (Protected: never evicted)
+  - listProjects
+  - getCurrentUser
+  - tool_search
+
+[ Dynamically Mounted Tools ] (Bounded by maxMountedTools)
+  - Slot 1: createBranch (Invoked 2 turns ago)
+  - Slot 2: listDatabases (Invoked 1 turn ago)
+  - Slot 3: getInvoice (Oldest, not called recently) <-- Candidate for eviction
+
+When a new tool (e.g. retryPayment) is mounted and limit is reached:
+  1. getInvoice is cleanly unmounted.
+  2. retryPayment is mounted into the active slot.
+```
+
+### Configuration
+
+You can configure the maximum number of dynamically mounted tools:
+
+```json
+{
+  "jit": {
+    "enabled": true,
+    "maxMountedTools": 25
+  }
+}
+```
+
+Or via CLI:
+
+```bash
+postmcp run @neon --jit
+```
+
+### Protection of Core Tools
+- The original turn-1 hot tools and `tool_search` itself are **pinned** and will never be unmounted by LRU eviction.
+- Evicted tools remain completely searchable; if needed again, the agent simply calls `tool_search` to restore them.

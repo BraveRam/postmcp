@@ -1,0 +1,45 @@
+---
+title: Live AI Sandbox
+description: Test MCP tools interactively with multi-provider LLMs or zero-key simulated agents using AI Elements.
+---
+
+## Overview
+
+The **Live AI Sandbox** is an interactive agent conversation environment embedded directly inside PostMCP Studio. Built using **AI Elements** and styled with Roboto typography, the sandbox allows you to test whether an LLM can successfully invoke your MCP tools, understand arguments, and interpret dieted responses.
+
+---
+
+## Supported LLM Providers
+
+The sandbox supports true multi-provider execution:
+
+| Provider | Supported Models | Required Environment Key |
+| :--- | :--- | :--- |
+| **OpenAI** | `gpt-4o`, `gpt-4o-mini`, `o3-mini` | `OPENAI_API_KEY` |
+| **Anthropic** | `claude-3-5-sonnet-latest`, `claude-3-5-haiku-latest` | `ANTHROPIC_API_KEY` |
+| **Google Gemini** | `gemini-2.0-flash`, `gemini-1.5-pro` | `GOOGLE_GENERATIVE_AI_API_KEY` or `GEMINI_API_KEY` |
+| **Simulated Agent** | Deterministic Local Rule-Based Agent | None (Zero API key required) |
+
+---
+
+## Simulated Agent (Zero-Key Mode)
+
+When you do not have an active LLM API key configured:
+- The sandbox automatically switches to **Simulated Agent Mode**.
+- It analyzes your natural language prompt against the mounted tool schemas.
+- It identifies matching tools, binds prompt parameters into JSON-RPC arguments, and executes the tool against the live or dry-run backend.
+- The real Token Dieted response is rendered directly in the conversation window.
+
+---
+
+## AI Elements Interface Features
+
+1. **Tool Invocation Cards**:
+   - Visual collapsible cards displaying tool names, arguments passed by the model, and execution duration.
+   - Distinct status badges for `running`, `completed`, and `failed` tool executions.
+2. **Output Inspection**:
+   - Inspect raw JSON or rendered Markdown tables returned by each tool invocation.
+3. **Dry-Run Safety Toggle**:
+   - Keep Dry-Run active to safely simulate mutations (`POST`, `DELETE`) without modifying upstream databases.
+4. **Fullscreen Modal**:
+   - Pop out the sandbox into a full-window chat view for extended debugging sessions.

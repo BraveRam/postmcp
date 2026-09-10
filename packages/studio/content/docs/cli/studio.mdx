@@ -1,0 +1,43 @@
+---
+title: postmcp studio
+description: Launch the interactive local Web Studio workbench for visual curation and testing.
+---
+
+## Usage
+
+```bash
+postmcp studio [spec] [options]
+```
+
+Where `[spec]` is an optional path, URL, or preset to load immediately on startup.
+
+---
+
+## Options
+
+| Flag | Type | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `-p, --port <number>` | `number` | Port on which to bind the Next.js Studio server. | `3000` |
+| `--host <address>` | `string` | Hostname or IP to bind (e.g. `127.0.0.1` or `0.0.0.0`). | `localhost` |
+| `--no-open` | `boolean` | Prevent automatically opening the browser upon launch. | `false` |
+
+---
+
+## Examples
+
+### 1. Launch Empty Studio
+```bash
+postmcp studio
+```
+Opens `http://localhost:3000` in your default browser, allowing you to select from 60+ bundled presets, paste raw OpenAPI YAML/JSON, or load a remote URL.
+
+### 2. Launch with a Preset Loaded
+```bash
+postmcp studio @neon
+```
+Instantly initializes the Studio with the Neon PostgreSQL API spec pre-loaded, pre-populating the API Explorer, Token Diet Curator, and Live AI Sandbox.
+
+### 3. Launch with a Local Specification File
+```bash
+postmcp studio ./specs/internal-billing.json --port 4000
+```

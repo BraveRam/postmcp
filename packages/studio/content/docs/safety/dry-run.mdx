@@ -1,0 +1,60 @@
+---
+title: Dry-Run Mode
+description: Safe mutation interception allowing agents to plan and evaluate without executing destructive actions.
+---
+
+## What is Dry-Run Mode?
+
+When evaluating new agent workflows or testing prompt sequences, you often want the LLM to believe its tool calls are succeeding while preventing any actual changes from hitting production servers.
+
+Dry-Run mode intercepts all `MUTATION` and `CRITICAL` requests (`POST`, `PUT`, `PATCH`, `DELETE`) before they leave the machine.
+
+---
+
+## Enabling Dry-Run
+
+### Via CLI
+
+Pass the `--dry-run` flag to `postmcp run`:
+
+```bash
+postmcp run @neon --dry-run
+```
+
+### Via Studio UI
+
+In the Visual Web Studio, toggle the **Dry Run** switch in the Live Sandbox header.
+
+### Via Configuration File
+
+```json
+{
+  "safety": {
+    "dryRun": true
+  }
+}
+```
+
+---
+
+## Synthesized Responses
+
+When Dry-Run is active, PostMCP constructs a realistic mock response matching the endpoint's OpenAPI schema:
+
+```json
+{
+  "_dry_run": true,
+  "status": "simulated_success",
+  "message": "[Dry Run] Mutation intercepted. No live network request was dispatched to https://console.neon.tech/api/v2/projects.",
+  "simulated_data": {
+    "id": "sim_proj_98234",
+    "name": "staging-db",
+    "created_at": "2026-09-10T12:00:00Z"
+  }
+}
+```
+
+### Benefits for Agent Evaluation
+1. **Zero State Pollution**: Leaves test environments clean without cluttering databases with throwaway test entities.
+2. **Safe Benchmarking**: Test autonomous agents on live schemas without risking credential compromise or budget overruns.
+3. **Transparent Auditing**: The agent receives valid data to continue multi-step reasoning, while clear flags mark the response as simulated.

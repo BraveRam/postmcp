@@ -1,0 +1,8 @@
+{
+  "title": "Safety & Sandboxing",
+  "pages": [
+    "index",
+    "dry-run",
+    "ssrf"
+  ]
+}

@@ -1,0 +1,40 @@
+---
+title: Preset Authentication
+description: Standard environment variables and authentication mappings across bundled presets.
+---
+
+## Automatic Environment Variable Resolution
+
+When you invoke a preset via `postmcp run @<preset>`, PostMCP checks your shell environment for matching credentials automatically.
+
+| Preset | Auth Type | Primary Env Variable | Fallback Env Variable |
+| :--- | :--- | :--- | :--- |
+| `@neon` | Bearer Token | `NEON_API_KEY` | `POSTMCP_API_KEY` |
+| `@stripe` | Bearer Token | `STRIPE_SECRET_KEY` | `STRIPE_API_KEY` |
+| `@github` | Bearer Token | `GITHUB_TOKEN` | `GH_TOKEN` |
+| `@linear` | Header (`Authorization`) | `LINEAR_API_KEY` | `LINEAR_TOKEN` |
+| `@supabase` | Header (`apikey`) | `SUPABASE_SERVICE_ROLE_KEY`| `SUPABASE_ANON_KEY` |
+| `@resend` | Bearer Token | `RESEND_API_KEY` | `RESEND_TOKEN` |
+| `@slack` | Bearer Token | `SLACK_BOT_TOKEN` | `SLACK_USER_TOKEN` |
+| `@notion` | Header (`Authorization`) | `NOTION_API_KEY` | `NOTION_TOKEN` |
+| `@cloudflare` | Bearer Token | `CLOUDFLARE_API_TOKEN` | `CF_API_TOKEN` |
+
+---
+
+## Overriding Preset Authentication
+
+If your credentials are stored in custom environment variables or secret vaults, you can override preset defaults using the `--api-key` or `--header` flags:
+
+```bash
+# Pass custom variable
+postmcp run @stripe --api-key "$MY_CUSTOM_STRIPE_SECRET"
+
+# Pass custom header directly
+postmcp run @linear -H "Authorization: $MY_LINEAR_KEY"
+```
+
+---
+
+## Workspace Environment Persistence in Studio
+
+When using the Visual Web Studio (`postmcp studio`), you can configure API keys via the **Workspace Credentials** modal. Keys entered in the Studio are securely persisted to your local machine (`~/.postmcp/workspace.json`) and never transmitted to external third-party servers.

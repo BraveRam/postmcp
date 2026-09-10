@@ -1,0 +1,31 @@
+---
+title: Client Integrations
+description: Connecting PostMCP servers to Claude Desktop, Cursor, OpenCode, and custom MCP clients.
+---
+
+## Overview
+
+Because PostMCP implements the official Model Context Protocol specification over standard `stdio` and `sse` transports, it works seamlessly with every MCP-compatible client, IDE, and terminal agent.
+
+---
+
+## Supported Clients Matrix
+
+| Client | Transport | Turn-1 Hot Tools Supported | Configuration Location |
+| :--- | :--- | :--- | :--- |
+| **Claude Desktop** | `stdio` | Yes | `claude_desktop_config.json` |
+| **Cursor IDE** | `stdio` or `sse` | Yes | Cursor Settings -> MCP Servers |
+| **OpenCode** | `stdio` | Yes | `opencode.json` |
+| **Windsurf / Cascade** | `stdio` | Yes | `mcp_config.json` |
+| **Custom MCP Clients** | `stdio` or `sse` | Yes | Standard JSON-RPC 2.0 client |
+
+---
+
+## Connection Steps Summary
+
+Connecting PostMCP to any client requires two elements:
+1. **Command**: `npx`
+2. **Arguments**: `["postmcp", "run", "<spec_or_preset>", ...flags]`
+
+Or if using remote Server-Sent Events (SSE):
+- **URL**: `http://localhost:3000/sse`
