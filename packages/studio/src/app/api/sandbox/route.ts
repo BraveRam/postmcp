@@ -285,14 +285,6 @@ export async function POST(request: Request) {
         inputSchema: jsonSchema(opSchema),
         parameters: jsonSchema(opSchema),
         execute: async (args: any) => {
-          if (onToolExecutionEvent) {
-            onToolExecutionEvent({
-              type: 'tool-call',
-              name: op.id,
-              args,
-            });
-          }
-
           const execRes = await executeMcpOperation(op, args, spec, resolvedAuth, dryRun);
           const toolData = {
             name: op.id,
@@ -303,16 +295,6 @@ export async function POST(request: Request) {
             },
           };
           executedToolCalls.push(toolData);
-
-          if (onToolExecutionEvent) {
-            onToolExecutionEvent({
-              type: 'tool-result',
-              name: op.id,
-              args,
-              result: toolData.result,
-            });
-          }
-
           return execRes;
         },
       } as any);
@@ -324,12 +306,19 @@ export async function POST(request: Request) {
     if (gatewayModel) {
       try {
         if (stream) {
+          const activeToolCalls = new Map<string, { name: string; args: any }>();
+          const emittedToolResults = new Set<string>();
+
           const streamResult = streamText({
             model: gatewayModel,
             messages,
             tools: dynamicTools,
             stopWhen: stepCountIs(5),
             onToolExecutionStart: ({ toolCall }) => {
+              activeToolCalls.set(toolCall.toolCallId, {
+                name: toolCall.toolName,
+                args: toolCall.input,
+              });
               if (onToolExecutionEvent) {
                 onToolExecutionEvent({
                   type: 'tool-call',
@@ -340,6 +329,7 @@ export async function POST(request: Request) {
               }
             },
             onToolExecutionEnd: ({ toolCall, toolOutput }) => {
+              emittedToolResults.add(toolCall.toolCallId);
               const out = (toolOutput as any)?.output ?? toolOutput;
               const text =
                 out?.result ??
@@ -375,39 +365,48 @@ export async function POST(request: Request) {
               try {
                 for await (const chunk of streamResult.fullStream) {
                   if (chunk.type === 'tool-call') {
-                    controller.enqueue(
-                      encoder.encode(
-                        `data: ${JSON.stringify({
-                          type: 'tool-call',
-                          toolCallId: chunk.toolCallId,
-                          name: chunk.toolName,
-                          args: chunk.input,
-                        })}\n\n`
-                      )
-                    );
+                    if (!activeToolCalls.has(chunk.toolCallId)) {
+                      activeToolCalls.set(chunk.toolCallId, {
+                        name: chunk.toolName,
+                        args: chunk.input,
+                      });
+                      controller.enqueue(
+                        encoder.encode(
+                          `data: ${JSON.stringify({
+                            type: 'tool-call',
+                            toolCallId: chunk.toolCallId,
+                            name: chunk.toolName,
+                            args: chunk.input,
+                          })}\n\n`
+                        )
+                      );
+                    }
                   } else if (chunk.type === 'tool-result') {
-                    const out = (chunk.output ?? (chunk as any).result) as any;
-                    const text =
-                      out?.result ??
-                      (typeof out === 'string'
-                        ? out
-                        : typeof out?.text === 'string'
-                        ? out.text
-                        : JSON.stringify(out ?? {}));
-                    controller.enqueue(
-                      encoder.encode(
-                        `data: ${JSON.stringify({
-                          type: 'tool-result',
-                          toolCallId: chunk.toolCallId,
-                          name: chunk.toolName,
-                          args: chunk.input ?? (chunk as any).args ?? {},
-                          result: {
-                            text,
-                            savings: out?.savings,
-                          },
-                        })}\n\n`
-                      )
-                    );
+                    if (!emittedToolResults.has(chunk.toolCallId)) {
+                      emittedToolResults.add(chunk.toolCallId);
+                      const out = (chunk.output ?? (chunk as any).result) as any;
+                      const text =
+                        out?.result ??
+                        (typeof out === 'string'
+                          ? out
+                          : typeof out?.text === 'string'
+                          ? out.text
+                          : JSON.stringify(out ?? {}));
+                      controller.enqueue(
+                        encoder.encode(
+                          `data: ${JSON.stringify({
+                            type: 'tool-result',
+                            toolCallId: chunk.toolCallId,
+                            name: chunk.toolName,
+                            args: chunk.input ?? (chunk as any).args ?? {},
+                            result: {
+                              text,
+                              savings: out?.savings,
+                            },
+                          })}\n\n`
+                        )
+                      );
+                    }
                   } else if (chunk.type === 'text-delta') {
                     controller.enqueue(
                       encoder.encode(
@@ -420,18 +419,23 @@ export async function POST(request: Request) {
                   }
                 }
 
-                // Ensure all executed tools have their results sent before ending
-                for (const tc of executedToolCalls) {
-                  controller.enqueue(
-                    encoder.encode(
-                      `data: ${JSON.stringify({
-                        type: 'tool-result',
-                        name: tc.name,
-                        args: tc.args,
-                        result: tc.result,
-                      })}\n\n`
-                    )
-                  );
+                // Ensure all started tool calls have their results sent before ending
+                for (const [id, tc] of activeToolCalls.entries()) {
+                  if (!emittedToolResults.has(id)) {
+                    emittedToolResults.add(id);
+                    const matched = executedToolCalls.find((e) => e.name === tc.name);
+                    controller.enqueue(
+                      encoder.encode(
+                        `data: ${JSON.stringify({
+                          type: 'tool-result',
+                          toolCallId: id,
+                          name: tc.name,
+                          args: tc.args,
+                          result: matched?.result || { text: 'Operation completed.' },
+                        })}\n\n`
+                      )
+                    );
+                  }
                 }
 
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
@@ -584,11 +588,14 @@ export async function POST(request: Request) {
       const readableStream = new ReadableStream({
         async start(controller) {
           try {
-            for (const tc of simulatedToolCalls) {
+            for (let i = 0; i < simulatedToolCalls.length; i++) {
+              const tc = simulatedToolCalls[i];
+              const simId = `sim_${tc.name}_${i}_${Date.now()}`;
               controller.enqueue(
                 encoder.encode(
                   `data: ${JSON.stringify({
                     type: 'tool-call',
+                    toolCallId: simId,
                     name: tc.name,
                     args: tc.args,
                   })}\n\n`
@@ -598,6 +605,7 @@ export async function POST(request: Request) {
                 encoder.encode(
                   `data: ${JSON.stringify({
                     type: 'tool-result',
+                    toolCallId: simId,
                     name: tc.name,
                     args: tc.args,
                     result: tc.result,

@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { Markdown } from '@/components/Markdown';
 
 export interface MessageProps extends React.HTMLAttributes<HTMLDivElement> {
   from?: 'user' | 'assistant' | 'system';
@@ -52,8 +53,8 @@ export function MessageContent({
       className={cn(
         'rounded-lg p-3 sm:p-4 text-xs font-sans leading-relaxed transition-all',
         from === 'user'
-          ? 'bg-primary text-primary-foreground ml-auto shadow-xs'
-          : 'bg-muted/50 border border-border text-foreground mr-auto',
+          ? 'bg-secondary text-foreground ml-auto border border-border/30 shadow-none outline-none'
+          : 'bg-muted/50 border border-border text-foreground mr-auto outline-none',
         className
       )}
       {...props}
@@ -64,14 +65,24 @@ export function MessageContent({
 }
 
 export interface MessageResponseProps extends React.HTMLAttributes<HTMLDivElement> {
+  from?: 'user' | 'assistant' | 'system';
   children?: React.ReactNode;
 }
 
 export function MessageResponse({
+  from = 'assistant',
   className,
   children,
   ...props
 }: MessageResponseProps) {
+  if (from !== 'user' && typeof children === 'string') {
+    return (
+      <div className={cn('font-sans text-xs leading-relaxed', className)} {...props}>
+        <Markdown>{children}</Markdown>
+      </div>
+    );
+  }
+
   return (
     <div className={cn('whitespace-pre-wrap font-sans text-xs leading-relaxed', className)} {...props}>
       {children}

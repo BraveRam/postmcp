@@ -7,7 +7,8 @@ import { ApiExplorer } from '@/components/ApiExplorer';
 import { EndpointDetail } from '@/components/EndpointDetail';
 import { TokenDietCurator } from '@/components/TokenDietCurator';
 import { MacroBuilder } from '@/components/MacroBuilder';
-import { LiveSandbox } from '@/components/LiveSandbox';
+import { LiveSandbox, type SandboxMessage } from '@/components/LiveSandbox';
+import { LiveSandboxModal } from '@/components/LiveSandboxModal';
 import { PresetSelectorModal } from '@/components/PresetSelectorModal';
 import { SpecIngestModal } from '@/components/SpecIngestModal';
 import { ExportModal } from '@/components/ExportModal';
@@ -26,6 +27,8 @@ export default function StudioPage() {
   const [isPresetsOpen, setIsPresetsOpen] = useState(false);
   const [isIngestOpen, setIsIngestOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isSandboxModalOpen, setIsSandboxModalOpen] = useState(false);
+  const [sandboxMessages, setSandboxMessages] = useState<SandboxMessage[]>([]);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState<number>(320);
   const [isDraggingSidebar, setIsDraggingSidebar] = useState<boolean>(false);
@@ -213,6 +216,7 @@ export default function StudioPage() {
         onOpenPresets={() => setIsPresetsOpen(true)}
         onOpenIngest={() => setIsIngestOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
+        onOpenSandbox={() => setIsSandboxModalOpen(true)}
         onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         isMobileSidebarOpen={isMobileSidebarOpen}
       />
@@ -334,7 +338,10 @@ export default function StudioPage() {
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('sandbox')}
+                  onClick={() => {
+                    setActiveTab('sandbox');
+                    setIsSandboxModalOpen(true);
+                  }}
                   className={`py-3 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer font-sans whitespace-nowrap ${
                     activeTab === 'sandbox'
                       ? 'border-foreground text-foreground'
@@ -378,7 +385,36 @@ export default function StudioPage() {
               )}
 
               {activeTab === 'sandbox' && (
-                <LiveSandbox spec={spec} selectedOperation={selectedOperation} />
+                <div className="space-y-4 max-w-5xl">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg bg-card border border-border shadow-xs">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Bot className="h-4 w-4 text-primary" />
+                        <h3 className="text-sm font-semibold text-foreground font-sans">PostMCP Live AI Sandbox</h3>
+                      </div>
+                      <p className="text-xs text-muted-foreground font-sans mt-0.5">
+                        Interactive fullscreen chatbot modal for comprehensive tool dispatching, markdown rendering, and Token Diet analysis.
+                      </p>
+                    </div>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setIsSandboxModalOpen(true)}
+                      className="font-sans text-xs flex items-center gap-1.5 shrink-0"
+                    >
+                      <Bot className="h-3.5 w-3.5" />
+                      <span>Fullscreen</span>
+                    </Button>
+                  </div>
+
+                  <LiveSandbox
+                    spec={spec}
+                    selectedOperation={selectedOperation}
+                    onOpenModal={() => setIsSandboxModalOpen(true)}
+                    messages={sandboxMessages}
+                    onMessagesChange={setSandboxMessages}
+                  />
+                </div>
               )}
             </div>
           </div>
@@ -407,6 +443,17 @@ export default function StudioPage() {
           fieldMasks={fieldMasks}
           macros={macros}
           enabledOperations={enabledOperations}
+        />
+      )}
+
+      {spec && (
+        <LiveSandboxModal
+          isOpen={isSandboxModalOpen}
+          onClose={() => setIsSandboxModalOpen(false)}
+          spec={spec}
+          selectedOperation={selectedOperation}
+          messages={sandboxMessages}
+          onMessagesChange={setSandboxMessages}
         />
       )}
     </div>

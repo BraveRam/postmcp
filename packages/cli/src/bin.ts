@@ -122,6 +122,7 @@ export function createCli(): Command {
     .command('studio [spec]')
     .description('Launch the PostMCP Visual Web Studio')
     .option('-p, --port <port>', 'Studio port', '3000')
+    .option('--dev', 'Run Next.js in Turbopack development mode')
     .option('--no-open', 'Do not automatically open browser')
     .action((spec, opts) => {
       studioCommand(spec, opts).catch((err) => {

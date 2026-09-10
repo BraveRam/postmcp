@@ -2,37 +2,70 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { createRequire } from 'node:module';
 import { spawn, ChildProcess } from 'node:child_process';
-import type { StudioCommandOptions } from '@postmcp/types';
 import open from 'open';
 import axios from 'axios';
 import pc from 'picocolors';
 
-export type { StudioCommandOptions };
+export interface StudioCommandOptions {
+  port?: string;
+  noOpen?: boolean;
+  dev?: boolean;
+}
 
 export function findStudioDir(): string {
-  // 1. Try resolving via Node module resolution
+  // 1. Check workspace and local monorepo paths first
+  const workspaceCandidates = [
+    path.resolve(process.cwd(), 'packages', 'studio'),
+    path.resolve(__dirname, '..', '..', 'studio'),
+    path.resolve(__dirname, '..', '..', '..', 'packages', 'studio'),
+    path.resolve(__dirname, '..', '..', '..', '..', 'packages', 'studio'),
+  ];
+
+  for (const candidate of workspaceCandidates) {
+    if (fs.existsSync(path.join(candidate, 'package.json'))) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(path.join(candidate, 'package.json'), 'utf-8'));
+        if (pkg.name === '@postmcp/studio') {
+          return candidate;
+        }
+      } catch {}
+    }
+  }
+
+  // 2. Search upwards from cwd and __dirname for monorepo packages/studio
+  for (const startDir of [process.cwd(), __dirname]) {
+    let cur = startDir;
+    for (let i = 0; i < 6; i++) {
+      const candidate = path.join(cur, 'packages', 'studio');
+      if (fs.existsSync(path.join(candidate, 'package.json'))) {
+        try {
+          const pkg = JSON.parse(fs.readFileSync(path.join(candidate, 'package.json'), 'utf-8'));
+          if (pkg.name === '@postmcp/studio') {
+            return candidate;
+          }
+        } catch {}
+      }
+      const parent = path.dirname(cur);
+      if (parent === cur) break;
+      cur = parent;
+    }
+  }
+
+  // 3. Try resolving via Node module resolution (published npx postmcp)
   try {
     const customRequire = typeof createRequire !== 'undefined' ? createRequire(__filename) : (require as any);
     const pkgPath = customRequire.resolve('@postmcp/studio/package.json');
     if (fs.existsSync(pkgPath)) {
-      return path.dirname(pkgPath);
+      const resolved = path.dirname(pkgPath);
+      // If resolved into .pnpm cache inside a monorepo, prefer the live monorepo packages/studio
+      const monorepoCandidate = path.resolve(resolved, '../../../../packages/studio');
+      if (fs.existsSync(path.join(monorepoCandidate, 'package.json'))) {
+        return monorepoCandidate;
+      }
+      return resolved;
     }
   } catch {
     // Module resolution fallback
-  }
-
-  // 2. Check common workspace and global paths
-  const candidates = [
-    path.resolve(__dirname, '..', '..', 'studio'),
-    path.resolve(__dirname, '..', '..', '..', 'packages', 'studio'),
-    path.resolve(process.cwd(), 'packages', 'studio'),
-    path.resolve(process.cwd(), 'node_modules', '@postmcp', 'studio'),
-  ];
-
-  for (const candidate of candidates) {
-    if (fs.existsSync(path.join(candidate, 'package.json'))) {
-      return candidate;
-    }
   }
 
   // Fallback to packages/studio in workspace
@@ -73,15 +106,29 @@ export async function studioCommand(specArg?: string, options: StudioCommandOpti
   let child: ChildProcess | null = null;
 
   if (fs.existsSync(studioDir)) {
-    const isBuilt = fs.existsSync(path.join(studioDir, '.next'));
+    const srcDir = path.join(studioDir, 'src');
+    const nextDir = path.join(studioDir, '.next');
+    let isStale = false;
+    if (fs.existsSync(srcDir) && fs.existsSync(nextDir)) {
+      try {
+        const nextMtime = fs.statSync(nextDir).mtimeMs;
+        const pageMtime = fs.statSync(path.join(srcDir, 'app', 'page.tsx')).mtimeMs;
+        if (pageMtime > nextMtime) {
+          isStale = true;
+        }
+      } catch {}
+    }
+
+    const isBuilt = fs.existsSync(nextDir) && !isStale;
+    const preferDev = options.dev || isStale;
     // In standalone or monorepo environments, prefer npx next or pnpm
     const isPnpm = fs.existsSync(path.join(studioDir, '..', '..', 'pnpm-lock.yaml'));
     const command = isPnpm ? 'pnpm' : 'npx';
     const args = isPnpm
-      ? isBuilt
+      ? isBuilt && !preferDev
         ? ['start', '--port', port]
         : ['dev', '--port', port]
-      : isBuilt
+      : isBuilt && !preferDev
       ? ['next', 'start', '-p', port]
       : ['next', 'dev', '-p', port];
 

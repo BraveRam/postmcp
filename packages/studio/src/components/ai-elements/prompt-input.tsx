@@ -34,7 +34,7 @@ export function PromptInput({
     <form
       onSubmit={handleFormSubmit}
       className={cn(
-        'relative rounded-xl border border-border bg-card p-2 shadow-lg transition-colors focus-within:border-ring font-sans',
+        'relative rounded-xl border border-border bg-card p-2 shadow-lg transition-colors focus-within:border-border/80 outline-none focus:outline-none focus-within:ring-0 ring-0 font-sans',
         className
       )}
       {...props}
@@ -80,7 +80,7 @@ export function PromptInputTextarea({
       rows={rows}
       onKeyDown={handleKeyDown}
       className={cn(
-        'w-full resize-none bg-transparent px-3 py-2 text-xs font-sans text-foreground placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 min-h-[50px] max-h-[160px]',
+        'w-full resize-none bg-transparent px-3 py-2 text-xs font-sans text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 focus-visible:ring-0 outline-none disabled:cursor-not-allowed disabled:opacity-50 min-h-[50px] max-h-[160px]',
         className
       )}
       {...props}

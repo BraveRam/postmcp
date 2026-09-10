@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
-import { Sparkles, Download, Upload, Layers, Terminal, Zap, Menu } from 'lucide-react';
+import { Sparkles, Download, Upload, Layers, Terminal, Zap, Menu, Bot } from 'lucide-react';
 import { NormalizedSpec } from '@postmcp/types';
 import { ModeToggle } from './mode-toggle';
 
@@ -11,6 +11,7 @@ interface HeaderProps {
   onOpenPresets: () => void;
   onOpenIngest: () => void;
   onOpenExport: () => void;
+  onOpenSandbox?: () => void;
   onToggleMobileSidebar?: () => void;
   isMobileSidebarOpen?: boolean;
 }
@@ -21,6 +22,7 @@ export function Header({
   onOpenPresets,
   onOpenIngest,
   onOpenExport,
+  onOpenSandbox,
   onToggleMobileSidebar,
   isMobileSidebarOpen,
 }: HeaderProps) {
@@ -87,6 +89,20 @@ export function Header({
           <span className="hidden sm:inline">Import Spec</span>
           <span className="sm:hidden">Import</span>
         </Button>
+
+        {onOpenSandbox && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onOpenSandbox}
+            className="px-2 sm:px-3 font-sans border-border hover:bg-muted"
+            title="Open Fullscreen AI Sandbox"
+          >
+            <Bot className="h-3.5 w-3.5 sm:mr-1" />
+            <span className="hidden sm:inline">AI Sandbox</span>
+            <span className="sm:hidden">Sandbox</span>
+          </Button>
+        )}
 
         <Button
           variant="default"
