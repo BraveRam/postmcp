@@ -51,7 +51,11 @@ if (Get-Command postmcp -ErrorAction SilentlyContinue) {
     $Version = (postmcp --version 2>$null)
     Write-Host ""
     Write-Host "========================================================================" -ForegroundColor Green
-    Write-Host "PostMCP $Version installed successfully!" -ForegroundColor Green
+    if ($Version) {
+        Write-Host "PostMCP $Version installed successfully!" -ForegroundColor Green
+    } else {
+        Write-Host "PostMCP installed successfully!" -ForegroundColor Green
+    }
     Write-Host "========================================================================" -ForegroundColor Green
     Write-Host ""
     Write-Host "To launch the Visual Web Studio and documentation, run:" -ForegroundColor White

@@ -23,9 +23,6 @@ importers:
       '@postmcp/presets':
         specifier: workspace:*
         version: link:../presets
-      '@postmcp/studio':
-        specifier: workspace:*
-        version: link:../studio
       '@postmcp/types':
         specifier: workspace:*
         version: link:../types

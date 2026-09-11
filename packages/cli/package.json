@@ -1,6 +1,6 @@
 {
   "name": "@postmcp/cli",
-  "version": "0.1.22",
+  "version": "0.1.23",
   "description": "The Postman for MCP. Turn any OpenAPI spec into a context-optimized MCP server in seconds.",
   "publishConfig": {
     "access": "public"
@@ -32,7 +32,6 @@
   "dependencies": {
     "@postmcp/core": "workspace:*",
     "@postmcp/presets": "workspace:*",
-    "@postmcp/studio": "workspace:*",
     "@postmcp/types": "workspace:*",
     "axios": "^1.20.0",
     "cli-table3": "^0.6.5",

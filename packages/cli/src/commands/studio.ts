@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { createRequire } from 'node:module';
-import { spawn, ChildProcess } from 'node:child_process';
+import { spawn, execSync, ChildProcess } from 'node:child_process';
 import open from 'open';
 import axios from 'axios';
 import pc from 'picocolors';
@@ -88,16 +88,26 @@ export async function waitForServer(url: string, timeoutMs: number = 20000): Pro
   return false;
 }
 
+function hasCommand(cmd: string): boolean {
+  try {
+    execSync(`command -v ${cmd}`, { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function studioCommand(specArg?: string, options: StudioCommandOptions = {}): Promise<void> {
   const port = options.port || '3000';
   const baseUrl = `http://localhost:${port}`;
   const targetUrl = specArg ? `${baseUrl}?spec=${encodeURIComponent(specArg)}` : baseUrl;
   const studioDir = findStudioDir();
+  const hasLocalStudio = fs.existsSync(path.join(studioDir, 'package.json'));
 
   console.log();
   console.log(pc.bold(pc.cyan(`Starting PostMCP Visual Web Studio...`)));
   console.log(`  Port: ${pc.bold(pc.green(port))}`);
-  console.log(`  Studio Dir: ${pc.dim(studioDir)}`);
+  console.log(`  Studio Dir: ${pc.dim(hasLocalStudio ? studioDir : 'On-demand (@postmcp/studio)')}`);
   if (specArg) {
     console.log(`  Initial Spec: ${pc.dim(specArg)}`);
   }
@@ -105,7 +115,7 @@ export async function studioCommand(specArg?: string, options: StudioCommandOpti
 
   let child: ChildProcess | null = null;
 
-  if (fs.existsSync(studioDir)) {
+  if (hasLocalStudio) {
     const srcDir = path.join(studioDir, 'src');
     const nextDir = path.join(studioDir, '.next');
     let isStale = false;
@@ -129,8 +139,8 @@ export async function studioCommand(specArg?: string, options: StudioCommandOpti
         ? ['start', '--port', port]
         : ['dev', '--port', port]
       : isBuilt && !preferDev
-      ? ['next', 'start', '-p', port]
-      : ['next', 'dev', '-p', port];
+      ? ['next', 'start', studioDir, '-p', port]
+      : ['next', 'dev', studioDir, '-p', port];
 
     try {
       child = spawn(command, args, {
@@ -163,6 +173,47 @@ export async function studioCommand(specArg?: string, options: StudioCommandOpti
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
       console.log(pc.yellow(`  Note: Running in detached standalone mode: ${errMsg}`));
+    }
+  } else {
+    // Launch on-demand via bunx or npx
+    console.log(pc.dim('  Studio not found locally. Launching on-demand (@postmcp/studio)...'));
+    const isBun = hasCommand('bun');
+    const runner = isBun ? 'bunx' : 'npx';
+    const runnerArgs = isBun
+      ? ['@postmcp/studio', '-p', port]
+      : ['--yes', '@postmcp/studio', '-p', port];
+
+    try {
+      child = spawn(runner, runnerArgs, {
+        cwd: process.cwd(),
+        stdio: 'inherit',
+        shell: true,
+        env: {
+          ...process.env,
+          PORT: port,
+          NEXT_PUBLIC_INITIAL_SPEC: specArg || '',
+          STUDIO_INITIAL_SPEC: specArg || '',
+          POSTMCP_WORKSPACE: process.cwd(),
+          WORKSPACE_CWD: process.cwd(),
+        },
+      });
+
+      const cleanup = () => {
+        if (child) {
+          try {
+            child.kill('SIGINT');
+          } catch {
+            // Ignore kill errors
+          }
+        }
+      };
+
+      process.on('SIGINT', cleanup);
+      process.on('SIGTERM', cleanup);
+      process.on('exit', cleanup);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.log(pc.yellow(`  Note: Failed to launch on-demand studio: ${errMsg}`));
     }
   }
 

@@ -128,10 +128,14 @@ if ! command -v postmcp >/dev/null 2>&1; then
 fi
 
 if command -v postmcp >/dev/null 2>&1; then
-    INSTALLED_VER="$(postmcp --version 2>/dev/null || echo 'v0.1.22')"
+    INSTALLED_VER="$(postmcp --version 2>/dev/null || true)"
     echo ""
     echo -e "${GREEN}========================================================================${RESET}"
-    echo -e "${BOLD}${GREEN}PostMCP ${INSTALLED_VER} installed successfully!${RESET}"
+    if [ -n "${INSTALLED_VER}" ]; then
+        echo -e "${BOLD}${GREEN}PostMCP ${INSTALLED_VER} installed successfully!${RESET}"
+    else
+        echo -e "${BOLD}${GREEN}PostMCP installed successfully!${RESET}"
+    fi
     echo -e "${GREEN}========================================================================${RESET}"
     echo ""
     echo -e "${BOLD}To launch the Visual Web Studio and documentation, run:${RESET}"
