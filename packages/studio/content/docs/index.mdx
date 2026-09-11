@@ -9,30 +9,11 @@ PostMCP is a high-performance developer platform and runtime engine designed to 
 
 Raw API specifications were created for human developers, not AI context windows. A typical production OpenAPI schema for Stripe, GitHub, or Kubernetes can span hundreds of kilobytes to several megabytes, instantly exhausting context limits and driving inference costs up. PostMCP transforms these bloated schemas into lightweight, context-aware MCP tools using intelligent token pruning, dynamic hot-tool mounting, and multi-tenant context resolution.
 
-```
-+-------------------------------------------------------------+
-|               OpenAPI 2.0 / 3.0 / 3.1 Spec                  |
-+-------------------------------------------------------------+
-                               |
-                               v
-+-------------------------------------------------------------+
-|                      PostMCP Engine                         |
-|  - Spec Normalizer (Resolves $refs, schemas, parameters)     |
-|  - Token Diet Engine (HTML strip, tables, field masks)      |
-|  - Hybrid JIT Router (Hot tools upfront + tool_search)      |
-|  - Safety Shield (3-tier risk classifier & dry-run)         |
-|  - Auto-Context & Tenant Resolver (Inject org/team/account) |
-|  - Internal Auto-Pagination (Consolidates cursors)          |
-+-------------------------------------------------------------+
-                               |
-            +------------------+------------------+
-            |                                     |
-            v                                     v
-+-----------------------+             +-----------------------+
-|  Runtime MCP Server   |             |  Standalone Exporter  |
-|  - Stdio Transport    |             |  - TypeScript MCP SDK |
-|  - SSE / HTTP Streams |             |  - Python FastMCP     |
-+-----------------------+             +-----------------------+
+```mermaid
+graph TD
+  Spec["OpenAPI 2.0 / 3.0 / 3.1 Spec"] --> Engine["PostMCP Engine<br/>Spec Normalizer (Resolves $refs, schemas, parameters)<br/>Token Diet Engine (HTML strip, tables, field masks)<br/>Hybrid JIT Router (Hot tools upfront + tool_search)<br/>Safety Shield (3-tier risk classifier & dry-run)<br/>Auto-Context & Tenant Resolver (Inject org/team/account)<br/>Internal Auto-Pagination (Consolidates cursors)"]
+  Engine --> Runtime["Runtime MCP Server<br/>Stdio Transport<br/>SSE / Streamable HTTP"]
+  Engine --> Exporter["Standalone Exporter<br/>TypeScript MCP SDK<br/>Python FastMCP"]
 ```
 
 ---

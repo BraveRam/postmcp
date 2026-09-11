@@ -2,6 +2,13 @@
 title: Transformation Pipeline
 description: "Deep dive into the 3 core stages: HTML Stripping, Markdown Table Serialization, and JSONPath Field Masking."
 ---
+```mermaid
+graph LR
+  Raw["Raw HTTP Response"] --> S1["Stage 1: HTML Stripping"]
+  S1 --> S2["Stage 2: Table Serialization"]
+  S2 --> S3["Stage 3: JSONPath Masking"]
+  S3 --> Out["Dieted Payload (-93% Tokens)"]
+```
 
 ## Stage 1: HTML Stripping & Text Sanitization
 

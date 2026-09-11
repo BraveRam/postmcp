@@ -19,20 +19,12 @@ npx postmcp studio
 
 The Studio interface is organized into four interconnected panels:
 
-```
-+-------------------------------------------------------------------------+
-|  [Header] PostMCP Studio | Spec Title | Presets | Import | AI Sandbox   |
-+-------------------------------------------------------------------------+
-|                 |                                   |                   |
-|  API Explorer   |       Endpoint Inspector          |  Live Sandbox /   |
-|                 |               &                   |  Token Diet       |
-|  - Search tools |       Token Diet Curator          |  Curator          |
-|  - Method tags  |                                   |                   |
-|  - Risk badges  |  - Parameter tables               |  - Real-time diff |
-|  - JIT status   |  - JSONPath field mask editor     |  - AI Elements    |
-|                 |  - Schema preview                 |  - Multi-provider |
-|                 |                                   |                   |
-+-------------------------------------------------------------------------+
+```mermaid
+graph TD
+  Header["Studio Header: Brand | Spec Selector | Presets Catalog | Import Spec | AI Sandbox"]
+  Header --> P1["API Explorer<br/>- Search tools & filters<br/>- HTTP method badges<br/>- Safety risk tiers<br/>- JIT status"]
+  Header --> P2["Endpoint Inspector & Curator<br/>- Parameter tables<br/>- JSONPath field mask editor<br/>- Schema preview<br/>- Macro composer"]
+  Header --> P3["Live Sandbox & Diet Comparator<br/>- Real-time diff & token counter<br/>- AI chat interface<br/>- Multi-provider model testing"]
 ```
 
 ---

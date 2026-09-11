@@ -18,29 +18,12 @@ While this conserves tokens, it creates substantial friction for AI agents:
 
 PostMCP introduces **Hybrid JIT**. Instead of mounting zero tools, PostMCP analyzes the OpenAPI graph and **pre-mounts the top 5 to 7 primary root collection endpoints upfront** at server startup.
 
-```
-                    [ OpenAPI Specification (80 Operations) ]
-                                       |
-                                       v
-               +-----------------------------------------------+
-               |          Hot-Tool Scoring Engine              |
-               |  - Identifies root GET collections            |
-               |  - Evaluates tags & entity names              |
-               |  - Respects x-hot-tool vendor extensions      |
-               +-----------------------------------------------+
-                                       |
-                 +---------------------+---------------------+
-                 |                                           |
-                 v                                           v
-+---------------------------------+         +---------------------------------+
-|   Pre-Mounted Turn-1 Tools      |         |      Dynamic On-Demand Pool     |
-|   (Always Visible to Agent)     |         |    (Discovered via tool_search) |
-|   - listProjects                |         |    - deleteApiKey               |
-|   - getCurrentUser              |         |    - resetProjectPassword       |
-|   - listDatabases               |         |    - transferOwnership          |
-|   - listBranches                |         |    - updateWebhookEndpoints     |
-|   - tool_search (Meta-Tool)     |         |    - 75 other edge endpoints    |
-+---------------------------------+         +---------------------------------+
+```mermaid
+graph TD
+  Spec["OpenAPI Specification (80+ Operations)"] --> Scorer["Hot-Tool Scoring Engine<br/>Identifies root GET collections<br/>Evaluates tags & entity names<br/>Respects x-hot-tool vendor extensions"]
+
+  Scorer --> PreMounted["Pre-Mounted Turn-1 Tools<br/>Always Visible to Agent<br/>- listProjects<br/>- getCurrentUser<br/>- listDatabases<br/>- listBranches<br/>- tool_search (Meta-Tool)"]
+  Scorer --> DynamicPool["Dynamic On-Demand Pool<br/>Discovered via tool_search<br/>- deleteApiKey<br/>- resetProjectPassword<br/>- transferOwnership<br/>- updateWebhookEndpoints<br/>- 75 other edge endpoints"]
 ```
 
 ### Turn-1 Agent Experience

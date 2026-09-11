@@ -26,23 +26,22 @@ LLM agents routinely fall into two failure modes:
 
 PostMCP transparently follows pagination cursors **inside the runtime engine before returning to the LLM**.
 
-```
- [ Agent Calls listProjects (single invocation) ]
-                        |
-                        v
- [ PostMCP HTTP Engine ]
-   Page 1: Fetches 10 items (next_cursor: "cur_1")
-   Page 2: Internally fetches next 10 items (next_cursor: "cur_2")
-   Page 3: Internally fetches next 10 items (End of collection)
-                        |
-                        v
- [ Consolidates 30 items into single dataset ]
-                        |
-                        v
- [ Applies Token Diet Markdown table formatting ]
-                        |
-                        v
- [ Returns complete 30-item table to LLM in 1 Turn ]
+```mermaid
+graph TD
+  Call["Agent Calls listProjects (single invocation)"] --> Engine["PostMCP HTTP Engine"]
+
+  subgraph Engine ["PostMCP HTTP Engine Loop"]
+    direction TB
+    P1["Page 1: Fetches 10 items (next_cursor: cur_1)"]
+    P2["Page 2: Internally fetches next 10 items (next_cursor: cur_2)"]
+    P3["Page 3: Internally fetches next 10 items (End of collection)"]
+    P1 --> P2
+    P2 --> P3
+  end
+
+  Engine --> Consolidate["Consolidates 30 items into single dataset"]
+  Consolidate --> Format["Applies Token Diet Markdown table formatting"]
+  Format --> Response["Returns complete 30-item table to LLM in 1 Turn"]
 ```
 
 ---

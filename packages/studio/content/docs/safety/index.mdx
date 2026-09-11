@@ -37,24 +37,11 @@ Every operation parsed from an OpenAPI specification is evaluated against struct
 
 ## Safety Enforcement Pipeline
 
-```
- [ Agent Dispatches Tool Call ]
-              |
-              v
- [ 1. Risk Tier Inspection ]
-     - READ_ONLY  -> Allowed to proceed
-     - MUTATION   -> Evaluated against Dry-Run settings
-     - CRITICAL   -> Checked against Blocked Operations list
-              |
-              v
- [ 2. Dry-Run Check ]
-     - If enabled: Intercept & synthesize mock success
-     - If disabled: Continue to network check
-              |
-              v
- [ 3. SSRF & Target URL Verification ]
-     - Block private RFC 1918 / loopback / metadata IPs
-              |
-              v
- [ Upstream Request Executed Safely ]
+```mermaid
+graph TD
+  Call["Agent Dispatches Tool Call"] --> Risk["1. Risk Tier Inspection<br/>- READ_ONLY: Allowed to proceed<br/>- MUTATION: Evaluated against Dry-Run settings<br/>- CRITICAL: Checked against Blocked Operations list"]
+  Risk --> DryRun{"2. Dry-Run Check"}
+  DryRun -->|"Enabled"| Mock["Intercept & synthesize mock success"]
+  DryRun -->|"Disabled"| Network["3. SSRF & Target URL Verification<br/>Block private RFC 1918 / loopback / metadata IPs"]
+  Network --> Exec["Upstream Request Executed Safely"]
 ```

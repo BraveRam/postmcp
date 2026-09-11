@@ -23,28 +23,17 @@ The AI agent then hallucinates that no projects exist, or gets trapped in a cycl
 
 PostMCP features a built-in **Auto-Context Resolver** that detects required or recommended tenant parameters (e.g. `org_id`, `organization_id`, `team_id`, `account_id`, `owner`) and injects them transparently.
 
-```
- [ Agent Calls listProjects (omits org_id) ]
-                     |
-                     v
- [ Auto-Tenant Resolver Triggered ]
-                     |
-  1. Check Environment Variables (NEON_ORG_ID, ORG_ID)
-     Found? --> Inject org_id and execute
-     Not found? --> Proceed to dynamic identity lookup
-                     |
-  2. Dynamic Identity Lookup
-     Query /users/me/organizations or /user
-     Extract primary active organization ID
-                     |
-  3. Default Config Fallback
-     Read postmcp.config.json tenant.defaultId
-                     |
-                     v
- [ Execute Upstream: GET /projects?org_id=org_active_123 ]
-                     |
-                     v
- [ Agent Receives Full Project List on Turn 1 ]
+```mermaid
+graph TD
+  Call["Agent Calls listProjects (omits org_id)"] --> Resolver["Auto-Tenant Resolver Triggered"]
+  Resolver --> Env{"1. Check Environment Variables<br/>(NEON_ORG_ID, ORG_ID)"}
+  Env -->|"Found"| Inject["Inject org_id and execute"]
+  Env -->|"Not Found"| Lookup["2. Dynamic Identity Lookup<br/>Query /users/me/organizations or /user"]
+  Lookup -->|"Resolved"| Inject
+  Lookup -->|"Failed"| Fallback["3. Default Config Fallback<br/>Read postmcp.config.json tenant.defaultId"]
+  Fallback --> Inject
+  Inject --> Upstream["Execute Upstream: GET /projects?org_id=org_active_123"]
+  Upstream --> Agent["Agent Receives Full Project List on Turn 1"]
 ```
 
 ---

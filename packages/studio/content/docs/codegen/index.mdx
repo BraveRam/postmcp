@@ -11,6 +11,13 @@ While the PostMCP runtime proxy (`postmcp run`) is ideal for local development a
 3. **Internal Code Repositories**: Checking the generated MCP server into version control and distributing it to engineering teams.
 
 PostMCP provides first-class generators for both **TypeScript** (Node.js) and **Python**.
+ 
+```mermaid
+graph TD
+  OpenAPI["OpenAPI 2.0 / 3.0 / 3.1 Spec"] --> Gen["PostMCP Code Generator"]
+  Gen --> TS["TypeScript MCP SDK<br/>- Strict Zod schemas<br/>- Embedded Token Diet masks<br/>- stdio & Streamable HTTP"]
+  Gen --> PY["Python FastMCP Server<br/>- Strict Pydantic models<br/>- Async HTTP client<br/>- stdio & SSE ready"]
+```
 
 ---
 
