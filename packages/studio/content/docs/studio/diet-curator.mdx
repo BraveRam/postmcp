@@ -8,9 +8,10 @@ description: Visualizing token savings with side-by-side payload diffs and inter
 The **Token Diet Curator** allows you to see the exact transformation that upstream API responses undergo before reaching the LLM.
 
 ```mermaid
-graph LR
-  Raw["Raw Response (Left Pane)<br/>Size: 12,400 bytes (~3,100 tokens)<br/>- Verbose JSON payload<br/>- Trace IDs & metadata<br/>- Full schema overhead"]
-  -->|"Token Diet Transformation<br/>Field Masking + Markdown Serialization"| Dieted["Dieted Payload (Right Pane)<br/>Size: 780 bytes (~195 tokens)<br/>- Clean Markdown Table<br/>- Essential fields only<br/>- Total Savings: -93.7% tokens"]
+flowchart LR
+  Raw["<b>Raw Response</b><br/>12 KB (~3.1k tokens)"]
+  --> Diet["<b>Token Diet</b><br/>Mask & format"]
+  --> Clean["<b>Dieted Payload</b><br/>780 B (-93.7% tokens)"]
 ```
 
 ---

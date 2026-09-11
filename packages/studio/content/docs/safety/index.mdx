@@ -38,10 +38,10 @@ Every operation parsed from an OpenAPI specification is evaluated against struct
 ## Safety Enforcement Pipeline
 
 ```mermaid
-graph TD
-  Call["Agent Dispatches Tool Call"] --> Risk["1. Risk Tier Inspection<br/>- READ_ONLY: Allowed to proceed<br/>- MUTATION: Evaluated against Dry-Run settings<br/>- CRITICAL: Checked against Blocked Operations list"]
-  Risk --> DryRun{"2. Dry-Run Check"}
-  DryRun -->|"Enabled"| Mock["Intercept & synthesize mock success"]
-  DryRun -->|"Disabled"| Network["3. SSRF & Target URL Verification<br/>Block private RFC 1918 / loopback / metadata IPs"]
-  Network --> Exec["Upstream Request Executed Safely"]
+flowchart LR
+  Call["<b>Tool Call</b><br/>Agent request"]
+  --> Tier["<b>1. Risk Tier</b><br/>Read / Write / Crit"]
+  --> Dry["<b>2. Dry-Run</b><br/>Simulate or pass"]
+  --> SSRF["<b>3. SSRF Guard</b><br/>Block private IPs"]
+  --> Exec["<b>Upstream API</b><br/>Safe execution"]
 ```

@@ -19,11 +19,13 @@ While this conserves tokens, it creates substantial friction for AI agents:
 PostMCP introduces **Hybrid JIT**. Instead of mounting zero tools, PostMCP analyzes the OpenAPI graph and **pre-mounts the top 5 to 7 primary root collection endpoints upfront** at server startup.
 
 ```mermaid
-graph TD
-  Spec["OpenAPI Specification (80+ Operations)"] --> Scorer["Hot-Tool Scoring Engine<br/>Identifies root GET collections<br/>Evaluates tags & entity names<br/>Respects x-hot-tool vendor extensions"]
-
-  Scorer --> PreMounted["Pre-Mounted Turn-1 Tools<br/>Always Visible to Agent<br/>- listProjects<br/>- getCurrentUser<br/>- listDatabases<br/>- listBranches<br/>- tool_search (Meta-Tool)"]
-  Scorer --> DynamicPool["Dynamic On-Demand Pool<br/>Discovered via tool_search<br/>- deleteApiKey<br/>- resetProjectPassword<br/>- transferOwnership<br/>- updateWebhookEndpoints<br/>- 75 other edge endpoints"]
+flowchart LR
+  Spec["<b>OpenAPI Spec</b><br/>80+ operations"]
+  --> JIT["<b>Hybrid JIT</b><br/>Hot-tool scorer"]
+  JIT --> Hot["<b>Hot Tools</b><br/>Top 5-7 turn 1"]
+  JIT --> Search["<b>tool_search</b><br/>On-demand pool"]
+  Hot --> Agent["<b>AI Agent</b><br/>Instant turn 1"]
+  Search --> Agent
 ```
 
 ### Turn-1 Agent Experience

@@ -47,7 +47,7 @@ export function Mermaid({ chart, className }: MermaidProps) {
                 textColor: '#e4e4e7',
                 mainBkg: '#18181b',
                 nodeBorder: '#3f3f46',
-                fontSize: '16px',
+                fontSize: '14px',
               }
             : {
                 darkMode: false,
@@ -61,7 +61,7 @@ export function Mermaid({ chart, className }: MermaidProps) {
                 textColor: '#18181b',
                 mainBkg: '#f4f4f5',
                 nodeBorder: '#d4d4d8',
-                fontSize: '16px',
+                fontSize: '14px',
               },
           themeCSS: `
             .node rect, .node circle, .node ellipse, .node polygon, .node path {
@@ -72,11 +72,11 @@ export function Mermaid({ chart, className }: MermaidProps) {
             }
             text, .label, .nodeLabel, .label text, .label div, .node div {
               font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
-              font-size: 16px !important;
+              font-size: 14px !important;
               font-weight: 500 !important;
             }
             .cluster-label text, .cluster-label span {
-              font-size: 14px !important;
+              font-size: 13px !important;
               font-weight: 600 !important;
             }
           `,
