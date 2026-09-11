@@ -3,31 +3,46 @@
 
 $ErrorActionPreference = "Stop"
 
-$PackageName = "postmcp"
+$PackageName = "@postmcp/cli"
 
 Write-Host "--------------------------------------------------------" -ForegroundColor Cyan
 Write-Host " PostMCP Installer for Windows" -ForegroundColor Cyan
 Write-Host " The Postman for MCP: Turn OpenAPI into Safe, Context-Optimized MCP Servers" -ForegroundColor Cyan
 Write-Host "--------------------------------------------------------" -ForegroundColor Cyan
 
-# 1. Check for Node.js
-if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-    Write-Error "Node.js is required but was not found. Please install Node.js (v18+) from https://nodejs.org"
+# 1. Environment & Runtime Check
+$HasNode = [bool](Get-Command node -ErrorAction SilentlyContinue)
+$HasBun = [bool](Get-Command bun -ErrorAction SilentlyContinue)
+
+if (-not $HasNode -and -not $HasBun) {
+    Write-Error "Node.js (v18+) or Bun is required. Please install Node.js from https://nodejs.org or Bun from https://bun.sh"
     exit 1
 }
 
-# 2. Check for npm
-if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-    Write-Error "npm is required but was not found."
+# 2. Select Package Manager in speed order: bun -> pnpm -> npm
+$PM = ""
+$InstallCmd = ""
+
+if (Get-Command bun -ErrorAction SilentlyContinue) {
+    $PM = "bun"
+    $InstallCmd = "bun add -g $PackageName@latest"
+} elseif (Get-Command pnpm -ErrorAction SilentlyContinue) {
+    $PM = "pnpm"
+    $InstallCmd = "pnpm add -g $PackageName@latest"
+} elseif (Get-Command npm -ErrorAction SilentlyContinue) {
+    $PM = "npm"
+    $InstallCmd = "npm install -g $PackageName@latest"
+} else {
+    Write-Error "No supported package manager found (bun, pnpm, npm)."
     exit 1
 }
 
-Write-Host "Installing $PackageName globally via npm..." -ForegroundColor Green
+Write-Host "Installing $PackageName via $PM (fastest available)..." -ForegroundColor Green
 
 try {
-    npm install -g "$PackageName@latest"
+    Invoke-Expression $InstallCmd
 } catch {
-    Write-Error "Failed to install $PackageName globally. Try running PowerShell as Administrator."
+    Write-Error "Failed to install $PackageName. Try running PowerShell as Administrator."
     exit 1
 }
 
@@ -57,7 +72,6 @@ if (Get-Command postmcp -ErrorAction SilentlyContinue) {
     Write-Host ""
     Write-Host "========================================================================" -ForegroundColor Green
 } else {
-    $NpmPrefix = (npm config get prefix).Trim()
     Write-Warning "'postmcp' was installed but is not on your current PATH."
-    Write-Warning "Ensure '$NpmPrefix' is included in your User PATH environment variable."
+    Write-Warning "Ensure your package manager global bin directory is in your User PATH environment variable."
 }

@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-PACKAGE="postmcp"
+PACKAGE="@postmcp/cli"
 
 # Color helpers
 if [ -t 1 ]; then
@@ -28,53 +28,107 @@ echo -e "${BOLD} PostMCP Installer${RESET}"
 echo -e " The Postman for MCP: Turn OpenAPI into Safe, Context-Optimized MCP Servers"
 echo -e "${CYAN}--------------------------------------------------------${RESET}"
 
-# 1. Check for Node.js
-if ! command -v node >/dev/null 2>&1; then
-    echo "Error: Node.js is required but not installed." >&2
-    echo "Please install Node.js (v18 or higher) from https://nodejs.org or via your package manager." >&2
+# 1. Environment & Runtime Check
+if ! command -v node >/dev/null 2>&1 && ! command -v bun >/dev/null 2>&1; then
+    echo "Error: Node.js (v18+) or Bun is required but not installed." >&2
+    echo "Please install Bun from https://bun.sh or Node.js from https://nodejs.org" >&2
     exit 1
 fi
 
-NODE_VERSION="$(node -v | sed 's/^v//')"
-NODE_MAJOR="$(echo "${NODE_VERSION}" | cut -d. -f1)"
-
-if [ "${NODE_MAJOR}" -lt 18 ]; then
-    echo -e "${YELLOW}Warning: Node.js version ${NODE_VERSION} detected. PostMCP recommends Node.js 18 or higher.${RESET}" >&2
-fi
-
-# 2. Select Package Manager
-INSTALL_CMD=""
-if command -v npm >/dev/null 2>&1; then
-    INSTALL_CMD="npm install -g ${PACKAGE}@latest"
-elif command -v pnpm >/dev/null 2>&1; then
-    INSTALL_CMD="pnpm add -g ${PACKAGE}@latest"
-elif command -v bun >/dev/null 2>&1; then
-    INSTALL_CMD="bun add -g ${PACKAGE}@latest"
-elif command -v yarn >/dev/null 2>&1; then
-    INSTALL_CMD="yarn global add ${PACKAGE}@latest"
-else
-    echo "Error: No supported package manager found (npm, pnpm, bun, yarn)." >&2
-    exit 1
-fi
-
-echo -e "Installing ${BOLD}${PACKAGE}${RESET} globally via ${INSTALL_CMD%% *}..."
-
-# 3. Attempt Installation
-if ! eval "${INSTALL_CMD}" 2>/dev/null; then
-    echo -e "${YELLOW}Standard global installation failed (likely permission error).${RESET}"
-    if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
-        echo "Attempting installation with sudo..."
-        sudo ${INSTALL_CMD}
-    else
-        echo "Error: Could not install globally. Please check npm permissions or run:" >&2
-        echo "  sudo ${INSTALL_CMD}" >&2
-        exit 1
+if command -v node >/dev/null 2>&1; then
+    NODE_VERSION="$(node -v | sed 's/^v//')"
+    NODE_MAJOR="$(echo "${NODE_VERSION}" | cut -d. -f1)"
+    if [ "${NODE_MAJOR}" -lt 18 ]; then
+        echo -e "${YELLOW}Warning: Node.js version ${NODE_VERSION} detected. PostMCP recommends Node.js 18 or higher.${RESET}" >&2
     fi
 fi
 
-# 4. Verify Installation
+# 2. Select Package Manager in speed order: bun -> pnpm -> npm
+PM=""
+INSTALL_CMD=""
+
+if command -v bun >/dev/null 2>&1; then
+    PM="bun"
+    INSTALL_CMD="bun add -g ${PACKAGE}@latest"
+elif command -v pnpm >/dev/null 2>&1; then
+    PM="pnpm"
+    INSTALL_CMD="pnpm add -g ${PACKAGE}@latest"
+elif command -v npm >/dev/null 2>&1; then
+    PM="npm"
+    INSTALL_CMD="npm install -g ${PACKAGE}@latest"
+elif command -v yarn >/dev/null 2>&1; then
+    PM="yarn"
+    INSTALL_CMD="yarn global add ${PACKAGE}@latest"
+else
+    echo "Error: No supported package manager found (bun, pnpm, npm, yarn)." >&2
+    echo "Please install Bun (https://bun.sh) or npm (https://nodejs.org)." >&2
+    exit 1
+fi
+
+echo -e "Installing ${BOLD}${PACKAGE}${RESET} via ${CYAN}${PM}${RESET} (fastest available)..."
+
+# 3. Installation Execution
+INSTALLED=false
+
+# 3a. Try standard install
+if eval "${INSTALL_CMD}" 2>/dev/null; then
+    INSTALLED=true
+fi
+
+# 3b. For npm: if standard install failed (permissions), try ~/.local prefix
+if [ "${INSTALLED}" = "false" ] && [ "${PM}" = "npm" ]; then
+    echo -e "${YELLOW}Global system directory is not writable without root permissions.${RESET}"
+    echo "Attempting user-level installation into ~/.local..."
+    mkdir -p "${HOME}/.local"
+    if npm install -g --prefix "${HOME}/.local" "${PACKAGE}@latest" 2>/dev/null; then
+        INSTALLED=true
+        if [ -d "${HOME}/.local/bin" ]; then
+            export PATH="${HOME}/.local/bin:${PATH}"
+        fi
+    fi
+fi
+
+# 3c. If user prefix failed and sudo is available, try sudo preserving user PATH
+if [ "${INSTALLED}" = "false" ]; then
+    if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
+        echo -e "${YELLOW}Attempting installation with sudo...${RESET}"
+        PM_PATH="$(command -v "${PM}" || true)"
+        NODE_DIR="$(dirname "$(command -v node 2>/dev/null || command -v bun 2>/dev/null)" || true)"
+        if [ -n "${PM_PATH}" ] && [ -x "${PM_PATH}" ]; then
+            if sudo env "PATH=${PATH}:${NODE_DIR}:/usr/local/bin:/usr/bin" "${PM_PATH}" install -g "${PACKAGE}@latest"; then
+                INSTALLED=true
+            fi
+        fi
+    fi
+fi
+
+if [ "${INSTALLED}" = "false" ]; then
+    echo "" >&2
+    echo "Error: Failed to install ${PACKAGE}." >&2
+    echo "Please try running manually:" >&2
+    echo "  ${INSTALL_CMD}" >&2
+    exit 1
+fi
+
+# 4. PATH Resolution & Verification
+USER_PATH_WARN=""
+if ! command -v postmcp >/dev/null 2>&1; then
+    for candidate in \
+        "${BUN_INSTALL:-$HOME/.bun}/bin" \
+        "${PNPM_HOME:-$HOME/.local/share/pnpm}" \
+        "$HOME/.local/bin" \
+        "$HOME/.npm-global/bin" \
+        "$(npm config get prefix 2>/dev/null || true)/bin"; do
+        if [ -n "${candidate}" ] && [ -x "${candidate}/postmcp" ]; then
+            export PATH="${candidate}:${PATH}"
+            USER_PATH_WARN="${candidate}"
+            break
+        fi
+    done
+fi
+
 if command -v postmcp >/dev/null 2>&1; then
-    INSTALLED_VER="$(postmcp --version 2>/dev/null || echo 'latest')"
+    INSTALLED_VER="$(postmcp --version 2>/dev/null || echo 'v0.1.21')"
     echo ""
     echo -e "${GREEN}========================================================================${RESET}"
     echo -e "${BOLD}${GREEN}PostMCP ${INSTALLED_VER} installed successfully!${RESET}"
@@ -97,8 +151,17 @@ if command -v postmcp >/dev/null 2>&1; then
     echo -e "  ${CYAN}postmcp export @stripe --client cursor --write${RESET} ${DIM}# 1-click export to Cursor${RESET}"
     echo ""
     echo -e "${GREEN}========================================================================${RESET}"
+    if [ -n "${USER_PATH_WARN}" ]; then
+        echo ""
+        echo -e "${YELLOW}Note: '${USER_PATH_WARN}' is not in your default shell PATH.${RESET}"
+        echo "To use 'postmcp' from any terminal, add it to your shell profile:"
+        echo -e "  ${CYAN}export PATH=\"${USER_PATH_WARN}:\$PATH\"${RESET}"
+        if [ -n "${FISH_VERSION:-}" ] || [[ "${SHELL:-}" == *"fish"* ]]; then
+            echo -e "Or for fish shell:"
+            echo -e "  ${CYAN}fish_add_path ${USER_PATH_WARN}${RESET}"
+        fi
+    fi
 else
-    echo -e "${YELLOW}Installation finished, but 'postmcp' was not found on your current PATH.${RESET}" >&2
-    echo "Make sure your global npm bin directory is included in PATH:" >&2
-    echo "  export PATH=\"\$(npm config get prefix)/bin:\$PATH\"" >&2
+    echo -e "${YELLOW}Installation completed, but 'postmcp' was not found on your current PATH.${RESET}" >&2
+    echo "Ensure your global bin directory is included in PATH." >&2
 fi

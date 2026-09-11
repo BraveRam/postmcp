@@ -1,6 +1,6 @@
 {
   "name": "@postmcp/cli",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "description": "The Postman for MCP. Turn any OpenAPI spec into a context-optimized MCP server in seconds.",
   "publishConfig": {
     "access": "public"
@@ -16,7 +16,8 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
-    }
+    },
+    "./bin": "./dist/bin.js"
   },
   "files": [
     "dist"
