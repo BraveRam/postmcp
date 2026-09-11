@@ -47,6 +47,7 @@ export function Mermaid({ chart, className }: MermaidProps) {
                 textColor: '#e4e4e7',
                 mainBkg: '#18181b',
                 nodeBorder: '#3f3f46',
+                fontSize: '16px',
               }
             : {
                 darkMode: false,
@@ -60,6 +61,7 @@ export function Mermaid({ chart, className }: MermaidProps) {
                 textColor: '#18181b',
                 mainBkg: '#f4f4f5',
                 nodeBorder: '#d4d4d8',
+                fontSize: '16px',
               },
           themeCSS: `
             .node rect, .node circle, .node ellipse, .node polygon, .node path {
@@ -68,8 +70,14 @@ export function Mermaid({ chart, className }: MermaidProps) {
             .edgePath path {
               stroke-width: 1.5px;
             }
-            text {
+            text, .label, .nodeLabel, .label text, .label div, .node div {
               font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+              font-size: 16px !important;
+              font-weight: 500 !important;
+            }
+            .cluster-label text, .cluster-label span {
+              font-size: 14px !important;
+              font-weight: 600 !important;
             }
           `,
         });
@@ -78,7 +86,10 @@ export function Mermaid({ chart, className }: MermaidProps) {
         const renderResult = await mermaid.render(id, cleanChart);
 
         if (!isCancelled) {
-          setSvg(renderResult.svg);
+          let processedSvg = renderResult.svg;
+          // Ensure SVG scales responsively without arbitrary pixel clamping
+          processedSvg = processedSvg.replace(/style="max-width:\s*[\d.]+px;?"/gi, 'style="max-width: 100%; height: auto;"');
+          setSvg(processedSvg);
           setLoading(false);
         }
       } catch (err: any) {
@@ -115,9 +126,9 @@ export function Mermaid({ chart, className }: MermaidProps) {
   }
 
   return (
-    <div className={`my-6 overflow-x-auto rounded-lg border border-fd-border bg-fd-card p-4 flex justify-center ${className || ''}`}>
+    <div className={`my-6 w-full overflow-x-auto rounded-xl border border-fd-border bg-fd-card/40 p-5 flex justify-center ${className || ''}`}>
       <div
-        className="mermaid-svg-container [&>svg]:max-w-full [&>svg]:h-auto flex justify-center"
+        className="mermaid-svg-container w-full flex justify-center [&>svg]:max-w-full [&>svg]:h-auto"
         dangerouslySetInnerHTML={{ __html: svg }}
       />
     </div>

@@ -13,25 +13,13 @@ Large Language Models do not read APIs the way humans do. When an LLM receives A
 The **Token Diet Engine** is PostMCP's proprietary transformation pipeline that sits directly between upstream HTTP responses and the MCP client. It compresses and refines payloads with mathematical precision, discarding noise while strictly retaining primary semantic identifiers and values.
 
 ```mermaid
-graph TD
-  Raw["Raw Upstream HTTP Response<br/>Verbose JSON with repeated keys across 50 items<br/>HTML tags, markdown blurbs, null fields, trace IDs<br/>45,000 bytes (~11,250 tokens)"]
-
-  subgraph Pipeline ["Token Diet Pipeline"]
-    direction TB
-    S1["Stage 1: Noise Removal<br/>Strip HTML markup and styling<br/>Strip null, empty string, and trace fields"]
-    S2["Stage 2: JSONPath Field Masking<br/>Extract only essential fields per entity"]
-    S3["Stage 3: Markdown Serialization<br/>Transform repetitive array objects to markdown table<br/>Eliminates repetitive JSON bracket and key overhead"]
-    S4["Stage 4: Guardrail Enforcer<br/>Apply byte ceiling & append intentional truncation message"]
-
-    S1 --> S2
-    S2 --> S3
-    S3 --> S4
-  end
-
-  Output["Dieted MCP Tool Output<br/>Clean Markdown table or compact JSON<br/>3,100 bytes (~775 tokens) -> 93% Reduction"]
-
-  Raw --> S1
-  S4 --> Output
+flowchart LR
+  Raw["<b>Raw HTTP</b><br/>45 KB (~11k tokens)"]
+  --> S1["<b>1. Strip Noise</b><br/>HTML & nulls"]
+  --> S2["<b>2. Field Mask</b><br/>JSONPath"]
+  --> S3["<b>3. Format Table</b><br/>Markdown"]
+  --> S4["<b>4. Guardrails</b><br/>Ceilings"]
+  --> Out["<b>Dieted MCP</b><br/>3 KB (-93%)"]
 ```
 
 ---

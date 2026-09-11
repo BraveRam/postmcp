@@ -8,25 +8,14 @@ description: Comprehensive breakdown of the PostMCP runtime engine, request life
 PostMCP operates on a modular, pipeline-oriented architecture designed to sit between LLM agents (clients) and REST API endpoints (targets). Instead of treating OpenAPI specifications as static documentation files, PostMCP treats them as dynamic, queryable state machines.
 
 ```mermaid
-graph TD
-  Client["LLM Agent / MCP Client<br/>(Claude, Cursor, OpenCode)"]
-  Client -->|"JSON-RPC 2.0 (stdio / SSE)"| Engine["PostMCP Server"]
-
-  subgraph Engine ["PostMCP Server"]
-    direction TB
-    P1["Ingestion & Normalizer<br/>Swagger 2.0 / OpenAPI 3.0 / 3.1 parser<br/>Recursive $ref resolution<br/>Schema normalization & vendor extension extraction"]
-    P2["Tool Registry & JIT Router<br/>Turn-1 Hot Tools pre-mounted upfront<br/>Meta-tool: tool_search for dynamic discovery<br/>LRU eviction and memory bounds"]
-    P3["Safety Shield & Security Engine<br/>3-Tier Risk Classifier (READ_ONLY, MUTATION, CRITICAL)<br/>Dry-Run Interceptor<br/>SSRF & Private Network Defense"]
-    P4["Execution & Context Engine<br/>Auto-Tenant / Identity resolver (org_id, team_id)<br/>Internal Auto-Pagination (anti-loop guardrail)<br/>Auth Handler (Bearer, ApiKey, Basic, Custom)"]
-    P5["Token Diet Engine<br/>HTML stripping & noise removal<br/>Array to Markdown table transformation<br/>JSONPath field masks & byte truncation"]
-
-    P1 --> P2
-    P2 --> P3
-    P3 --> P4
-    P4 --> P5
-  end
-
-  Engine -->|"HTTP / HTTPS (REST Requests)"| Services["Upstream REST Services"]
+flowchart LR
+  Client["<b>LLM Agent</b><br/>Claude / Cursor"]
+  --> P1["<b>1. Ingest</b><br/>OpenAPI & $refs"]
+  --> P2["<b>2. JIT Router</b><br/>Hot tools"]
+  --> P3["<b>3. Safety</b><br/>Risk & SSRF"]
+  --> P4["<b>4. Context</b><br/>Tenant & cursor"]
+  --> P5["<b>5. Token Diet</b><br/>-93% Tokens"]
+  --> API["<b>Upstream API</b><br/>REST Endpoints"]
 ```
 
 ---
