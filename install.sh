@@ -128,7 +128,7 @@ if ! command -v postmcp >/dev/null 2>&1; then
 fi
 
 if command -v postmcp >/dev/null 2>&1; then
-    INSTALLED_VER="$(postmcp --version 2>/dev/null || echo 'v0.1.21')"
+    INSTALLED_VER="$(postmcp --version 2>/dev/null || echo 'v0.1.22')"
     echo ""
     echo -e "${GREEN}========================================================================${RESET}"
     echo -e "${BOLD}${GREEN}PostMCP ${INSTALLED_VER} installed successfully!${RESET}"
