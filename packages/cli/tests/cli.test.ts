@@ -44,6 +44,17 @@ describe('CLI Command Surface & Integration Contract', () => {
     logSpy.mockRestore();
   });
 
+  it('should support docs command without throwing error', async () => {
+    const cli = createCli();
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await expect(
+      cli.parseAsync(['node', 'postmcp', 'docs'])
+    ).resolves.toBeDefined();
+
+    logSpy.mockRestore();
+  });
+
   it('should calculate estimated token savings in inspect command', () => {
     const mockSpec = {
       title: 'Petstore API',

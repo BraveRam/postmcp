@@ -24,16 +24,50 @@ PostMCP solves this out of the box:
 4. **Adaptive JIT Routing**: Scales to massive specs (e.g. Stripe, GitHub) by keeping tool definitions under 1,500 active tokens and loading endpoints on demand.
 5. **Dry-Run Protection**: Intercepts destructive mutations (POST, PUT, DELETE) before they touch production systems.
 
+## Installation
+
+Install PostMCP in one command:
+
+```bash
+# macOS & Linux
+curl -fsSL https://raw.githubusercontent.com/BraveRam/postmcp/main/install.sh | bash
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/BraveRam/postmcp/main/install.ps1 | iex
+```
+
+Or via your favorite package manager:
+
+```bash
+npm install -g postmcp
+# or: pnpm add -g postmcp
+# or: bun add -g postmcp
+```
+
 ---
 
-## Quickstart in 3 Steps
+## Quickstart
+
+### Launch Visual Web Studio
+
+Launch the local interactive workbench to explore APIs, test endpoints in the AI sandbox, and curate Token Diet rules:
+
+```bash
+postmcp studio
+```
+
+Opens `http://localhost:3000` in your default browser. From here, you can load any of the 60+ bundled presets, import custom OpenAPI specs, and access the built-in documentation at `http://localhost:3000/docs`.
+
+---
+
+## CLI Workflow in 3 Steps
 
 ### Step 1: Inspect the API
 
 Before connecting an API to your agent, inspect it to verify its endpoints and authentication requirements:
 
 ```bash
-npx @postmcp/cli inspect https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
+postmcp inspect https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
 ```
 
 Or inspect one of the 60+ built-in presets:

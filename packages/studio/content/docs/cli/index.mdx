@@ -7,23 +7,33 @@ description: Command-line interface for running, inspecting, generating, and vis
 
 PostMCP is distributed via npm as a zero-install binary via `npx` or as a globally installed package.
 
-### Zero-Install via npx (Recommended)
+### Quick Install (One-Liner)
+
+```bash
+# macOS & Linux (curl)
+curl -fsSL https://raw.githubusercontent.com/BraveRam/postmcp/main/install.sh | bash
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/BraveRam/postmcp/main/install.ps1 | iex
+```
+
+### Zero-Install via npx
 
 ```bash
 npx postmcp <command> [options]
 ```
 
-### Global Installation
+### Global Installation via Package Manager
 
 ```bash
 # Using npm
-npm install -g @postmcp/cli
+npm install -g postmcp
 
 # Using pnpm
-pnpm add -g @postmcp/cli
+pnpm add -g postmcp
 
 # Using bun
-bun add -g @postmcp/cli
+bun add -g postmcp
 ```
 
 Once installed globally, you can invoke the CLI directly:
@@ -36,15 +46,16 @@ postmcp --version
 
 ## Command Matrix
 
-The PostMCP CLI provides five primary commands:
+The PostMCP CLI provides core commands:
 
 | Command | Purpose | Typical Use Case |
 | :--- | :--- | :--- |
+| [`postmcp studio`](/docs/cli/studio) | Launches the interactive Visual Web Studio. | Testing tools in a browser sandbox and visually tuning Token Diet rules. |
 | [`postmcp run`](/docs/cli/run) | Starts a live MCP proxy server. | Connecting to Claude Desktop, Cursor, or OpenCode via stdio or SSE. |
 | [`postmcp inspect`](/docs/cli/inspect) | Analyzes endpoints, parameters, and risk tiers. | Profiling token footprints and security classifications before deployment. |
 | [`postmcp generate`](/docs/cli/generate) | Exports a standalone TypeScript or Python MCP server codebase. | Creating production services with zero dependencies on PostMCP. |
-| [`postmcp studio`](/docs/cli/studio) | Launches the interactive Visual Web Studio. | Testing tools in a browser sandbox and visually tuning Token Diet rules. |
 | [`postmcp presets`](/docs/presets) | Lists and resolves bundled API presets. | Discovering pre-tuned configurations for Neon, Stripe, Linear, etc. |
+| `postmcp docs` | Opens documentation in default browser. | Quickly accessing local Studio documentation or online guides. |
 
 ---
 

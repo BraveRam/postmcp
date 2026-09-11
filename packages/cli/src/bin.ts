@@ -5,6 +5,7 @@ import { generateCommand } from './commands/generate.js';
 import { exportCommand } from './commands/export.js';
 import { listPresetsCommand, syncPresetsCommand } from './commands/presets.js';
 import { studioCommand } from './commands/studio.js';
+import { docsCommand } from './commands/docs.js';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import pc from 'picocolors';
@@ -143,6 +144,18 @@ export function createCli(): Command {
     .option('--no-open', 'Do not automatically open browser')
     .action((spec, opts) => {
       studioCommand(spec, opts).catch((err) => {
+        console.error(pc.red(`Fatal error: ${err.message}`));
+        process.exit(1);
+      });
+    });
+
+  // 7. Docs Command
+  program
+    .command('docs')
+    .description('Open PostMCP documentation in default browser')
+    .option('--local', 'Target local Studio docs at http://localhost:3000/docs')
+    .action((opts) => {
+      docsCommand(opts).catch((err) => {
         console.error(pc.red(`Fatal error: ${err.message}`));
         process.exit(1);
       });
