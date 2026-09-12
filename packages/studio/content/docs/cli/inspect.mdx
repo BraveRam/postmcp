@@ -21,10 +21,7 @@ The `inspect` command analyzes an OpenAPI specification without starting an acti
 
 | Flag | Type | Description | Default |
 | :--- | :--- | :--- | :--- |
-| `--format <type>` | `string` | Output format: `table`, `json`, or `markdown`. | `table` |
-| `--risk <tier>` | `string` | Filter endpoints by risk tier (`read_only`, `mutation`, `critical`). | All tiers |
-| `--method <verb>` | `string` | Filter operations by HTTP method (`GET`, `POST`, `PUT`, `DELETE`). | All methods |
-| `--tag <name>` | `string` | Filter operations by OpenAPI tag. | All tags |
+| `--json` | `boolean` | Output machine-readable normalized AST JSON instead of human-readable summary. | `false` |
 
 ---
 

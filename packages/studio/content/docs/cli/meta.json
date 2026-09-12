@@ -5,6 +5,7 @@
     "run",
     "inspect",
     "generate",
+    "export",
     "studio",
     "config"
   ]
