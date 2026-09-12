@@ -173,7 +173,17 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
       console.log(pc.yellow(`  Mode: DRY-RUN SIMULATION (Mutations simulated, no real side effects)`));
     }
   } else {
-    // Default: stdio transport for Cursor, Claude Desktop, Antigravity
+    // Default: stdio transport for Cursor, Claude Desktop, Claude Code, Antigravity
+    if (process.stdin.isTTY) {
+      console.error(pc.cyan(`PostMCP stdio server running for ${pc.bold(parsedSpec.title || specArg)}...`));
+      console.error(pc.dim(`  Transport: stdio (listening for MCP JSON-RPC messages on stdin)`));
+      console.error(pc.dim(`  Service:   ${parsedSpec.title} (v${parsedSpec.version}) | Endpoints: ${parsedSpec.operations.length}`));
+      console.error();
+      console.error(pc.dim(`Tip: To browse tools in your terminal, run: ${pc.bold(`postmcp inspect ${specArg}`)}`));
+      console.error(pc.dim(`Tip: To launch the visual workbench, run:  ${pc.bold(`postmcp studio`)}`));
+      console.error(pc.dim(`Tip: To run as an HTTP server, pass:       ${pc.bold(`--transport http --port 3001`)}`));
+      console.error();
+    }
     await startStdioServer(serverOptions);
   }
 }
