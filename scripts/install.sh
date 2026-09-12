@@ -2,7 +2,8 @@
 # PostMCP Installer for macOS and Linux
 # Usage: curl -fsSL https://raw.githubusercontent.com/BraveRam/postmcp/main/install.sh | bash
 
-set -euo pipefail
+set -eu
+(set -o pipefail 2>/dev/null) && set -o pipefail || true
 
 PACKAGE="@postmcp/cli"
 
@@ -95,7 +96,8 @@ if [ "${INSTALLED}" = "false" ]; then
         PM_PATH="$(command -v "${PM}" || true)"
         NODE_DIR="$(dirname "$(command -v node 2>/dev/null || command -v bun 2>/dev/null)" || true)"
         if [ -n "${PM_PATH}" ] && [ -x "${PM_PATH}" ]; then
-            if sudo env "PATH=${PATH}:${NODE_DIR}:/usr/local/bin:/usr/bin" "${PM_PATH}" install -g "${PACKAGE}@latest"; then
+            SUDO_CMD="$(echo "${INSTALL_CMD}" | sed "s|^${PM}|${PM_PATH}|")"
+            if sudo env "PATH=${PATH}:${NODE_DIR}:/usr/local/bin:/usr/bin" ${SUDO_CMD}; then
                 INSTALLED=true
             fi
         fi

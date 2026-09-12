@@ -41,6 +41,9 @@ Write-Host "Installing $PackageName via $PM..." -ForegroundColor Green
 
 try {
     Invoke-Expression $InstallCmd
+    if ($LASTEXITCODE -ne 0) {
+        throw "Installation failed with exit code $LASTEXITCODE"
+    }
 } catch {
     Write-Error "Failed to install $PackageName. Try running PowerShell as Administrator."
     exit 1
