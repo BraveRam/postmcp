@@ -2,7 +2,9 @@ import { createMDX } from 'fumadocs-mdx/next';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@postmcp/core', '@postmcp/presets', '@postmcp/types'],
+  serverExternalPackages: ['@postmcp/core'],
+  transpilePackages: ['@postmcp/presets', '@postmcp/types'],
+  productionBrowserSourceMaps: false,
 };
 
 const withMDX = createMDX();
