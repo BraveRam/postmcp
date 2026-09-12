@@ -38,9 +38,9 @@ pnpm add @postmcp/core
 ### 1. Parse an OpenAPI Specification
 
 ```typescript
-import { parseOpenApi } from '@postmcp/core';
+import { parseOpenAPI } from '@postmcp/core';
 
-const ast = await parseOpenApi('https://api.stripe.com/openapi.json');
+const ast = await parseOpenAPI('https://api.stripe.com/openapi.json');
 
 console.log(`Loaded API: ${ast.title} (${ast.operations.length} endpoints)`);
 ```
@@ -56,33 +56,31 @@ const rawApiResponse = [
 ];
 
 const optimized = applyTokenDiet(rawApiResponse, {
-  enableTable: true,
-  stripNulls: true,
-  stripLinks: true,
+  convertToMarkdownTable: true,
+  maxTokens: 2500,
 });
 
-// Output is a clean, compact GitHub Markdown table:
+// Output text is a clean, compact GitHub Markdown table:
 // | id | name |
 // | usr_1 | Alice |
 // | usr_2 | Bob |
+console.log(optimized.text);
 ```
 
-### 3. Start a PostMCP Server Programmatically
+### 3. Start an MCP Server Programmatically
 
 ```typescript
-import { createPostMcpServer } from '@postmcp/core';
+import { parseOpenAPI, startStdioServer } from '@postmcp/core';
 
-const server = await createPostMcpServer({
-  spec: 'https://api.linear.app/openapi.json',
-  transport: 'stdio',
-  tokenDiet: true,
-  jit: true,
-  headers: {
-    Authorization: `Bearer ${process.env.LINEAR_API_KEY}`,
+const spec = await parseOpenAPI('https://api.stripe.com/openapi.json');
+const server = await startStdioServer({
+  spec,
+  auth: {
+    bearerToken: process.env.STRIPE_SECRET_KEY,
   },
+  jit: true,
+  tokenDiet: true,
 });
-
-await server.start();
 ```
 
 ---

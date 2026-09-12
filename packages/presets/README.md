@@ -33,15 +33,17 @@ pnpm add @postmcp/presets
 ## Programmatic Usage
 
 ```typescript
-import { ALL_PRESETS, getPresetById, getPresetsByCategory } from '@postmcp/presets';
+import { ALL_PRESETS, getPreset, getPresetsByCategory } from '@postmcp/presets';
 
 // 1. Get a specific preset by ID
-const stripePreset = getPresetById('stripe');
-console.log(stripePreset.title); // "Stripe Payments API"
-console.log(stripePreset.defaultFieldMask); // Pre-tuned fields
+const stripePreset = getPreset('stripe');
+if (stripePreset) {
+  console.log(stripePreset.name); // "Stripe REST API"
+  console.log(stripePreset.fieldMasks); // Pre-tuned field masks
+}
 
 // 2. Filter presets by category
-const devPresets = getPresetsByCategory('developer');
+const devPresets = getPresetsByCategory('Developer Tools');
 console.log(`Found ${devPresets.length} developer tool presets`);
 
 // 3. List all available preset IDs
@@ -53,7 +55,7 @@ console.log(ids);
 
 ## Included Categories & Sample Presets
 
-* **Developer Tools**: `@github`, `@gitlab`, `@linear`, `@sentry`, `@datadog`, `@postman`
+* **Developer Tools**: `@github`, `@gitlab`, `@jira`, `@sentry`, `@datadog`, `@postman`
 * **Finance & Payments**: `@stripe`, `@plaid`, `@square`, `@coinbase`
 * **Cloud & Infrastructure**: `@supabase`, `@cloudflare`, `@digitalocean`, `@render`, `@vercel`
 * **AI & Machine Learning**: `@openai`, `@anthropic`, `@huggingface`, `@replicate`
@@ -71,7 +73,7 @@ Use any preset directly with `@postmcp/cli`:
 npx @postmcp/cli run @stripe --token-diet --jit
 
 # Export configuration for Cursor
-npx @postmcp/cli export @linear --client cursor --write
+npx @postmcp/cli export @stripe --client cursor --write
 
 # Browse available presets
 npx @postmcp/cli presets
