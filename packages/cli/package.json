@@ -1,6 +1,6 @@
 {
   "name": "@postmcp/cli",
-  "version": "0.1.25",
+  "version": "0.1.26",
   "description": "The Postman for MCP. Turn any OpenAPI spec into a context-optimized MCP server in seconds.",
   "license": "MIT",
   "author": "PostMCP Contributors",
