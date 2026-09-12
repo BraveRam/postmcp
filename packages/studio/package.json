@@ -2,6 +2,17 @@
   "name": "@postmcp/studio",
   "version": "0.1.25",
   "type": "module",
+  "license": "MIT",
+  "author": "PostMCP Contributors",
+  "homepage": "https://postmcp.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BraveRam/postmcp.git",
+    "directory": "packages/studio"
+  },
+  "bugs": {
+    "url": "https://github.com/BraveRam/postmcp/issues"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -18,11 +29,11 @@
     ".next/prerender-manifest.json",
     ".next/routes-manifest.json",
     ".next/required-server-files.json",
-    "src",
+    "content",
+    "source.config.ts",
     "public",
     "next.config.mjs",
-    "postcss.config.mjs",
-    "tailwind.config.ts"
+    "!**/*.map"
   ],
   "description": "PostMCP Visual Web Studio - Interactive OpenAPI to MCP workbench with Token Diet Curator and Live Sandbox",
   "scripts": {

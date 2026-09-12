@@ -54,16 +54,25 @@ export function buildClientConfigSnippet(
   }
   if (options.env) {
     for (const e of options.env) {
-      const [k, v] = e.split('=');
-      if (k && v) env[k] = v;
+      const eqIdx = e.indexOf('=');
+      if (eqIdx !== -1) {
+        const k = e.slice(0, eqIdx).trim();
+        const v = e.slice(eqIdx + 1).trim();
+        if (k) env[k] = v;
+      }
     }
   }
+
+  const targetSpecPath =
+    specPath.startsWith('http://') || specPath.startsWith('https://') || specPath.startsWith('@')
+      ? specPath
+      : path.resolve(process.cwd(), specPath);
 
   return {
     mcpServers: {
       [serverKey]: {
         command: 'npx',
-        args: ['-y', '@postmcp/cli', 'run', specPath],
+        args: ['-y', '@postmcp/cli', 'run', targetSpecPath],
         env: Object.keys(env).length > 0 ? env : undefined,
       },
     },

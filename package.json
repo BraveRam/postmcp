@@ -2,10 +2,20 @@
   "name": "postmcp-monorepo",
   "version": "0.1.0",
   "private": true,
-  "description": "PostMCP - The Postman for MCP. Turn any OpenAPI spec into a context-optimized MCP server in seconds.",
+  "license": "MIT",
+  "author": "PostMCP Contributors",
+  "homepage": "https://postmcp.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BraveRam/postmcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/BraveRam/postmcp/issues"
+  },
   "scripts": {
     "build": "turbo build",
     "test": "turbo test",
+    "typecheck": "turbo typecheck",
     "dev": "turbo dev",
     "lint": "turbo lint",
     "postmcp": "node packages/cli/dist/bin.js"

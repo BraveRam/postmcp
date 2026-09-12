@@ -195,6 +195,13 @@ export class PostMcpServer {
           method: op.method.toUpperCase(),
           path: op.path,
           summary: op.summary,
+          parameters: op.parameters.map((p) => ({
+            name: p.name,
+            in: p.in,
+            required: p.required,
+            type: p.schema.type,
+            description: p.description,
+          })),
         }));
 
         return {
@@ -370,9 +377,9 @@ export class PostMcpServer {
       specSecuritySchemes: this.spec.securitySchemes,
     });
 
-    // Multi-Tenant Fallback: If empty or tenant error and multiple organizations available
+    // Multi-Tenant Fallback: If empty or tenant error and multiple organizations available (read-only only)
     const tenantParam = op.parameters.find((p) => isTenantParam(p.name));
-    if (tenantParam && (response.isError || this.isResponseDataEmpty(response.data))) {
+    if (op.method === 'get' && tenantParam && (response.isError || this.isResponseDataEmpty(response.data))) {
       if (this.cachedTenantIds.length <= 1) {
         await this.discoverTenantIds();
       }

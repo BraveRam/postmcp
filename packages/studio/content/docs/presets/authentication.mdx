@@ -12,7 +12,7 @@ When you invoke a preset via `postmcp run @<preset>`, PostMCP checks your shell 
 | `@neon` | Bearer Token | `NEON_API_KEY` | `POSTMCP_API_KEY` |
 | `@stripe` | Bearer Token | `STRIPE_SECRET_KEY` | `STRIPE_API_KEY` |
 | `@github` | Bearer Token | `GITHUB_TOKEN` | `GH_TOKEN` |
-| `@linear` | Header (`Authorization`) | `LINEAR_API_KEY` | `LINEAR_TOKEN` |
+| `@sentry` | Bearer Token | `SENTRY_AUTH_TOKEN` | `SENTRY_API_KEY` |
 | `@supabase` | Header (`apikey`) | `SUPABASE_SERVICE_ROLE_KEY`| `SUPABASE_ANON_KEY` |
 | `@resend` | Bearer Token | `RESEND_API_KEY` | `RESEND_TOKEN` |
 | `@slack` | Bearer Token | `SLACK_BOT_TOKEN` | `SLACK_USER_TOKEN` |
@@ -30,7 +30,7 @@ If your credentials are stored in custom environment variables or secret vaults,
 postmcp run @stripe --api-key "$MY_CUSTOM_STRIPE_SECRET"
 
 # Pass custom header directly
-postmcp run @linear -H "Authorization: $MY_LINEAR_KEY"
+postmcp run @sentry -H "Authorization: Bearer $MY_SENTRY_KEY"
 ```
 
 ---

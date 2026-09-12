@@ -2,6 +2,17 @@
   "name": "@postmcp/core",
   "version": "0.1.25",
   "description": "PostMCP core engine - OpenAPI parser, Token Diet, JIT router, and MCP protocol server",
+  "license": "MIT",
+  "author": "PostMCP Contributors",
+  "homepage": "https://postmcp.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BraveRam/postmcp.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/BraveRam/postmcp/issues"
+  },
   "publishConfig": {
     "access": "public"
   },

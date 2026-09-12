@@ -292,7 +292,8 @@ export function generatePythonProject(spec: NormalizedSpec): GeneratedProject {
 
     // Dry run check
     executionLines.push('    if DRY_RUN:');
-    executionLines.push(`        return f"[DRY-RUN] Simulating ${op.method.toUpperCase()} ${op.path} ({${JSON.stringify(op.riskTier || 'READ_ONLY')}})"`);
+    const escapedDryRunPath = op.path.replace(/\{/g, '{{').replace(/\}/g, '}}');
+    executionLines.push(`        return f"[DRY-RUN] Simulating ${op.method.toUpperCase()} ${escapedDryRunPath} (${op.riskTier || 'READ_ONLY'})"`);
 
     executionLines.push(`    url = ${JSON.stringify(op.path)}`);
 
@@ -416,6 +417,8 @@ ${safeTitle} - FastMCP + Pydantic Server
 ${safeDescription}
 Generated automatically by PostMCP (The Postman for MCP)
 """
+
+from __future__ import annotations
 
 import os
 import json

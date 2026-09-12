@@ -27,20 +27,20 @@ pnpm add -D @postmcp/types
 ## Core Types Exported
 
 ### 1. AST & Operation Definitions
-* `NormalizedAST`: The parsed OpenAPI representation containing title, version, servers, and operations.
-* `ToolDefinition`: Standardized MCP tool definition with JSON Schema input parameters.
+* `NormalizedSpec`: The parsed OpenAPI representation containing title, version, servers, and operations.
+* `NormalizedOperation`: Standardized operation definition with JSON Schema input/response schemas and risk tier.
 * `RiskTier`: `'READ_ONLY' | 'MUTATION' | 'CRITICAL'`.
 
 ### 2. Token Diet & Optimization
-* `TokenDietOptions`: Configuration for null stripping, metadata pruning, field masking, and Markdown table conversion.
-* `TokenMetrics`: Token estimate before and after optimization with percentage saved.
+* `TokenDietOptions`: Configuration for null pruning, field masking, and Markdown table conversion.
+* `TokenDietResult`: Output containing text, structured payload, token counts, and savings percentage.
 
 ### 3. Macro Pipelines
 * `MacroDefinition`: Composite multi-step tool definition.
 * `MacroStep`: Individual execution step in a macro workflow.
 
 ### 4. Configuration & CLI
-* `PostMCPConfig`: Structure of `postmcp.config.json` workspace files.
+* `PostMcpCliConfig`: Structure of `postmcp.config.json` workspace configuration files.
 * `RunCommandOptions`: Options for `postmcp run`.
 * `StudioCommandOptions`: Options for `postmcp studio`.
 * `GenerateCommandOptions`: Options for `postmcp generate`.
@@ -51,15 +51,15 @@ pnpm add -D @postmcp/types
 ## Usage Example
 
 ```typescript
-import type { NormalizedAST, RiskTier, TokenDietOptions } from '@postmcp/types';
+import type { NormalizedSpec, RiskTier, TokenDietOptions } from '@postmcp/types';
 
 function analyzeSafety(tier: RiskTier): boolean {
   return tier === 'READ_ONLY';
 }
 
 const options: TokenDietOptions = {
-  enableTable: true,
-  stripNulls: true,
+  convertToMarkdownTable: true,
+  maxTokens: 2500,
 };
 ```
 

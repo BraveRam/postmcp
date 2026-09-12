@@ -8,7 +8,6 @@ export function getScopedEnvKey(specTitle?: string, serverUrl?: string): string 
   if (text.includes('neon')) return 'NEON_API_KEY';
   if (text.includes('supabase')) return 'SUPABASE_KEY';
   if (text.includes('twilio')) return 'TWILIO_AUTH_TOKEN';
-  if (text.includes('linear')) return 'LINEAR_API_KEY';
   if (text.includes('slack')) return 'SLACK_BOT_TOKEN';
   if (text.includes('resend')) return 'RESEND_API_KEY';
   if (text.includes('anthropic')) return 'ANTHROPIC_API_KEY';

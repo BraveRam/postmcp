@@ -10,6 +10,9 @@ export const DEVELOPER_TOOLS_PRESETS: Preset[] = [
     authType: 'Bearer (GITHUB_TOKEN)',
     authEnvVar: 'GITHUB_TOKEN',
     defaultBaseUrl: 'https://api.github.com',
+    defaultHeaders: {
+      'User-Agent': 'PostMCP-GitHub-Preset',
+    },
     specUrl: 'https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json',
     tags: ['git', 'code', 'issues', 'pr', 'actions', 'ci/cd', 'releases'],
     fieldMasks: [
@@ -103,51 +106,6 @@ export const DEVELOPER_TOOLS_PRESETS: Preset[] = [
         { path: '/issue/{issueIdOrKey}', method: 'get', operationId: 'getIssue', summary: 'Get Jira issue details', parameters: [{ name: 'issueIdOrKey', in: 'path', schema: { type: 'string' } }] },
         { path: '/issue', method: 'post', operationId: 'createIssue', summary: 'Create new Jira issue', requestBody: { properties: { fields: { type: 'object' } } } },
         { path: '/search', method: 'get', operationId: 'searchIssuesJql', summary: 'Search issues using JQL', parameters: [{ name: 'jql', in: 'query', schema: { type: 'string' } }] },
-      ],
-    }),
-  },
-  {
-    id: 'linear',
-    name: 'Linear API',
-    description: 'Fast project tracking, issues, milestones, teams, and cycles.',
-    category: 'Developer Tools',
-    authType: 'Bearer (LINEAR_API_KEY)',
-    authEnvVar: 'LINEAR_API_KEY',
-    defaultBaseUrl: 'https://api.linear.app',
-    tags: ['issues', 'roadmap', 'cycles', 'product'],
-    fieldMasks: [
-      { path: '/issues', fields: ['data.id', 'data.title', 'data.state.name', 'data.priority', 'data.assignee.name'] },
-    ],
-    macros: [
-      {
-        name: 'createTeamIssue',
-        description: 'Creates a new issue in a team and assigns priority',
-        parameters: {
-          type: 'object',
-          properties: {
-            teamId: { type: 'string' },
-            title: { type: 'string' },
-            description: { type: 'string' },
-            priority: { type: 'integer' },
-          },
-          required: ['teamId', 'title'],
-        },
-        steps: [
-          { id: 'createIssue', action: 'POST /issues', body: { teamId: '{{teamId}}', title: '{{title}}', description: '{{description}}', priority: '{{priority}}' } },
-        ],
-      },
-    ],
-    bundledSpec: buildOpenAPISpec({
-      title: 'Linear API',
-      baseUrl: 'https://api.linear.app',
-      description: 'Linear Issue Tracking REST API',
-      securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
-      endpoints: [
-        { path: '/viewer', method: 'get', operationId: 'getViewer', summary: 'Get current user profile' },
-        { path: '/teams', method: 'get', operationId: 'listTeams', summary: 'List all teams' },
-        { path: '/issues', method: 'get', operationId: 'listIssues', summary: 'List recent issues', parameters: [{ name: 'teamId', in: 'query', schema: { type: 'string' } }] },
-        { path: '/issues', method: 'post', operationId: 'createIssue', summary: 'Create issue', requestBody: { properties: { teamId: { type: 'string' }, title: { type: 'string' }, description: { type: 'string' } } } },
-        { path: '/projects', method: 'get', operationId: 'listProjects', summary: 'List roadmap projects' },
       ],
     }),
   },

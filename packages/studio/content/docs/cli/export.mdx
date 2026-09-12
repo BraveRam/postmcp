@@ -1,0 +1,51 @@
+---
+title: postmcp export
+description: 1-Click configuration exporter for Cursor, Claude Desktop, and Windsurf.
+---
+
+## Usage
+
+```bash
+postmcp export <spec> [options]
+```
+
+Where `<spec>` can be a local spec file path, remote URL, or bundled preset (e.g. `@neon`, `@stripe`, `@github`).
+
+---
+
+## Options
+
+| Flag | Type | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `-t, --target <name>` | `string` | Target client: `cursor`, `claude`, `windsurf`, or `all`. | `all` |
+| `--client <name>` | `string` | Alias for `--target`. | `all` |
+| `-w, --write` | `boolean` | Automatically merge and write configuration directly to the client config file on disk. | `false` |
+| `--bearer <token>` | `string` | Bearer token for client configuration environment. | None |
+| `-b, --base-url <url>` | `string` | Base URL override for client configuration environment. | Spec URL |
+| `-e, --env <key=val...>` | `string[]` | Environment variables for client configuration. | None |
+
+---
+
+## Examples
+
+### 1. Generate Config Snippets for All Supported Clients
+
+```bash
+postmcp export @neon --bearer "$NEON_API_KEY"
+```
+
+Prints formatted JSON snippets for Claude Desktop (`claude_desktop_config.json`), Cursor (`~/.cursor/mcp.json`), and Windsurf (`~/.codeium/windsurf/mcp_config.json`).
+
+### 2. Automatically Write Configuration to Claude Desktop
+
+```bash
+postmcp export @stripe --target claude --write --bearer "$STRIPE_API_KEY"
+```
+
+Automatically locates your operating system's Claude Desktop configuration directory, parses existing servers, and merges the new MCP server definition safely into disk.
+
+### 3. Automatically Write Configuration to Cursor
+
+```bash
+postmcp export ./openapi.yaml --target cursor --write -e API_KEY=secret_123 -e ORG_ID=org_456
+```

@@ -13,19 +13,15 @@ You can persist server configurations, authentication credentials, and custom To
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/BraveRam/postmcp/main/packages/types/schema.json",
   "spec": "https://api.example.com/openapi.json",
-  "name": "example-service",
+  "baseUrl": "https://api.example.com/v1",
   "transport": "stdio",
   "port": 3000,
-  "baseUrl": "https://api.example.com/v1",
   "auth": {
-    "type": "bearer",
-    "token": "${EXAMPLE_API_KEY}"
-  },
-  "tenant": {
-    "defaultId": "${DEFAULT_ORG_ID}",
-    "paramName": "org_id"
+    "bearerToken": "${API_KEY}",
+    "headers": {
+      "X-Custom-Header": "custom-value"
+    }
   },
   "jit": {
     "enabled": true,
@@ -33,19 +29,18 @@ You can persist server configurations, authentication credentials, and custom To
     "hotToolKeywords": ["project", "user", "organization", "account"]
   },
   "tokenDiet": {
-    "level": "standard",
-    "maxResponseBytes": 32768,
-    "maxResponseTokens": 4096,
-    "htmlStripping": true,
-    "markdownTables": true,
-    "fieldMasks": {
-      "listProjects": "projects[*].{id,name,region,created_at}",
-      "getUser": "user.{id,email,role}"
-    }
+    "enabled": true,
+    "maxTokens": 2500,
+    "convertToMarkdownTable": true
   },
-  "safety": {
-    "dryRun": false,
-    "blockedOperations": ["deleteUser", "dropDatabase"]
+  "fieldMasks": {
+    "listProjects": ["id", "name", "region", "created_at"],
+    "getUser": ["id", "email", "role"]
+  },
+  "dryRun": false,
+  "enabledOperations": {
+    "deleteUser": false,
+    "dropDatabase": false
   }
 }
 ```
@@ -58,31 +53,48 @@ You can persist server configurations, authentication credentials, and custom To
 - **Type**: `string`
 - **Description**: Path to a local JSON/YAML file, remote URL, or preset alias (e.g. `@neon`).
 
+### `baseUrl`
+- **Type**: `string`
+- **Description**: Target upstream API base URL override.
+
+### `transport`
+- **Type**: `"stdio" | "http"`
+- **Description**: Server communication protocol.
+
+### `port`
+- **Type**: `number`
+- **Description**: Listening port when using `http` transport.
+
 ### `auth`
 - **Type**: `object`
 - **Properties**:
-  - `type`: `"bearer" | "apiKey" | "basic" | "custom"`
-  - `token`: Environment variable template string (e.g. `"${API_KEY}"`).
-  - `header`: Header name when using `apiKey` (e.g. `"X-API-Key"`).
-  - `username` / `password`: For basic authentication.
-
-### `tenant`
-- **Type**: `object`
-- **Properties**:
-  - `defaultId`: Value or environment template string for tenant auto-injection.
-  - `paramName`: Parameter key name (default: `"org_id"`).
+  - `bearerToken`: Bearer authentication token or environment variable reference (`"${API_KEY}"`).
+  - `apiKey`: Object with `{ name, value, in: "header" | "query" | "cookie" }`.
+  - `basicAuth`: Basic authentication credentials `{ username, password }` or base64 string.
+  - `headers`: Map of static custom HTTP headers.
 
 ### `jit`
-- **Type**: `object`
+- **Type**: `boolean | object`
 - **Properties**:
-  - `enabled`: Enables Just-In-Time dynamic tool mounting.
-  - `maxMountedTools`: Maximum active tools before LRU unmounting triggers.
+  - `enabled`: Enables Just-In-Time dynamic tool routing.
+  - `maxMountedTools`: Maximum active tools before dynamic routing kicks in.
   - `hotToolKeywords`: Array of strings used to rank root collections on startup.
 
 ### `tokenDiet`
 - **Type**: `object`
 - **Properties**:
-  - `level`: `"none" | "minimal" | "standard" | "aggressive" | "ultra"`
-  - `maxResponseBytes`: Hard ceiling for raw response byte size before truncation.
-  - `maxResponseTokens`: Estimated token limit per tool execution.
-  - `fieldMasks`: Map of operation ID to JSONPath extraction queries.
+  - `enabled`: Whether token optimization is active.
+  - `maxTokens`: Token ceiling per tool response.
+  - `convertToMarkdownTable`: Whether arrays of uniform objects are serialized as Markdown tables.
+
+### `fieldMasks`
+- **Type**: `Record<string, string[]>`
+- **Description**: Map of operation IDs to array of whitelisted property keys to retain in responses.
+
+### `dryRun`
+- **Type**: `boolean`
+- **Description**: When true, mutation endpoints are simulated without invoking upstream APIs.
+
+### `enabledOperations`
+- **Type**: `Record<string, boolean>`
+- **Description**: Granular whitelist/blacklist of specific operation IDs.

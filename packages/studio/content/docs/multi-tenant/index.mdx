@@ -5,7 +5,7 @@ description: Automatically resolving and injecting organization, team, and accou
 
 ## The Empty Response Trap in Multi-Tenant APIs
 
-Modern SaaS APIs (Neon, Linear, Stripe, Supabase, Jira, GitHub) are organized into multi-tenant hierarchies. When calling an endpoint like:
+Modern SaaS APIs (Neon, Stripe, Supabase, Jira, GitHub) are organized into multi-tenant hierarchies. When calling an endpoint like:
 
 ```http
 GET /projects?org_id={org_id}
@@ -25,21 +25,20 @@ PostMCP features a built-in **Auto-Context Resolver** that detects required or r
 
 ```mermaid
 flowchart LR
-  Call["<b>Agent Call</b><br/>Omits tenant ID"]
-  --> Detect["<b>1. Detect</b><br/>Missing org_id"]
-  --> Resolve["<b>2. Resolve</b><br/>Env or identity API"]
-  --> Inject["<b>3. Inject</b><br/>Auto-scope request"]
-  --> API["<b>Upstream API</b><br/>Turn-1 results"]
+  Call["Agent Call<br/>Omits tenant ID"] --> Detect["1. Detect<br/>Missing org_id"]
+  Detect --> Resolve["2. Resolve<br/>Env or identity API"]
+  Resolve --> Inject["3. Inject<br/>Auto-scope request"]
+  Inject --> API["Upstream API<br/>Turn-1 results"]
 ```
 
 ---
 
 ## Configuration
 
-You can provide tenant mappings explicitly via CLI:
+You can provide tenant mappings explicitly via environment variables:
 
 ```bash
-postmcp run @neon --tenant-id "org-green-forest-4912"
+NEON_ORG_ID="org-green-forest-4912" postmcp run @neon
 ```
 
 Or in `postmcp.config.json`:
@@ -57,6 +56,6 @@ Or in `postmcp.config.json`:
 
 All bundled presets come pre-configured with tenant parameter bindings:
 - **Neon (`@neon`)**: Maps `org_id` to `process.env.NEON_ORG_ID`.
-- **Linear (`@linear`)**: Maps `teamId` to `process.env.LINEAR_TEAM_ID`.
 - **Stripe (`@stripe`)**: Maps `Stripe-Account` header to `process.env.STRIPE_ACCOUNT_ID`.
 - **GitHub (`@github`)**: Maps `owner` parameter to `process.env.GITHUB_OWNER`.
+- **Supabase (`@supabase`)**: Maps project reference to `process.env.SUPABASE_PROJECT_REF`.

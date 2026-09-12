@@ -9,9 +9,8 @@ The **Token Diet Curator** allows you to see the exact transformation that upstr
 
 ```mermaid
 flowchart LR
-  Raw["<b>Raw Response</b><br/>12 KB (~3.1k tokens)"]
-  --> Diet["<b>Token Diet</b><br/>Mask & format"]
-  --> Clean["<b>Dieted Payload</b><br/>780 B (-93.7% tokens)"]
+  Raw["Raw Response<br/>12 KB (~3.1k tokens)"] --> Diet["Token Diet<br/>Mask & format"]
+  Diet --> Clean["Dieted Payload<br/>780 B (-93.7% tokens)"]
 ```
 
 ---

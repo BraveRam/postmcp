@@ -33,6 +33,7 @@ export interface Preset {
   authType: string;
   authEnvVar?: string;
   defaultBaseUrl?: string;
+  defaultHeaders?: Record<string, string>;
   specUrl?: string;
   bundledSpec?: object;
   tags?: string[];

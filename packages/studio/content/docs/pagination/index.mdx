@@ -28,11 +28,10 @@ PostMCP transparently follows pagination cursors **inside the runtime engine bef
 
 ```mermaid
 flowchart LR
-  Agent["<b>Agent Call</b><br/>Single invocation"]
-  --> Page["<b>1. Follow Cursors</b><br/>Up to 3 pages"]
-  --> Merge["<b>2. Consolidate</b><br/>Merge items"]
-  --> Diet["<b>3. Token Diet</b><br/>Markdown table"]
-  --> Result["<b>Single Response</b><br/>Turn-1 completion"]
+  Agent["Agent Call<br/>Single invocation"] --> Page["1. Follow Cursors<br/>Up to 3 pages"]
+  Page --> Merge["2. Consolidate<br/>Merge items"]
+  Merge --> Diet["3. Token Diet<br/>Markdown table"]
+  Diet --> Result["Single Response<br/>Turn-1 completion"]
 ```
 
 ---

@@ -22,7 +22,7 @@ export async function parseOpenAPI(input: string | object, basePath?: string): P
       const response = await axios.get(trimmed, {
         headers: {
           'Accept': 'application/json, application/yaml, text/yaml, */*',
-          'User-Agent': 'PostMCP/0.1.0 (https://github.com/BraveRam/postmcp)',
+          'User-Agent': 'PostMCP/0.1.25 (https://github.com/BraveRam/postmcp)',
         },
         responseType: 'text',
       });
@@ -46,7 +46,7 @@ export async function parseOpenAPI(input: string | object, basePath?: string): P
       // Local file path resolution with workspace fallback
       const candidates = [
         basePath ? path.resolve(basePath, trimmed) : null,
-        path.resolve(process.cwd(), trimmed),
+        path.resolve(/*turbopackIgnore: true*/ process.cwd(), trimmed),
         process.env.POSTMCP_WORKSPACE ? path.resolve(process.env.POSTMCP_WORKSPACE, trimmed) : null,
         path.resolve(trimmed),
       ].filter(Boolean) as string[];
@@ -67,7 +67,7 @@ export async function parseOpenAPI(input: string | object, basePath?: string): P
       }
 
       detectedBasePath = path.dirname(foundPath);
-      const content = await fs.readFile(foundPath, 'utf-8');
+      const content = await fs.readFile(/*turbopackIgnore: true*/ foundPath, 'utf-8');
       try {
         rawDoc = JSON.parse(content);
       } catch {

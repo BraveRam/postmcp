@@ -39,9 +39,9 @@ irm https://raw.githubusercontent.com/BraveRam/postmcp/main/install.ps1 | iex
 Or via your favorite package manager:
 
 ```bash
-npm install -g postmcp
-# or: pnpm add -g postmcp
-# or: bun add -g postmcp
+npm install -g @postmcp/cli
+# or: pnpm add -g @postmcp/cli
+# or: bun add -g @postmcp/cli
 ```
 
 ---
@@ -134,7 +134,7 @@ If you are using a preset (like `@neon`, `@supabase`, `@github`, or `@stripe`), 
 | `@supabase` | `SUPABASE_ACCESS_TOKEN` | Supabase Cloud management |
 | `@stripe` | `STRIPE_SECRET_KEY` | Stripe Payments & Billing |
 | `@github` | `GITHUB_TOKEN` | GitHub REST API |
-| `@linear` | `LINEAR_API_KEY` | Linear Project Management |
+| `@sentry` | `SENTRY_AUTH_TOKEN` | Sentry Error & Performance Monitoring |
 | `@slack` | `SLACK_BOT_TOKEN` | Slack Web API |
 
 ---

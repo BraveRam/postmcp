@@ -20,11 +20,10 @@ PostMCP introduces **Hybrid JIT**. Instead of mounting zero tools, PostMCP analy
 
 ```mermaid
 flowchart LR
-  Spec["<b>OpenAPI Spec</b><br/>80+ operations"]
-  --> JIT["<b>Hybrid JIT</b><br/>Hot-tool scorer"]
-  JIT --> Hot["<b>Hot Tools</b><br/>Top 5-7 turn 1"]
-  JIT --> Search["<b>tool_search</b><br/>On-demand pool"]
-  Hot --> Agent["<b>AI Agent</b><br/>Instant turn 1"]
+  Spec["OpenAPI Spec<br/>80+ operations"] --> JIT["Hybrid JIT<br/>Hot-tool scorer"]
+  JIT --> Hot["Hot Tools<br/>Top 5-7 turn 1"]
+  JIT --> Search["tool_search<br/>On-demand pool"]
+  Hot --> Agent["AI Agent<br/>Instant turn 1"]
   Search --> Agent
 ```
 

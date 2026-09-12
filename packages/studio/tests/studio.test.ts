@@ -52,7 +52,7 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
     const data = await res.json();
 
     expect(data.presets).toBeDefined();
-    expect(data.presets.length).toBeGreaterThanOrEqual(60);
+    expect(data.presets.length).toBeGreaterThanOrEqual(59);
     expect(data.categories).toContain('Developer Tools');
     expect(data.categories).toContain('Payments & Commerce');
 
@@ -87,11 +87,11 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
   });
 
   it('GET /api/initial-spec should return runtime initial spec environment variable', async () => {
-    process.env.STUDIO_INITIAL_SPEC = '@linear';
+    process.env.STUDIO_INITIAL_SPEC = '@stripe';
     const res = await initialSpecHandler();
     const data = await res.json();
 
-    expect(data.initialSpec).toBe('@linear');
+    expect(data.initialSpec).toBe('@stripe');
     delete process.env.STUDIO_INITIAL_SPEC;
   });
 
@@ -240,6 +240,9 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
   it('SSRF Safeguard should block private and loopback hosts', () => {
     expect(isPrivateOrBlockedHost('http://localhost:8080/api')).toBe(true);
     expect(isPrivateOrBlockedHost('http://127.0.0.1:3000/secret')).toBe(true);
+    expect(isPrivateOrBlockedHost('http://127.1.2.3:3000/secret')).toBe(true);
+    expect(isPrivateOrBlockedHost('http://[::1]:8080/api')).toBe(true);
+    expect(isPrivateOrBlockedHost('http://[::ffff:127.0.0.1]:8080/api')).toBe(true);
     expect(isPrivateOrBlockedHost('http://169.254.169.254/latest/meta-data')).toBe(true);
     expect(isPrivateOrBlockedHost('http://192.168.1.1/admin')).toBe(true);
     expect(isPrivateOrBlockedHost('http://10.0.0.1/internal')).toBe(true);

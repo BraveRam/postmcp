@@ -5,7 +5,7 @@ export function buildPresetAuthConfig(
   env: Record<string, string | undefined> = process.env
 ): AuthConfig {
   const authConfig: AuthConfig = {
-    headers: {},
+    headers: { ...(preset.defaultHeaders || {}) },
     securitySchemes: {},
   };
 

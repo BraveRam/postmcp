@@ -59,12 +59,25 @@ function updateEnvFile(filePath: string, updates: Record<string, string>) {
   fs.writeFileSync(filePath, finalContent, 'utf-8');
 }
 
+const ENV_VAR_REGEX = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+function sanitizeEnvValue(val: string): string {
+  return val.replace(/[\r\n]/g, '').replace(/"/g, '\\"');
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const specTitle = searchParams.get('specTitle') || undefined;
     const serverUrl = searchParams.get('serverUrl') || undefined;
-    const envVarName = searchParams.get('envVarName') || getScopedEnvKey(specTitle, serverUrl);
+    const envVarName = (searchParams.get('envVarName') || getScopedEnvKey(specTitle, serverUrl)).trim();
+
+    if (!ENV_VAR_REGEX.test(envVarName)) {
+      return NextResponse.json(
+        { error: 'Invalid environment variable name.' },
+        { status: 400 }
+      );
+    }
 
     const workspaceDir = getWorkspaceDir();
     const envPath = path.join(workspaceDir, '.env');
@@ -145,26 +158,31 @@ export async function POST(request: Request) {
     } = body;
 
     const envVarName = (customVarName || getScopedEnvKey(specTitle, serverUrl)).trim();
-    if (!envVarName) {
+    if (!envVarName || !ENV_VAR_REGEX.test(envVarName)) {
       return NextResponse.json(
-        { error: 'Environment variable name is required.' },
+        { error: 'Invalid environment variable name.' },
         { status: 400 }
       );
     }
 
     const updates: Record<string, string> = {};
     if (typeof token === 'string' && token.trim().length > 0) {
-      updates[envVarName] = token.trim();
-      process.env[envVarName] = token.trim();
+      const sanitizedToken = sanitizeEnvValue(token.trim());
+      updates[envVarName] = sanitizedToken;
+      process.env[envVarName] = sanitizedToken;
     }
 
     if (Array.isArray(customHeaders)) {
       const prefix = envVarName.replace(/_(API_KEY|TOKEN|SECRET_KEY|KEY|AUTH_TOKEN)$/i, '');
       for (const header of customHeaders) {
-        if (header.key && header.val) {
-          const headerKey = `${prefix}_HEADER_${header.key.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase()}`;
-          updates[headerKey] = header.val;
-          process.env[headerKey] = header.val;
+        if (header.key && typeof header.val === 'string') {
+          const sanitizedKey = header.key.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
+          if (sanitizedKey.length > 0) {
+            const headerKey = `${prefix}_HEADER_${sanitizedKey}`;
+            const sanitizedVal = sanitizeEnvValue(header.val);
+            updates[headerKey] = sanitizedVal;
+            process.env[headerKey] = sanitizedVal;
+          }
         }
       }
     }

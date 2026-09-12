@@ -14,10 +14,9 @@ PostMCP provides first-class generators for both **TypeScript** (Node.js) and **
  
 ```mermaid
 flowchart LR
-  Spec["<b>OpenAPI Spec</b><br/>2.0 / 3.0 / 3.1"]
-  --> Gen["<b>Code Generator</b><br/>PostMCP CLI"]
-  Gen --> TS["<b>TypeScript SDK</b><br/>Zod & stdio/HTTP"]
-  Gen --> PY["<b>Python FastMCP</b><br/>Pydantic & async"]
+  Spec["OpenAPI Spec<br/>2.0 / 3.0 / 3.1"] --> Gen["Code Generator<br/>PostMCP CLI"]
+  Gen --> TS["TypeScript SDK<br/>Zod & stdio/HTTP"]
+  Gen --> PY["Python FastMCP<br/>Pydantic & async"]
 ```
 
 ---
@@ -27,13 +26,13 @@ flowchart LR
 ### TypeScript Export
 
 ```bash
-postmcp generate <spec> --lang typescript --output ./mcp-ts
+postmcp generate <spec> --target ts --out ./mcp-ts
 ```
 
 ### Python Export
 
 ```bash
-postmcp generate <spec> --lang python --output ./mcp-py
+postmcp generate <spec> --target py --out ./mcp-py
 ```
 
 ---

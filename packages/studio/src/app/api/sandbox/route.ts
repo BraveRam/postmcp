@@ -31,24 +31,54 @@ interface SandboxExecutionResult {
 export function isPrivateOrBlockedHost(urlStr: string): boolean {
   try {
     const parsed = new URL(urlStr);
-    const hostname = parsed.hostname.toLowerCase();
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return true;
+    }
+    const rawHostname = parsed.hostname.toLowerCase();
+    const hostname = rawHostname.replace(/^\[|\]$/g, '');
 
     if (
       hostname === 'localhost' ||
       hostname === '127.0.0.1' ||
       hostname === '0.0.0.0' ||
       hostname === '::1' ||
+      hostname === '::' ||
+      hostname === '0:0:0:0:0:0:0:1' ||
+      hostname === '0:0:0:0:0:0:0:0' ||
       hostname.endsWith('.local') ||
-      hostname.endsWith('.internal')
+      hostname.endsWith('.internal') ||
+      hostname.startsWith('fe80:') ||
+      hostname.startsWith('fc') ||
+      hostname.startsWith('fd')
     ) {
       return true;
     }
 
-    // Check private IPv4 ranges: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16
-    const ipv4Match = hostname.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+    // Check IPv4-mapped IPv6 (::ffff:127.0.0.1 or ::ffff:7f00:1)
+    let ipToCheck = hostname;
+    if (hostname.startsWith('::ffff:')) {
+      const suffix = hostname.slice(7);
+      if (suffix.includes(':')) {
+        const parts = suffix.split(':').map((p) => parseInt(p, 16));
+        if (parts.length === 2 && !parts.some(isNaN)) {
+          const b0 = (parts[0] >> 8) & 0xff;
+          const b1 = parts[0] & 0xff;
+          const b2 = (parts[1] >> 8) & 0xff;
+          const b3 = parts[1] & 0xff;
+          ipToCheck = `${b0}.${b1}.${b2}.${b3}`;
+        }
+      } else {
+        ipToCheck = suffix;
+      }
+    }
+
+    // Check private IPv4 ranges: 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16
+    const ipv4Match = ipToCheck.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
     if (ipv4Match) {
       const b0 = parseInt(ipv4Match[1], 10);
       const b1 = parseInt(ipv4Match[2], 10);
+      if (b0 === 127) return true; // Loopback
+      if (b0 === 0) return true;
       if (b0 === 10) return true;
       if (b0 === 172 && b1 >= 16 && b1 <= 31) return true;
       if (b0 === 192 && b1 === 168) return true;

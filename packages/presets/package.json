@@ -1,7 +1,18 @@
 {
   "name": "@postmcp/presets",
   "version": "0.1.25",
-  "description": "50+ Curated, context-optimized API presets for PostMCP",
+  "description": "60+ Curated, context-optimized API presets for PostMCP",
+  "license": "MIT",
+  "author": "PostMCP Contributors",
+  "homepage": "https://postmcp.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BraveRam/postmcp.git",
+    "directory": "packages/presets"
+  },
+  "bugs": {
+    "url": "https://github.com/BraveRam/postmcp/issues"
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -42,7 +53,6 @@
     "api-presets",
     "stripe",
     "github",
-    "linear",
     "slack",
     "supabase",
     "twilio",

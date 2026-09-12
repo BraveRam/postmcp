@@ -11,10 +11,9 @@ Raw API specifications were created for human developers, not AI context windows
 
 ```mermaid
 flowchart LR
-  Spec["<b>OpenAPI Spec</b><br/>2.0 / 3.0 / 3.1"]
-  --> Engine["<b>PostMCP Engine</b><br/>Diet, JIT & Safety"]
-  --> Server["<b>MCP Server</b><br/>stdio & SSE"]
-  --> Agent["<b>AI Agent</b><br/>Claude / Cursor"]
+  Spec["OpenAPI Spec<br/>2.0 / 3.0 / 3.1"] --> Engine["PostMCP Engine<br/>Diet, JIT & Safety"]
+  Engine --> Server["MCP Server<br/>stdio & HTTP"]
+  Server --> Agent["AI Agent<br/>Claude / Cursor"]
 ```
 
 ---
@@ -29,8 +28,8 @@ A single large API specification can consume 50,000 to 150,000 tokens just defin
 ### 2. Schema Redundancy and Verbosity
 OpenAPI specifications often include extensive markdown descriptions, redundant schema constraints, example payloads, and deeply nested object types. AI agents need clean parameter types and concise functional descriptions, not human-oriented marketing copy.
 
-### 3. Missing Tenant and Identity Context
-Modern APIs (such as Neon, Linear, Stripe, and Jira) are inherently multi-tenant. Requests to endpoints like `/projects` or `/issues` require an `org_id`, `team_id`, or `account_id`. When an agent invokes a tool without these identifiers, the API silently returns empty payloads (`{}`) or `404 Not Found`, leaving the agent stuck in a retry loop.
+### 3. Missing Multi-Tenant Identity Context
+Modern APIs (such as Neon, Stripe, GitHub, and Jira) are inherently multi-tenant. Requests to endpoints like `/projects` or `/issues` require an `org_id`, `team_id`, or `account_id`. When an agent invokes a tool without these identifiers, the API silently returns empty payloads (`{}`) or `404 Not Found`, leaving the agent stuck in a retry loop.
 
 ### 4. Search Friction in Pure JIT Systems
 Pure Just-In-Time (JIT) tool registries expose only a meta-search tool (`tool_search`) when an API has dozens of endpoints. This forces the LLM to waste a full turn guessing search keywords just to discover fundamental operations like listing projects or retrieving user info.

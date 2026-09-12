@@ -4,11 +4,10 @@ description: "Deep dive into the 3 core stages: HTML Stripping, Markdown Table S
 ---
 ```mermaid
 flowchart LR
-  Raw["<b>Raw HTTP</b><br/>JSON payload"]
-  --> S1["<b>1. Strip Noise</b><br/>HTML & nulls"]
-  --> S2["<b>2. Format Table</b><br/>Markdown"]
-  --> S3["<b>3. Field Mask</b><br/>JSONPath filter"]
-  --> Out["<b>Dieted MCP</b><br/>-93% Tokens"]
+  Raw["Raw HTTP<br/>JSON payload"] --> S1["1. Strip Noise<br/>HTML & nulls"]
+  S1 --> S2["2. Format Table<br/>Markdown"]
+  S2 --> S3["3. Field Mask<br/>JSONPath filter"]
+  S3 --> Out["Dieted MCP<br/>-93% Tokens"]
 ```
 
 ## Stage 1: HTML Stripping & Text Sanitization

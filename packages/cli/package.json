@@ -2,11 +2,23 @@
   "name": "@postmcp/cli",
   "version": "0.1.25",
   "description": "The Postman for MCP. Turn any OpenAPI spec into a context-optimized MCP server in seconds.",
+  "license": "MIT",
+  "author": "PostMCP Contributors",
+  "homepage": "https://postmcp.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BraveRam/postmcp.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/BraveRam/postmcp/issues"
+  },
   "publishConfig": {
     "access": "public"
   },
   "bin": {
-    "postmcp": "./dist/bin.js"
+    "postmcp": "./dist/bin.js",
+    "cli": "./dist/bin.js"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

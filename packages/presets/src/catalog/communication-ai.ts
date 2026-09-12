@@ -137,6 +137,9 @@ export const COMMUNICATION_AI_PRESETS: Preset[] = [
     authType: 'Header (x-api-key)',
     authEnvVar: 'ANTHROPIC_API_KEY',
     defaultBaseUrl: 'https://api.anthropic.com/v1',
+    defaultHeaders: {
+      'anthropic-version': '2023-06-01',
+    },
     tags: ['llm', 'ai', 'claude', 'reasoning', 'coding'],
     bundledSpec: buildOpenAPISpec({
       title: 'Anthropic Claude API',

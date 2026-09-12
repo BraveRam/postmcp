@@ -6,7 +6,7 @@ describe('Presets Catalog & Runtime Integration', () => {
   it('should contain metadata for key developer APIs in bundled presets', () => {
     expect(BUNDLED_PRESETS['github']).toBeDefined();
     expect(BUNDLED_PRESETS['stripe']).toBeDefined();
-    expect(BUNDLED_PRESETS['linear']).toBeDefined();
+    expect(BUNDLED_PRESETS['gitlab']).toBeDefined();
     expect(BUNDLED_PRESETS['slack']).toBeDefined();
     expect(BUNDLED_PRESETS['petstore']).toBeDefined();
 
@@ -14,8 +14,8 @@ describe('Presets Catalog & Runtime Integration', () => {
     expect(BUNDLED_PRESETS['github'].defaultBaseUrl).toBe('https://api.github.com');
   });
 
-  it('should resolve and parse all 60 preset specifications successfully without errors', async () => {
-    expect(ALL_PRESETS.length).toBeGreaterThanOrEqual(60);
+  it('should resolve and parse all bundled preset specifications successfully without errors', async () => {
+    expect(ALL_PRESETS.length).toBeGreaterThanOrEqual(59);
 
     for (const preset of ALL_PRESETS) {
       const spec = await resolvePresetSpec(`@${preset.id}`);
