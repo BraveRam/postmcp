@@ -9,13 +9,12 @@ PostMCP operates on a modular, pipeline-oriented architecture designed to sit be
 
 ```mermaid
 flowchart LR
-  Client["<b>LLM Agent</b><br/>Claude / Cursor"]
-  --> P1["<b>1. Ingest</b><br/>OpenAPI & $refs"]
-  --> P2["<b>2. JIT Router</b><br/>Hot tools"]
-  --> P3["<b>3. Safety</b><br/>Risk & SSRF"]
-  --> P4["<b>4. Context</b><br/>Tenant & cursor"]
-  --> P5["<b>5. Token Diet</b><br/>-93% Tokens"]
-  --> API["<b>Upstream API</b><br/>REST Endpoints"]
+  Client["LLM Agent<br/>Claude / Cursor"] --> P1["1. Ingest<br/>OpenAPI & $refs"]
+  P1 --> P2["2. JIT Router<br/>Hot tools"]
+  P2 --> P3["3. Safety<br/>Risk & SSRF"]
+  P3 --> P4["4. Context<br/>Tenant & cursor"]
+  P4 --> P5["5. Token Diet<br/>-93% Tokens"]
+  P5 --> API["Upstream API<br/>REST Endpoints"]
 ```
 
 ---

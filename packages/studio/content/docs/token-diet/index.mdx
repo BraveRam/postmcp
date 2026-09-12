@@ -14,12 +14,11 @@ The **Token Diet Engine** is PostMCP's proprietary transformation pipeline that 
 
 ```mermaid
 flowchart LR
-  Raw["<b>Raw HTTP</b><br/>45 KB (~11k tokens)"]
-  --> S1["<b>1. Strip Noise</b><br/>HTML & nulls"]
-  --> S2["<b>2. Field Mask</b><br/>JSONPath"]
-  --> S3["<b>3. Format Table</b><br/>Markdown"]
-  --> S4["<b>4. Guardrails</b><br/>Ceilings"]
-  --> Out["<b>Dieted MCP</b><br/>3 KB (-93%)"]
+  Raw["Raw HTTP<br/>45 KB (~11k tokens)"] --> S1["1. Strip Noise<br/>HTML & nulls"]
+  S1 --> S2["2. Field Mask<br/>JSONPath"]
+  S2 --> S3["3. Format Table<br/>Markdown"]
+  S3 --> S4["4. Guardrails<br/>Ceilings"]
+  S4 --> Out["Dieted MCP<br/>3 KB (-93%)"]
 ```
 
 ---
@@ -33,7 +32,7 @@ Across popular enterprise and developer APIs, Token Diet achieves substantial re
 | **Neon** | `listProjects` (20 projects) | 14,200 | 920 | **93.5%** |
 | **Stripe** | `listCharges` (25 charges) | 28,400 | 2,100 | **92.6%** |
 | **GitHub** | `listRepositoryIssues` (30 issues) | 36,000 | 3,400 | **90.5%** |
-| **Linear** | `listTeamIssues` (50 issues) | 42,500 | 4,200 | **90.1%** |
+| **Slack** | `listChannels` (50 channels) | 38,000 | 3,100 | **91.8%** |
 | **Supabase** | `listOrganizations` | 8,800 | 780 | **91.1%** |
 
 ---

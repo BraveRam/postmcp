@@ -39,9 +39,8 @@ Every operation parsed from an OpenAPI specification is evaluated against struct
 
 ```mermaid
 flowchart LR
-  Call["<b>Tool Call</b><br/>Agent request"]
-  --> Tier["<b>1. Risk Tier</b><br/>Read / Write / Crit"]
-  --> Dry["<b>2. Dry-Run</b><br/>Simulate or pass"]
-  --> SSRF["<b>3. SSRF Guard</b><br/>Block private IPs"]
-  --> Exec["<b>Upstream API</b><br/>Safe execution"]
+  Call["Tool Call<br/>Agent request"] --> Tier["1. Risk Tier<br/>Read / Write / Crit"]
+  Tier --> Dry["2. Dry-Run<br/>Simulate or pass"]
+  Dry --> SSRF["3. SSRF Guard<br/>Block private IPs"]
+  SSRF --> Exec["Upstream API<br/>Safe execution"]
 ```
