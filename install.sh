@@ -65,7 +65,7 @@ else
     exit 1
 fi
 
-echo -e "Installing ${BOLD}${PACKAGE}${RESET} via ${CYAN}${PM}${RESET} (fastest available)..."
+echo -e "Installing ${BOLD}${PACKAGE}${RESET} via ${CYAN}${PM}${RESET}..."
 
 # 3. Installation Execution
 INSTALLED=false

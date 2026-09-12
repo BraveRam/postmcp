@@ -37,7 +37,7 @@ if (Get-Command bun -ErrorAction SilentlyContinue) {
     exit 1
 }
 
-Write-Host "Installing $PackageName via $PM (fastest available)..." -ForegroundColor Green
+Write-Host "Installing $PackageName via $PM..." -ForegroundColor Green
 
 try {
     Invoke-Expression $InstallCmd
