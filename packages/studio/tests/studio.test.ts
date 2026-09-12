@@ -52,7 +52,7 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
     const data = await res.json();
 
     expect(data.presets).toBeDefined();
-    expect(data.presets.length).toBeGreaterThanOrEqual(60);
+    expect(data.presets.length).toBeGreaterThanOrEqual(59);
     expect(data.categories).toContain('Developer Tools');
     expect(data.categories).toContain('Payments & Commerce');
 
@@ -87,11 +87,11 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
   });
 
   it('GET /api/initial-spec should return runtime initial spec environment variable', async () => {
-    process.env.STUDIO_INITIAL_SPEC = '@linear';
+    process.env.STUDIO_INITIAL_SPEC = '@stripe';
     const res = await initialSpecHandler();
     const data = await res.json();
 
-    expect(data.initialSpec).toBe('@linear');
+    expect(data.initialSpec).toBe('@stripe');
     delete process.env.STUDIO_INITIAL_SPEC;
   });
 

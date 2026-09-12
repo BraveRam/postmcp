@@ -48,11 +48,13 @@ export function applyTokenDiet(data: unknown, options: TokenDietOptions = {}): T
 
   // If pruning reduced the entire payload to undefined, handle safely (Finding 16)
   if (processed === undefined) {
+    const isArr = Array.isArray(data);
+    const emptyRepr = isArr ? '[]' : '{}';
     return {
-      text: '{}',
-      structured: {},
+      text: emptyRepr,
+      structured: isArr ? [] : {},
       rawEstimatedTokens,
-      dietEstimatedTokens: estimateTokenCount('{}'),
+      dietEstimatedTokens: estimateTokenCount(emptyRepr),
       savingsPercentage: rawEstimatedTokens > 0 ? 99 : 0,
       isTruncated: false,
     };

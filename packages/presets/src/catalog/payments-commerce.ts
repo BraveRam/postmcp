@@ -9,7 +9,7 @@ export const PAYMENTS_COMMERCE_PRESETS: Preset[] = [
     category: 'Payments & Commerce',
     authType: 'Bearer (STRIPE_SECRET_KEY)',
     authEnvVar: 'STRIPE_SECRET_KEY',
-    defaultBaseUrl: 'https://api.stripe.com/v1',
+    defaultBaseUrl: 'https://api.stripe.com',
     specUrl: 'https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json',
     tags: ['payments', 'billing', 'invoices', 'cards', 'subscriptions', 'refunds'],
     fieldMasks: [
@@ -37,7 +37,7 @@ export const PAYMENTS_COMMERCE_PRESETS: Preset[] = [
     ],
     bundledSpec: buildOpenAPISpec({
       title: 'Stripe API',
-      baseUrl: 'https://api.stripe.com/v1',
+      baseUrl: 'https://api.stripe.com',
       description: 'Stripe Payments and Subscriptions API',
       securityScheme: { name: 'bearerAuth', type: 'http', scheme: 'bearer' },
       endpoints: [

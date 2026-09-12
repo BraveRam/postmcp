@@ -42,7 +42,6 @@
     "api-presets",
     "stripe",
     "github",
-    "linear",
     "slack",
     "supabase",
     "twilio",

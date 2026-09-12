@@ -10,7 +10,13 @@ import YAML from 'yaml';
 
 function decodeJsonPointerPart(part: string): string {
   // RFC 6901: ~1 decodes to /, ~0 decodes to ~
-  return decodeURIComponent(part).replace(/~1/g, '/').replace(/~0/g, '~');
+  let decoded = part;
+  try {
+    decoded = decodeURIComponent(part);
+  } catch {
+    // Fallback if malformed percent-encoding
+  }
+  return decoded.replace(/~1/g, '/').replace(/~0/g, '~');
 }
 
 export function resolvePointer(root: unknown, pointer: string): unknown {
@@ -61,7 +67,7 @@ export async function dereferenceSpec(rawDoc: unknown, basePath?: string): Promi
       const res = await axios.get(fullUrl, {
         headers: {
           'Accept': 'application/json, application/yaml, text/yaml, */*',
-          'User-Agent': 'PostMCP/0.1.0 (https://github.com/BraveRam/postmcp)',
+          'User-Agent': 'PostMCP/0.1.25 (https://github.com/BraveRam/postmcp)',
         },
         responseType: 'text',
       });
