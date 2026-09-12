@@ -6,7 +6,8 @@
     "access": "public"
   },
   "bin": {
-    "postmcp": "./dist/bin.js"
+    "postmcp": "./dist/bin.js",
+    "cli": "./dist/bin.js"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
