@@ -31,7 +31,7 @@ export function Mermaid({ chart, className }: MermaidProps) {
 
         mermaid.initialize({
           startOnLoad: false,
-          securityLevel: 'loose',
+          securityLevel: 'strict',
           fontFamily: 'Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           theme: isDark ? 'dark' : 'neutral',
           themeVariables: isDark

@@ -240,6 +240,9 @@ describe('PostMCP Visual Web Studio API Routes (@postmcp/studio)', () => {
   it('SSRF Safeguard should block private and loopback hosts', () => {
     expect(isPrivateOrBlockedHost('http://localhost:8080/api')).toBe(true);
     expect(isPrivateOrBlockedHost('http://127.0.0.1:3000/secret')).toBe(true);
+    expect(isPrivateOrBlockedHost('http://127.1.2.3:3000/secret')).toBe(true);
+    expect(isPrivateOrBlockedHost('http://[::1]:8080/api')).toBe(true);
+    expect(isPrivateOrBlockedHost('http://[::ffff:127.0.0.1]:8080/api')).toBe(true);
     expect(isPrivateOrBlockedHost('http://169.254.169.254/latest/meta-data')).toBe(true);
     expect(isPrivateOrBlockedHost('http://192.168.1.1/admin')).toBe(true);
     expect(isPrivateOrBlockedHost('http://10.0.0.1/internal')).toBe(true);
