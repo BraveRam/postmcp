@@ -9,35 +9,40 @@ description: Connect OpenAI Codex CLI to PostMCP servers with zero install.
 
 PostMCP connects directly to Codex using standard `stdio`, automatically serializing complex JSON payloads into compact markdown tables with Token Diet pruning.
 
+> [!IMPORTANT]
+> **Static Tool Loading Required (`--no-jit`)**: OpenAI Codex queries `tools/list` once during initial session handshake and caches the tool catalog. Codex does not listen to mid-session `notifications/tools/list_changed` notifications.
+>
+> Consequently, PostMCP's dynamic Just-In-Time (JIT) tool mounting (`tool_search`) cannot expose newly searched tools to an active Codex session. Always run PostMCP with `--no-jit` when connecting to Codex. This mounts all OpenAPI operations statically at startup. Combined with `--token-diet`, schemas and responses are compressed to fit comfortably within the context window.
+
 ---
 
 ## Quick Setup via CLI
 
-Codex provides a dedicated `codex mcp` CLI subcommand to register servers.
+Codex provides a dedicated `codex mcp` CLI subcommand to register servers. Always pass `--no-jit`:
 
 ### Zero-Install Remote OpenAPI
 
 Run any OpenAPI spec directly without installing anything locally:
 
 ```bash
-codex mcp add firecrawl --env BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
+codex mcp add firecrawl --env BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json --no-jit
 ```
 
 *(If running with Node.js instead of Bun, replace `bunx` with `npx -y`).*
 
 ### Connect Curated Presets
 
-Connect to any of PostMCP's 60+ pre-optimized presets:
+Connect to any of PostMCP's 60+ pre-optimized presets with `--no-jit`:
 
 ```bash
 # Stripe Payments & Billing
-codex mcp add stripe --env STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY -- bunx @postmcp/cli run @stripe
+codex mcp add stripe --env STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY -- bunx @postmcp/cli run @stripe --no-jit
 
 # Neon Serverless Postgres
-codex mcp add neon --env NEON_API_KEY=$NEON_API_KEY -- bunx @postmcp/cli run @neon
+codex mcp add neon --env NEON_API_KEY=$NEON_API_KEY -- bunx @postmcp/cli run @neon --no-jit
 
 # Supabase Management API
-codex mcp add supabase --env SUPABASE_ACCESS_TOKEN=$SUPABASE_ACCESS_TOKEN -- bunx @postmcp/cli run @supabase
+codex mcp add supabase --env SUPABASE_ACCESS_TOKEN=$SUPABASE_ACCESS_TOKEN -- bunx @postmcp/cli run @supabase --no-jit
 ```
 
 ---
@@ -56,13 +61,14 @@ command = "bunx"
 args = [
   "@postmcp/cli",
   "run",
-  "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+  "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json",
+  "--no-jit"
 ]
 env = { BEARER_TOKEN = "YOUR_FIRECRAWL_API_KEY" }
 
 [mcp_servers.neon]
 command = "bunx"
-args = ["@postmcp/cli", "run", "@neon"]
+args = ["@postmcp/cli", "run", "@neon", "--no-jit"]
 env = { NEON_API_KEY = "your_neon_api_key" }
 ```
 

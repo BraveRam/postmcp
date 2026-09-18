@@ -167,7 +167,7 @@ export function buildCodexTomlSnippet(
 
   return `[mcp_servers.${serverKey}]
 command = "npx"
-args = ["-y", "@postmcp/cli", "run", "${targetSpecPath}"]${envLine}`;
+args = ["-y", "@postmcp/cli", "run", "${targetSpecPath}", "--no-jit"]${envLine}`;
 }
 
 const ALL_CLIENTS: SupportedExportClient[] = ['cursor', 'opencode', 'claude-code', 'codex', 'claude', 'windsurf'];

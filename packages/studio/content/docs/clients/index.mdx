@@ -15,7 +15,7 @@ Because PostMCP implements the official Model Context Protocol specification ove
 | :--- | :--- | :--- | :--- |
 | **OpenCode** | `stdio` | Yes | `opencode.json` |
 | **Claude Code** | `stdio` or `http` | Yes | `.mcp.json` / `claude mcp add` |
-| **Codex** | `stdio` or `http` | Yes | `.codex/config.toml` / `codex mcp add` |
+| **Codex** | `stdio` or `http` | No (Requires `--no-jit`) | `.codex/config.toml` / `codex mcp add` |
 | **Cursor IDE** | `stdio` or `sse` | Yes | `.cursor/mcp.json` |
 | **Claude Desktop** | `stdio` | Yes | `claude_desktop_config.json` |
 | **Windsurf / Cascade** | `stdio` | Yes | `mcp_config.json` |
@@ -82,10 +82,12 @@ Choose your coding agent or editor below to view the configuration snippet:
   </Tab>
 
   <Tab value="Codex">
+    OpenAI Codex caches tools on startup and does not support mid-session dynamic tool reloading (`list_changed`). Always pass `--no-jit` to expose tools statically.
+
     Add via Codex CLI:
 
     ```bash
-    codex mcp add firecrawl --env BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
+    codex mcp add firecrawl --env BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json --no-jit
     ```
 
     Or add to `.codex/config.toml` (or `~/.codex/config.toml`):
@@ -96,7 +98,8 @@ Choose your coding agent or editor below to view the configuration snippet:
     args = [
       "@postmcp/cli",
       "run",
-      "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+      "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json",
+      "--no-jit"
     ]
     env = { BEARER_TOKEN = "YOUR_FIRECRAWL_API_KEY" }
     ```

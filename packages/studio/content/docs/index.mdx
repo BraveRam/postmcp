@@ -144,10 +144,12 @@ Add any OpenAPI spec directly to your assistant without installing anything loca
   </Tab>
 
   <Tab value="Codex">
+    OpenAI Codex caches tools on startup and does not support mid-session dynamic tool reloading (`list_changed`). Always pass `--no-jit` to expose tools statically.
+
     Run directly in terminal:
 
     ```bash
-    codex mcp add firecrawl --env BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
+    codex mcp add firecrawl --env BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json --no-jit
     ```
 
     Or add to `.codex/config.toml` (or `~/.codex/config.toml`):
@@ -158,7 +160,8 @@ Add any OpenAPI spec directly to your assistant without installing anything loca
     args = [
       "@postmcp/cli",
       "run",
-      "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+      "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json",
+      "--no-jit"
     ]
     env = { BEARER_TOKEN = "YOUR_FIRECRAWL_API_KEY" }
     ```

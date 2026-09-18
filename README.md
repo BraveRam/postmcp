@@ -103,9 +103,11 @@ Or add to `.mcp.json` in your project root:
 
 #### Codex (`.codex/config.toml`)
 
+OpenAI Codex caches tools on initial startup and does not support mid-session dynamic tool reloading (`list_changed`). Always pass `--no-jit` to expose tools statically.
+
 Run directly in terminal:
 ```bash
-codex mcp add firecrawl --env BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
+codex mcp add firecrawl --env BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json --no-jit
 ```
 
 Or add to `.codex/config.toml` (or `~/.codex/config.toml`):
@@ -115,7 +117,8 @@ command = "bunx"
 args = [
   "@postmcp/cli",
   "run",
-  "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+  "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json",
+  "--no-jit"
 ]
 env = { BEARER_TOKEN = "YOUR_FIRECRAWL_API_KEY" }
 ```
@@ -309,9 +312,11 @@ Or add to `.mcp.json` in your repository root:
 
 #### Codex (`.codex/config.toml` or CLI)
 
+OpenAI Codex caches tools on startup and ignores dynamic tool updates mid-session. Always specify `--no-jit` to expose tools statically.
+
 Register directly with the Codex CLI:
 ```bash
-codex mcp add stripe --env STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY -- npx -y @postmcp/cli@latest run @stripe --token-diet --jit
+codex mcp add stripe --env STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY -- npx -y @postmcp/cli@latest run @stripe --token-diet --no-jit
 ```
 
 Or add to `.codex/config.toml`:
@@ -324,7 +329,7 @@ args = [
   "run",
   "@stripe",
   "--token-diet",
-  "--jit"
+  "--no-jit"
 ]
 env = { STRIPE_SECRET_KEY = "${STRIPE_SECRET_KEY}" }
 ```

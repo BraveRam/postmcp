@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getClientConfigPath, buildClientConfigSnippet } from '../src/commands/export.js';
+import { getClientConfigPath, buildClientConfigSnippet, buildCodexTomlSnippet } from '../src/commands/export.js';
 
 describe('1-Click Client Configuration Exporter', () => {
   it('should return valid config file paths for Cursor, Claude Desktop, Windsurf, OpenCode, Claude Code, and Codex', () => {
@@ -41,5 +41,18 @@ describe('1-Click Client Configuration Exporter', () => {
     expect(config.env!['BEARER_TOKEN']).toBe('ghp_secret_token_123');
     expect(config.env!['BASE_URL']).toBe('https://api.github.com');
     expect(config.env!['CUSTOM_VAR']).toBe('value_1');
+  });
+
+  it('should build Codex TOML snippet with --no-jit flag and environment variables', () => {
+    const snippet = buildCodexTomlSnippet('stripe-api', '@stripe', {
+      bearer: 'sk_test_123',
+      baseUrl: 'https://api.stripe.com',
+    });
+
+    expect(snippet).toContain('[mcp_servers.stripe-api]');
+    expect(snippet).toContain('command = "npx"');
+    expect(snippet).toContain('args = ["-y", "@postmcp/cli", "run", "@stripe", "--no-jit"]');
+    expect(snippet).toContain('BEARER_TOKEN = "sk_test_123"');
+    expect(snippet).toContain('BASE_URL = "https://api.stripe.com"');
   });
 });
