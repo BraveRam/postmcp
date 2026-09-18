@@ -190,19 +190,62 @@ export class PostMcpServer {
         const limit = typeof args.limit === 'number' ? args.limit : 5;
 
         const mounted = this.registry.mountToolsByQuery(query, tag, limit);
-        const mountedSummary = mounted.map((op) => ({
-          name: op.id,
-          method: op.method.toUpperCase(),
-          path: op.path,
-          summary: op.summary,
-          parameters: op.parameters.map((p) => ({
-            name: p.name,
-            in: p.in,
-            required: p.required,
-            type: p.schema.type,
-            description: p.description,
-          })),
-        }));
+        const mountedSummary = mounted.map((op) => {
+          const paramMap = new Map(op.parameters.map((p) => [p.name, p]));
+          const properties = (op.inputSchema?.properties || {}) as Record<string, any>;
+          const requiredList = new Set(op.inputSchema?.required || []);
+
+          let parameters: Array<{
+            name: string;
+            in: string;
+            required: boolean;
+            type: string;
+            description?: string;
+          }> = [];
+
+          if (Object.keys(properties).length > 0) {
+            parameters = Object.entries(properties).map(([propName, propSchema]) => {
+              const existingParam = paramMap.get(propName);
+              const rawType = propSchema?.type;
+              const schemaType = Array.isArray(rawType)
+                ? rawType.join(' | ')
+                : typeof rawType === 'string'
+                  ? rawType
+                  : (propSchema?.items ? 'array' : typeof propSchema === 'object' ? 'object' : 'string');
+              return {
+                name: propName,
+                in: existingParam ? existingParam.in : 'body',
+                required: requiredList.has(propName),
+                type: schemaType,
+                description: propSchema?.description || existingParam?.description || undefined,
+              };
+            });
+          } else {
+            parameters = op.parameters.map((p) => {
+              const rawType = p.schema?.type;
+              const paramType = Array.isArray(rawType)
+                ? rawType.join(' | ')
+                : typeof rawType === 'string'
+                  ? rawType
+                  : 'string';
+              return {
+                name: p.name,
+                in: p.in,
+                required: p.required,
+                type: paramType,
+                description: p.description,
+              };
+            });
+          }
+
+          return {
+            name: op.id,
+            method: op.method.toUpperCase(),
+            path: op.path,
+            summary: op.summary,
+            parameters,
+          };
+        });
 
         return {
           content: [

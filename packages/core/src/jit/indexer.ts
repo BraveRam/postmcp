@@ -39,6 +39,9 @@ export class BM25ToolIndex {
         op.description || '',
         ...(op.tags || []),
         ...(op.parameters || []).map((p) => `${p.name} ${p.description || ''}`),
+        ...Object.entries(op.inputSchema?.properties || {}).map(
+          ([name, s]) => `${name} ${(s as any)?.description || ''}`
+        ),
       ].join(' ');
 
       const tokens = tokenize(docText);

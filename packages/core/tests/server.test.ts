@@ -139,6 +139,52 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
     expect(postSearchList.tools.some((t) => t.name === 'deleteItem')).toBe(true);
   });
 
+  it('should include requestBody parameters in JIT tool_search mounted summary', async () => {
+    const specWithBody: NormalizedSpec = {
+      title: 'Scrape Service',
+      version: '1.0.0',
+      servers: [{ url: 'https://api.example.com' }],
+      operations: [
+        {
+          id: 'scrapeUrl',
+          method: 'post',
+          path: '/scrape',
+          summary: 'Scrape a URL',
+          description: 'Extracts markdown',
+          tags: ['scraping'],
+          parameters: [],
+          inputSchema: {
+            type: 'object',
+            properties: {
+              url: { type: 'string', description: 'The target URL to scrape' },
+              formats: { type: 'array', description: 'Formats to return' },
+            },
+            required: ['url'],
+          },
+          riskTier: 'READ_ONLY',
+        },
+      ],
+      securitySchemes: {},
+    };
+
+    const postServer = new PostMcpServer({ spec: specWithBody, jit: true });
+    const mcpServer = postServer.getServerInstance();
+    const callHandler = getMcpHandler<CallToolResult>(mcpServer, 'tools/call');
+
+    const searchCallResult = await callHandler({
+      method: 'tools/call',
+      params: { name: 'tool_search', arguments: { query: 'scrape url' } },
+    });
+
+    const searchContent = searchCallResult.content[0] as TextContent;
+    expect(searchContent.text).toContain('scrapeUrl');
+    expect(searchContent.text).toContain('"name": "url"');
+    expect(searchContent.text).toContain('"in": "body"');
+    expect(searchContent.text).toContain('"required": true');
+    expect(searchContent.text).toContain('"name": "formats"');
+    expect(searchContent.text).toContain('"required": false');
+  });
+
   it('should generate dry-run simulations and support DELETE request bodies', async () => {
     const postServer = new PostMcpServer({ spec: sampleSpec, jit: false, dryRun: true });
     const mcpServer = postServer.getServerInstance();
