@@ -7,21 +7,49 @@ description: Connect OpenCode, Claude Code, and terminal AI agents to PostMCP se
 
 OpenCode connects to MCP servers defined in `opencode.json` in your user home directory (`~/.opencode/opencode.json`) or in the root of your project:
 
+### Zero-Install Example (Firecrawl OpenAPI)
+
 ```json
 {
-  "$schema": "https://opencode.ai/schema.json",
-  "mcpServers": {
-    "neon": {
-      "command": "npx",
-      "args": ["postmcp", "run", "@neon"],
-      "env": {
-        "NEON_API_KEY": "${NEON_API_KEY}",
-        "NEON_ORG_ID": "${NEON_ORG_ID}"
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "firecrawl": {
+      "type": "local",
+      "enabled": true,
+      "command": [
+        "bunx",
+        "@postmcp/cli",
+        "run",
+        "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+      ],
+      "environment": {
+        "BEARER_TOKEN": "YOUR_FIRECRAWL_API_KEY"
       }
-    },
-    "custom-api": {
-      "command": "npx",
-      "args": ["postmcp", "run", "./spec/api.json", "--diet", "aggressive"]
+    }
+  }
+}
+```
+
+*(If running with Node.js instead of Bun, replace `"bunx"` with `"npx", "-y"`).*
+
+### Preset Example (Neon Serverless Postgres)
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "neon": {
+      "type": "local",
+      "enabled": true,
+      "command": [
+        "bunx",
+        "@postmcp/cli",
+        "run",
+        "@neon"
+      ],
+      "environment": {
+        "NEON_API_KEY": "${NEON_API_KEY}"
+      }
     }
   }
 }

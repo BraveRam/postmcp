@@ -48,6 +48,35 @@ npm install -g @postmcp/cli
 
 ## Quickstart
 
+### Connect to OpenCode in One Step (Zero-Install)
+
+Add any API directly to your `opencode.json` without installing anything locally:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "firecrawl": {
+      "type": "local",
+      "enabled": true,
+      "command": [
+        "bunx",
+        "@postmcp/cli",
+        "run",
+        "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+      ],
+      "environment": {
+        "BEARER_TOKEN": "YOUR_FIRECRAWL_API_KEY"
+      }
+    }
+  }
+}
+```
+
+*(Note: Replace `"bunx"` with `"npx", "-y"` if running on Node.js instead of Bun).*
+
+---
+
 ### Launch Visual Web Studio
 
 Launch the local interactive workbench to explore APIs, test endpoints in the AI sandbox, and curate Token Diet rules:

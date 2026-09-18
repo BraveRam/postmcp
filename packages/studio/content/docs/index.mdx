@@ -85,7 +85,32 @@ Or pass a target specification directly:
 npx postmcp studio ./petstore.json
 ```
 
-### 3. Generate Standalone Code
+### 3. Connect to OpenCode in One Step
+
+Add any OpenAPI spec directly to your `opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "firecrawl": {
+      "type": "local",
+      "enabled": true,
+      "command": [
+        "bunx",
+        "@postmcp/cli",
+        "run",
+        "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+      ],
+      "environment": {
+        "BEARER_TOKEN": "YOUR_FIRECRAWL_API_KEY"
+      }
+    }
+  }
+}
+```
+
+### 4. Generate Standalone Code
 
 If you prefer zero runtime dependencies, generate native TypeScript or Python server code:
 

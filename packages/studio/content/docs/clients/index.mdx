@@ -24,8 +24,8 @@ Because PostMCP implements the official Model Context Protocol specification ove
 ## Connection Steps Summary
 
 Connecting PostMCP to any client requires two elements:
-1. **Command**: `npx`
-2. **Arguments**: `["postmcp", "run", "<spec_or_preset>", ...flags]`
+1. **Command**: `npx` (or `bunx`)
+2. **Arguments**: `["-y", "@postmcp/cli", "run", "<spec_or_preset>", ...flags]`
 
 Or if using remote Server-Sent Events (SSE):
 - **URL**: `http://localhost:3000/sse`
