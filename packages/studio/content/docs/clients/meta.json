@@ -2,8 +2,10 @@
   "title": "Client Integrations",
   "pages": [
     "index",
-    "claude-desktop",
+    "opencode",
+    "claude-code",
+    "codex",
     "cursor",
-    "opencode"
+    "claude-desktop"
   ]
 }

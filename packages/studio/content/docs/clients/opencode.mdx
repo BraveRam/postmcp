@@ -57,33 +57,80 @@ OpenCode connects to MCP servers defined in `opencode.json` in your user home di
 
 ---
 
-## Claude Code & Windsurf
+## CLI Agent Configuration Comparison
 
-### Claude Code CLI
+Compare how PostMCP connects across your favorite CLI agents:
 
-For Claude Code, pass MCP server commands directly or via configuration:
+<Tabs items={['OpenCode', 'Claude Code', 'Codex', 'Cursor']}>
+  <Tab value="OpenCode">
+    In `opencode.json`:
 
-```bash
-claude mcp add neon -- npx postmcp run @neon
-```
-
-### Windsurf / Cascade
-
-Add to `~/.codeium/windsurf/mcp_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "neon": {
-      "command": "npx",
-      "args": ["postmcp", "run", "@neon"],
-      "env": {
-        "NEON_API_KEY": "your_api_key"
+    ```json
+    {
+      "$schema": "https://opencode.ai/config.json",
+      "mcp": {
+        "firecrawl": {
+          "type": "local",
+          "enabled": true,
+          "command": [
+            "bunx",
+            "@postmcp/cli",
+            "run",
+            "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+          ],
+          "environment": {
+            "BEARER_TOKEN": "YOUR_FIRECRAWL_API_KEY"
+          }
+        }
       }
     }
-  }
-}
-```
+    ```
+  </Tab>
+
+  <Tab value="Claude Code">
+    Terminal command:
+
+    ```bash
+    claude mcp add firecrawl -s project -e BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
+    ```
+
+    Or add to `.mcp.json` in your repository root. See the [Claude Code Guide](/docs/clients/claude-code) for full details.
+  </Tab>
+
+  <Tab value="Codex">
+    Terminal command:
+
+    ```bash
+    codex mcp add firecrawl --env BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
+    ```
+
+    Or add to `.codex/config.toml`. See the [Codex Guide](/docs/clients/codex) for full details.
+  </Tab>
+
+  <Tab value="Cursor">
+    In `.cursor/mcp.json`:
+
+    ```json
+    {
+      "mcpServers": {
+        "firecrawl": {
+          "command": "bunx",
+          "args": [
+            "@postmcp/cli",
+            "run",
+            "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+          ],
+          "env": {
+            "BEARER_TOKEN": "YOUR_FIRECRAWL_API_KEY"
+          }
+        }
+      }
+    }
+    ```
+
+    See the [Cursor Guide](/docs/clients/cursor) for full details.
+  </Tab>
+</Tabs>
 
 ---
 

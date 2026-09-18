@@ -1,0 +1,84 @@
+---
+title: Codex
+description: Connect OpenAI Codex CLI to PostMCP servers with zero install.
+---
+
+## Overview
+
+[Codex](https://github.com/openai/codex) is OpenAI's lightweight CLI coding agent. Codex supports the Model Context Protocol (MCP) to interact with local and remote tools, dynamic documentation, and external APIs.
+
+PostMCP connects directly to Codex using standard `stdio`, automatically serializing complex JSON payloads into compact markdown tables with Token Diet pruning.
+
+---
+
+## Quick Setup via CLI
+
+Codex provides a dedicated `codex mcp` CLI subcommand to register servers.
+
+### Zero-Install Remote OpenAPI
+
+Run any OpenAPI spec directly without installing anything locally:
+
+```bash
+codex mcp add firecrawl --env BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
+```
+
+*(If running with Node.js instead of Bun, replace `bunx` with `npx -y`).*
+
+### Connect Curated Presets
+
+Connect to any of PostMCP's 60+ pre-optimized presets:
+
+```bash
+# Stripe Payments & Billing
+codex mcp add stripe --env STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY -- bunx @postmcp/cli run @stripe
+
+# Neon Serverless Postgres
+codex mcp add neon --env NEON_API_KEY=$NEON_API_KEY -- bunx @postmcp/cli run @neon
+
+# Supabase Management API
+codex mcp add supabase --env SUPABASE_ACCESS_TOKEN=$SUPABASE_ACCESS_TOKEN -- bunx @postmcp/cli run @supabase
+```
+
+---
+
+## File-Based Configuration (`config.toml`)
+
+Codex configurations are defined using TOML in either:
+* **Project Level**: `.codex/config.toml` (scoped to the active project)
+* **Global Level**: `~/.codex/config.toml` (available in all sessions)
+
+### Example Configuration
+
+```toml
+[mcp_servers.firecrawl]
+command = "bunx"
+args = [
+  "@postmcp/cli",
+  "run",
+  "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+]
+env = { BEARER_TOKEN = "YOUR_FIRECRAWL_API_KEY" }
+
+[mcp_servers.neon]
+command = "bunx"
+args = ["@postmcp/cli", "run", "@neon"]
+env = { NEON_API_KEY = "your_neon_api_key" }
+```
+
+---
+
+## Verifying the Connection
+
+1. Verify registered servers by running:
+   ```bash
+   codex mcp list
+   ```
+2. Start a Codex session:
+   ```bash
+   codex
+   ```
+3. Type `/mcp` in the Codex terminal UI or prompt Codex directly:
+   ```text
+   Use firecrawl to scrape https://postmcp.dev and extract its key features.
+   ```

@@ -88,8 +88,8 @@ export function createCli(): Command {
   // 4. Export Command
   program
     .command('export <spec>')
-    .description('1-Click configuration exporter for Cursor, Claude Desktop, and Windsurf')
-    .option('-t, --target <name>', 'Target client: cursor, claude, windsurf, or all')
+    .description('1-Click configuration exporter for OpenCode, Claude Code, Codex, Cursor, Claude Desktop, and Windsurf')
+    .option('-t, --target <name>', 'Target client: cursor, opencode, claude-code, codex, claude, windsurf, or all')
     .option('--client <name>', 'Alias for --target')
     .option('-w, --write', 'Automatically merge and write configuration directly to the client config file on disk')
     .option('--bearer <token>', 'Bearer token for client configuration environment')

@@ -48,9 +48,11 @@ npm install -g @postmcp/cli
 
 ## Quickstart
 
-### Connect to OpenCode in One Step (Zero-Install)
+### Connect to Your Coding Agent in One Step (Zero-Install)
 
-Add any API directly to your `opencode.json` without installing anything locally:
+Add any API directly to your coding assistant without installing anything locally:
+
+#### OpenCode (`opencode.json`)
 
 ```json
 {
@@ -66,6 +68,71 @@ Add any API directly to your `opencode.json` without installing anything locally
         "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
       ],
       "environment": {
+        "BEARER_TOKEN": "YOUR_FIRECRAWL_API_KEY"
+      }
+    }
+  }
+}
+```
+
+#### Claude Code
+
+Run directly in terminal:
+```bash
+claude mcp add firecrawl -s project -e BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
+```
+
+Or add to `.mcp.json` in your project root:
+```json
+{
+  "mcpServers": {
+    "firecrawl": {
+      "command": "bunx",
+      "args": [
+        "@postmcp/cli",
+        "run",
+        "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+      ],
+      "env": {
+        "BEARER_TOKEN": "YOUR_FIRECRAWL_API_KEY"
+      }
+    }
+  }
+}
+```
+
+#### Codex (`.codex/config.toml`)
+
+Run directly in terminal:
+```bash
+codex mcp add firecrawl --env BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
+```
+
+Or add to `.codex/config.toml` (or `~/.codex/config.toml`):
+```toml
+[mcp_servers.firecrawl]
+command = "bunx"
+args = [
+  "@postmcp/cli",
+  "run",
+  "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+]
+env = { BEARER_TOKEN = "YOUR_FIRECRAWL_API_KEY" }
+```
+
+#### Cursor (`.cursor/mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "firecrawl": {
+      "command": "bunx",
+      "args": [
+        "@postmcp/cli",
+        "run",
+        "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+      ],
+      "env": {
         "BEARER_TOKEN": "YOUR_FIRECRAWL_API_KEY"
       }
     }
@@ -209,6 +276,57 @@ Configure PostMCP in your editor's MCP settings.
     }
   }
 }
+```
+
+#### Claude Code (`.mcp.json` or CLI)
+
+Register directly with the Claude Code CLI:
+```bash
+claude mcp add stripe -s project -e STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY -- npx -y @postmcp/cli@latest run @stripe --token-diet --jit
+```
+
+Or add to `.mcp.json` in your repository root:
+```json
+{
+  "mcpServers": {
+    "stripe": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@postmcp/cli@latest",
+        "run",
+        "@stripe",
+        "--token-diet",
+        "--jit"
+      ],
+      "env": {
+        "STRIPE_SECRET_KEY": "${env:STRIPE_SECRET_KEY}"
+      }
+    }
+  }
+}
+```
+
+#### Codex (`.codex/config.toml` or CLI)
+
+Register directly with the Codex CLI:
+```bash
+codex mcp add stripe --env STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY -- npx -y @postmcp/cli@latest run @stripe --token-diet --jit
+```
+
+Or add to `.codex/config.toml`:
+```toml
+[mcp_servers.stripe]
+command = "npx"
+args = [
+  "-y",
+  "@postmcp/cli@latest",
+  "run",
+  "@stripe",
+  "--token-diet",
+  "--jit"
+]
+env = { STRIPE_SECRET_KEY = "${STRIPE_SECRET_KEY}" }
 ```
 
 #### Cursor (`.cursor/mcp.json`)

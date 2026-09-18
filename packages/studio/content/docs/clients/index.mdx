@@ -1,6 +1,6 @@
 ---
 title: Client Integrations
-description: Connecting PostMCP servers to Claude Desktop, Cursor, OpenCode, and custom MCP clients.
+description: Connecting PostMCP servers to OpenCode, Claude Code, Codex, Cursor, Claude Desktop, and custom MCP clients.
 ---
 
 ## Overview
@@ -13,19 +13,117 @@ Because PostMCP implements the official Model Context Protocol specification ove
 
 | Client | Transport | Turn-1 Hot Tools Supported | Configuration Location |
 | :--- | :--- | :--- | :--- |
-| **Claude Desktop** | `stdio` | Yes | `claude_desktop_config.json` |
-| **Cursor IDE** | `stdio` or `sse` | Yes | Cursor Settings -> MCP Servers |
 | **OpenCode** | `stdio` | Yes | `opencode.json` |
+| **Claude Code** | `stdio` or `http` | Yes | `.mcp.json` / `claude mcp add` |
+| **Codex** | `stdio` or `http` | Yes | `.codex/config.toml` / `codex mcp add` |
+| **Cursor IDE** | `stdio` or `sse` | Yes | `.cursor/mcp.json` |
+| **Claude Desktop** | `stdio` | Yes | `claude_desktop_config.json` |
 | **Windsurf / Cascade** | `stdio` | Yes | `mcp_config.json` |
 | **Custom MCP Clients** | `stdio` or `sse` | Yes | Standard JSON-RPC 2.0 client |
 
 ---
 
-## Connection Steps Summary
+## Quick Connection Configuration
 
-Connecting PostMCP to any client requires two elements:
-1. **Command**: `npx` (or `bunx`)
-2. **Arguments**: `["-y", "@postmcp/cli", "run", "<spec_or_preset>", ...flags]`
+Choose your coding agent or editor below to view the configuration snippet:
 
-Or if using remote Server-Sent Events (SSE):
-- **URL**: `http://localhost:3000/sse`
+<Tabs items={['OpenCode', 'Claude Code', 'Codex', 'Cursor']}>
+  <Tab value="OpenCode">
+    Add to `opencode.json` (or `~/.config/opencode/opencode.json`):
+
+    ```json
+    {
+      "$schema": "https://opencode.ai/config.json",
+      "mcp": {
+        "firecrawl": {
+          "type": "local",
+          "enabled": true,
+          "command": [
+            "bunx",
+            "@postmcp/cli",
+            "run",
+            "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+          ],
+          "environment": {
+            "BEARER_TOKEN": "YOUR_FIRECRAWL_API_KEY"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab value="Claude Code">
+    Add via Claude Code CLI:
+
+    ```bash
+    claude mcp add firecrawl -s project -e BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
+    ```
+
+    Or add to `.mcp.json` in your project root:
+
+    ```json
+    {
+      "mcpServers": {
+        "firecrawl": {
+          "command": "bunx",
+          "args": [
+            "@postmcp/cli",
+            "run",
+            "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+          ],
+          "env": {
+            "BEARER_TOKEN": "YOUR_FIRECRAWL_API_KEY"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab value="Codex">
+    Add via Codex CLI:
+
+    ```bash
+    codex mcp add firecrawl --env BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
+    ```
+
+    Or add to `.codex/config.toml` (or `~/.codex/config.toml`):
+
+    ```toml
+    [mcp_servers.firecrawl]
+    command = "bunx"
+    args = [
+      "@postmcp/cli",
+      "run",
+      "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+    ]
+    env = { BEARER_TOKEN = "YOUR_FIRECRAWL_API_KEY" }
+    ```
+  </Tab>
+
+  <Tab value="Cursor">
+    Add to `.cursor/mcp.json`:
+
+    ```json
+    {
+      "mcpServers": {
+        "firecrawl": {
+          "command": "bunx",
+          "args": [
+            "@postmcp/cli",
+            "run",
+            "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+          ],
+          "env": {
+            "BEARER_TOKEN": "YOUR_FIRECRAWL_API_KEY"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+*(Note: Replace `bunx` with `npx -y` if running on Node.js instead of Bun).*
+

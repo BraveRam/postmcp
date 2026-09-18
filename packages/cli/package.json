@@ -1,6 +1,6 @@
 {
   "name": "@postmcp/cli",
-  "version": "0.1.26",
+  "version": "0.1.27",
   "description": "The Postman for MCP. Turn any OpenAPI spec into a context-optimized MCP server in seconds.",
   "license": "MIT",
   "author": "PostMCP Contributors",
@@ -17,8 +17,7 @@
     "access": "public"
   },
   "bin": {
-    "postmcp": "./dist/bin.js",
-    "cli": "./dist/bin.js"
+    "postmcp": "./dist/bin.js"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

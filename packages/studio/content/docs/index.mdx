@@ -85,30 +85,109 @@ Or pass a target specification directly:
 npx postmcp studio ./petstore.json
 ```
 
-### 3. Connect to OpenCode in One Step
+### 3. Connect to Your Assistant in One Step (Zero-Install)
 
-Add any OpenAPI spec directly to your `opencode.json`:
+Add any OpenAPI spec directly to your assistant without installing anything locally:
 
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "firecrawl": {
-      "type": "local",
-      "enabled": true,
-      "command": [
-        "bunx",
-        "@postmcp/cli",
-        "run",
-        "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
-      ],
-      "environment": {
-        "BEARER_TOKEN": "YOUR_FIRECRAWL_API_KEY"
+<Tabs items={['OpenCode', 'Claude Code', 'Codex', 'Cursor']}>
+  <Tab value="OpenCode">
+    Add to `opencode.json` (or `~/.config/opencode/opencode.json`):
+
+    ```json
+    {
+      "$schema": "https://opencode.ai/config.json",
+      "mcp": {
+        "firecrawl": {
+          "type": "local",
+          "enabled": true,
+          "command": [
+            "bunx",
+            "@postmcp/cli",
+            "run",
+            "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+          ],
+          "environment": {
+            "BEARER_TOKEN": "YOUR_FIRECRAWL_API_KEY"
+          }
+        }
       }
     }
-  }
-}
-```
+    ```
+  </Tab>
+
+  <Tab value="Claude Code">
+    Run directly in terminal:
+
+    ```bash
+    claude mcp add firecrawl -s project -e BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
+    ```
+
+    Or add to `.mcp.json` in your project root:
+
+    ```json
+    {
+      "mcpServers": {
+        "firecrawl": {
+          "command": "bunx",
+          "args": [
+            "@postmcp/cli",
+            "run",
+            "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+          ],
+          "env": {
+            "BEARER_TOKEN": "YOUR_FIRECRAWL_API_KEY"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab value="Codex">
+    Run directly in terminal:
+
+    ```bash
+    codex mcp add firecrawl --env BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
+    ```
+
+    Or add to `.codex/config.toml` (or `~/.codex/config.toml`):
+
+    ```toml
+    [mcp_servers.firecrawl]
+    command = "bunx"
+    args = [
+      "@postmcp/cli",
+      "run",
+      "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+    ]
+    env = { BEARER_TOKEN = "YOUR_FIRECRAWL_API_KEY" }
+    ```
+  </Tab>
+
+  <Tab value="Cursor">
+    Add to `.cursor/mcp.json`:
+
+    ```json
+    {
+      "mcpServers": {
+        "firecrawl": {
+          "command": "bunx",
+          "args": [
+            "@postmcp/cli",
+            "run",
+            "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+          ],
+          "env": {
+            "BEARER_TOKEN": "YOUR_FIRECRAWL_API_KEY"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+*(Note: Replace `bunx` with `npx -y` if running on Node.js instead of Bun).*
 
 ### 4. Generate Standalone Code
 

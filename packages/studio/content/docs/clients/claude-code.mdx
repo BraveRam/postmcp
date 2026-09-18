@@ -1,0 +1,105 @@
+---
+title: Claude Code
+description: Connect Anthropic's Claude Code CLI agent to PostMCP servers with zero install.
+---
+
+## Overview
+
+[Claude Code](https://claude.ai/code) is Anthropic's agentic command-line tool. It connects directly to Model Context Protocol (MCP) servers to read documentation, issue API requests, and interact with external services.
+
+PostMCP integrates with Claude Code over standard `stdio` or HTTP, enabling instant zero-install access to any OpenAPI specification or curated preset.
+
+---
+
+## Quick Setup via CLI
+
+Claude Code provides built-in `claude mcp` commands to manage tools.
+
+### Zero-Install Remote OpenAPI
+
+Run any OpenAPI spec directly without installing anything locally:
+
+```bash
+claude mcp add firecrawl -s project -e BEARER_TOKEN=YOUR_FIRECRAWL_API_KEY -- bunx @postmcp/cli run https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json
+```
+
+*(If running with Node.js instead of Bun, replace `bunx` with `npx -y`).*
+
+### Connect Curated Presets
+
+Connect to any of PostMCP's 60+ pre-optimized presets:
+
+```bash
+# Stripe Payments & Billing
+claude mcp add stripe -s project -e STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY -- bunx @postmcp/cli run @stripe
+
+# Neon Serverless Postgres
+claude mcp add neon -s project -e NEON_API_KEY=$NEON_API_KEY -- bunx @postmcp/cli run @neon
+
+# GitHub REST API
+claude mcp add github -s project -e GITHUB_TOKEN=$GITHUB_TOKEN -- bunx @postmcp/cli run @github
+```
+
+---
+
+## File-Based Configuration
+
+You can also define your servers directly in Claude Code's configuration files.
+
+### Project Scoped (`.mcp.json`)
+
+Commit a `.mcp.json` file in your repository root to share tools across your team:
+
+```json
+{
+  "mcpServers": {
+    "firecrawl": {
+      "command": "bunx",
+      "args": [
+        "@postmcp/cli",
+        "run",
+        "https://raw.githubusercontent.com/firecrawl/firecrawl/refs/heads/main/apps/api/openapi.json"
+      ],
+      "env": {
+        "BEARER_TOKEN": "YOUR_FIRECRAWL_API_KEY"
+      }
+    },
+    "neon": {
+      "command": "bunx",
+      "args": ["@postmcp/cli", "run", "@neon"],
+      "env": {
+        "NEON_API_KEY": "${NEON_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+### Global Scoped (`~/.claude.json`)
+
+To make PostMCP servers available across all projects on your machine, add them to `~/.claude.json`:
+
+```json
+{
+  "mcpServers": {
+    "stripe": {
+      "command": "npx",
+      "args": ["-y", "@postmcp/cli", "run", "@stripe"],
+      "env": {
+        "STRIPE_SECRET_KEY": "sk_live_..."
+      }
+    }
+  }
+}
+```
+
+---
+
+## Verifying the Connection
+
+1. Inside a running Claude Code session, type `/mcp` to open the interactive MCP status dialog.
+2. Verify that your server shows active tools.
+3. Ask Claude Code:
+   ```text
+   Use the firecrawl tool to scrape and summarize https://postmcp.dev
+   ```

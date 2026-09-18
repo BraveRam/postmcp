@@ -55,9 +55,11 @@ export interface GenerateCommandOptions {
   out?: string;
 }
 
+export type SupportedExportClient = 'cursor' | 'claude' | 'windsurf' | 'opencode' | 'claude-code' | 'codex';
+
 export interface ExportCommandOptions {
-  target?: 'cursor' | 'claude' | 'windsurf' | 'all';
-  client?: 'cursor' | 'claude' | 'windsurf' | 'all';
+  target?: SupportedExportClient | 'all' | string;
+  client?: SupportedExportClient | 'all' | string;
   write?: boolean;
   env?: string[];
   bearer?: string;

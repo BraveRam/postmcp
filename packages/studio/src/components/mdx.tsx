@@ -1,4 +1,5 @@
 import defaultMdxComponents from 'fumadocs-ui/mdx';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import type { MDXComponents } from 'mdx/types';
 import { Mermaid } from '@/components/Mermaid';
 import React from 'react';
@@ -42,6 +43,8 @@ function PreWrapper(props: any) {
 export function getMDXComponents(components?: MDXComponents) {
   return {
     ...defaultMdxComponents,
+    Tab,
+    Tabs,
     Mermaid,
     pre: PreWrapper,
     ...components,
@@ -54,4 +57,4 @@ declare global {
   type MDXProvidedComponents = ReturnType<typeof getMDXComponents>;
 }
 
-export { Mermaid };
+export { Mermaid, Tab, Tabs };
