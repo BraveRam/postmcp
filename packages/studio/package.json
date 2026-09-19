@@ -1,7 +1,6 @@
 {
   "name": "@postmcp/studio",
-  "version": "0.1.31",
-  "type": "module",
+  "version": "0.1.32",
   "license": "MIT",
   "author": "PostMCP Contributors",
   "homepage": "https://postmcp.dev",
@@ -29,6 +28,7 @@
     ".next/prerender-manifest.json",
     ".next/routes-manifest.json",
     ".next/required-server-files.json",
+    ".next/server/package.json",
     "content",
     "source.config.ts",
     "public",
@@ -38,7 +38,7 @@
   "description": "PostMCP Visual Web Studio - Interactive OpenAPI to MCP workbench with Token Diet Curator and Live Sandbox",
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "next build && node -e \"import('node:fs').then(fs => fs.writeFileSync('.next/server/package.json', JSON.stringify({type: 'commonjs'}, null, 2)))\"",
     "start": "next start",
     "test": "vitest run",
     "lint": "eslint . --max-warnings 10",
@@ -109,5 +109,6 @@
     "openapi",
     "swagger",
     "developer-workbench"
-  ]
+  ],
+  "type": "module"
 }

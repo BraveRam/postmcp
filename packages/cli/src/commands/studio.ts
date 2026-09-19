@@ -131,6 +131,16 @@ export async function studioCommand(specArg?: string, options: StudioCommandOpti
 
     const isBuilt = fs.existsSync(nextDir) && !isStale;
     const preferDev = options.dev || isStale;
+    // Ensure Next.js server directory has CommonJS package.json to prevent
+    // "ReferenceError: require is not defined in ES module scope" when studio has "type": "module"
+    const serverDir = path.join(studioDir, '.next', 'server');
+    const serverPkgJson = path.join(serverDir, 'package.json');
+    if (fs.existsSync(serverDir) && !fs.existsSync(serverPkgJson)) {
+      try {
+        fs.writeFileSync(serverPkgJson, JSON.stringify({ type: 'commonjs' }, null, 2));
+      } catch {}
+    }
+
     // In standalone or monorepo environments, prefer npx next or pnpm
     const isPnpm = fs.existsSync(path.join(studioDir, '..', '..', 'pnpm-lock.yaml'));
     const command = isPnpm ? 'pnpm' : 'npx';
@@ -139,8 +149,8 @@ export async function studioCommand(specArg?: string, options: StudioCommandOpti
         ? ['start', '--port', port]
         : ['dev', '--port', port]
       : isBuilt && !preferDev
-      ? ['next', 'start', studioDir, '-p', port]
-      : ['next', 'dev', studioDir, '-p', port];
+      ? ['--yes', 'next', 'start', studioDir, '-p', port]
+      : ['--yes', 'next', 'dev', studioDir, '-p', port];
 
     try {
       child = spawn(command, args, {
