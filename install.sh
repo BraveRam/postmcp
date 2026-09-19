@@ -44,71 +44,81 @@ if command -v node >/dev/null 2>&1; then
     fi
 fi
 
-# 2. Select Package Manager in speed order: bun -> pnpm -> npm
-PM=""
-INSTALL_CMD=""
+# 2. Package Managers to try in preference order
+CANDIDATE_PMS=()
+if command -v bun >/dev/null 2>&1; then CANDIDATE_PMS+=("bun"); fi
+if command -v pnpm >/dev/null 2>&1; then CANDIDATE_PMS+=("pnpm"); fi
+if command -v npm >/dev/null 2>&1; then CANDIDATE_PMS+=("npm"); fi
+if command -v yarn >/dev/null 2>&1; then CANDIDATE_PMS+=("yarn"); fi
 
-if command -v bun >/dev/null 2>&1; then
-    PM="bun"
-    INSTALL_CMD="bun add -g ${PACKAGE}@latest"
-elif command -v pnpm >/dev/null 2>&1; then
-    PM="pnpm"
-    INSTALL_CMD="pnpm add -g ${PACKAGE}@latest"
-elif command -v npm >/dev/null 2>&1; then
-    PM="npm"
-    INSTALL_CMD="npm install -g ${PACKAGE}@latest"
-elif command -v yarn >/dev/null 2>&1; then
-    PM="yarn"
-    INSTALL_CMD="yarn global add ${PACKAGE}@latest"
-else
+if [ ${#CANDIDATE_PMS[@]} -eq 0 ]; then
     echo "Error: No supported package manager found (bun, pnpm, npm, yarn)." >&2
     echo "Please install Bun (https://bun.sh) or npm (https://nodejs.org)." >&2
     exit 1
 fi
 
-echo -e "Installing ${BOLD}${PACKAGE}${RESET} via ${CYAN}${PM}${RESET}..."
-
-# 3. Installation Execution
+# 3. Installation Execution with Fallback
 INSTALLED=false
+PM_USED=""
 
-# 3a. Try standard install
-if eval "${INSTALL_CMD}" 2>/dev/null; then
-    INSTALLED=true
-fi
+for PM in "${CANDIDATE_PMS[@]}"; do
+    case "${PM}" in
+        bun)  INSTALL_CMD="bun add -g ${PACKAGE}@latest" ;;
+        pnpm)
+            # If PNPM_HOME is not set, set a sensible default for global bin
+            export PNPM_HOME="${PNPM_HOME:-$HOME/.local/share/pnpm}"
+            export PATH="${PNPM_HOME}:${PATH}"
+            INSTALL_CMD="pnpm add -g ${PACKAGE}@latest"
+            ;;
+        npm)  INSTALL_CMD="npm install -g ${PACKAGE}@latest" ;;
+        yarn) INSTALL_CMD="yarn global add ${PACKAGE}@latest" ;;
+    esac
 
-# 3b. For npm: if standard install failed (permissions), try ~/.local prefix
-if [ "${INSTALLED}" = "false" ] && [ "${PM}" = "npm" ]; then
-    echo -e "${YELLOW}Global system directory is not writable without root permissions.${RESET}"
-    echo "Attempting user-level installation into ~/.local..."
-    mkdir -p "${HOME}/.local"
-    if npm install -g --prefix "${HOME}/.local" "${PACKAGE}@latest" 2>/dev/null; then
+    echo -e "Attempting installation via ${CYAN}${PM}${RESET}..."
+    if eval "${INSTALL_CMD}" 2>/dev/null; then
         INSTALLED=true
-        if [ -d "${HOME}/.local/bin" ]; then
-            export PATH="${HOME}/.local/bin:${PATH}"
+        PM_USED="${PM}"
+        break
+    fi
+
+    # For npm: if standard install failed (permissions), try ~/.local prefix
+    if [ "${PM}" = "npm" ]; then
+        echo -e "${YELLOW}Global system directory is not writable without root permissions.${RESET}"
+        echo "Attempting user-level installation into ~/.local..."
+        mkdir -p "${HOME}/.local"
+        if npm install -g --prefix "${HOME}/.local" "${PACKAGE}@latest" 2>/dev/null; then
+            INSTALLED=true
+            PM_USED="npm"
+            if [ -d "${HOME}/.local/bin" ]; then
+                export PATH="${HOME}/.local/bin:${PATH}"
+            fi
+            break
         fi
     fi
-fi
 
-# 3c. If user prefix failed and sudo is available, try sudo preserving user PATH
-if [ "${INSTALLED}" = "false" ]; then
+    # If non-root and sudo is available, try with sudo preserving PATH
     if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
-        echo -e "${YELLOW}Attempting installation with sudo...${RESET}"
+        echo -e "${YELLOW}Retrying ${PM} with sudo...${RESET}"
         PM_PATH="$(command -v "${PM}" || true)"
         NODE_DIR="$(dirname "$(command -v node 2>/dev/null || command -v bun 2>/dev/null)" || true)"
         if [ -n "${PM_PATH}" ] && [ -x "${PM_PATH}" ]; then
             SUDO_CMD="$(echo "${INSTALL_CMD}" | sed "s|^${PM}|${PM_PATH}|")"
-            if sudo env "PATH=${PATH}:${NODE_DIR}:/usr/local/bin:/usr/bin" ${SUDO_CMD}; then
+            if sudo env "PATH=${PATH}:${NODE_DIR}:/usr/local/bin:/usr/bin" ${SUDO_CMD} 2>/dev/null; then
                 INSTALLED=true
+                PM_USED="${PM}"
+                break
             fi
         fi
     fi
-fi
+
+    echo -e "${YELLOW}Installation via ${PM} failed. Falling back to next package manager...${RESET}"
+done
 
 if [ "${INSTALLED}" = "false" ]; then
     echo "" >&2
-    echo "Error: Failed to install ${PACKAGE}." >&2
+    echo "Error: Failed to install ${PACKAGE} using available package managers." >&2
     echo "Please try running manually:" >&2
-    echo "  ${INSTALL_CMD}" >&2
+    echo "  npm install -g ${PACKAGE}@latest" >&2
     exit 1
 fi
 
