@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { Tool, CallToolResult, TextContent } from '@modelcontextprotocol/sdk/types.js';
 import { PostMcpServer, DEFAULT_POSTMCP_INSTRUCTIONS } from '../src/server/runtime.js';
 import { startHttpServer } from '../src/server/http.js';
@@ -232,45 +234,18 @@ describe('PostMcpServer MCP Protocol Conformance', () => {
 
       expect(optionsRes.statusCode).toBe(204);
       expect(optionsRes.headers['access-control-allow-origin']).toBe('*');
+      expect(optionsRes.headers['access-control-expose-headers']).toBe('mcp-session-id');
 
-      // Test POST JSON-RPC initialize request
-      const initBody = JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'initialize',
-        params: {
-          protocolVersion: '2024-11-05',
-          capabilities: {},
-          clientInfo: { name: 'test-client', version: '1.0.0' },
-        },
-      });
+      // Test client connection via StreamableHTTPClientTransport across multiple requests
+      const clientTransport = new StreamableHTTPClientTransport(new URL(url));
+      const client = new Client({ name: 'test-client', version: '1.0.0' }, { capabilities: {} });
 
-      const initResData = await new Promise<string>((resolve, reject) => {
-        const req = http.request(
-          {
-            hostname: 'localhost',
-            port,
-            path: '/mcp',
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Content-Length': Buffer.byteLength(initBody),
-              Accept: 'application/json, text/event-stream',
-            },
-          },
-          (res) => {
-            let data = '';
-            res.on('data', (chunk) => (data += chunk));
-            res.on('end', () => resolve(data));
-          }
-        );
-        req.on('error', reject);
-        req.write(initBody);
-        req.end();
-      });
+      await client.connect(clientTransport);
+      const toolsResult = await client.listTools();
+      expect(toolsResult.tools.length).toBeGreaterThan(0);
+      expect(toolsResult.tools.some((t) => t.name === 'listItems')).toBe(true);
 
-      expect(initResData).toContain('serverInfo');
-      expect(initResData).toContain('Test Service');
+      await client.close();
     } finally {
       await new Promise<void>((resolve) => httpServer.close(() => resolve()));
     }

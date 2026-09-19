@@ -2,6 +2,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { PostMcpServer, PostMcpServerOptions } from './runtime.js';
 import * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { randomUUID } from 'node:crypto';
 
 export interface HttpServerOptions extends PostMcpServerOptions {
   port?: number;
@@ -18,7 +19,7 @@ export async function startHttpServer(
   const endpointPath = options.endpointPath || '/mcp';
 
   const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
+    sessionIdGenerator: () => randomUUID(),
   });
   await postMcpServer.getServerInstance().connect(transport);
 
@@ -27,6 +28,7 @@ export async function startHttpServer(
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, mcp-session-id');
+    res.setHeader('Access-Control-Expose-Headers', 'mcp-session-id');
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
