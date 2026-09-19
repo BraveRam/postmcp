@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText, streamText, tool, jsonSchema, stepCountIs, type ToolSet, type JSONSchema7 } from 'ai';
 import { NormalizedSpec, NormalizedOperation, AuthConfig } from '@postmcp/types';
@@ -91,6 +93,47 @@ export function isPrivateOrBlockedHost(urlStr: string): boolean {
   }
 }
 
+/**
+ * Reads all environment variables from process.env and workspace .env / .env.local.
+ */
+function getAllWorkspaceEnv(): Record<string, string> {
+  const result: Record<string, string> = { ...process.env } as Record<string, string>;
+  const workspaceDirs = [
+    process.env.POSTMCP_WORKSPACE,
+    process.env.WORKSPACE_CWD,
+    process.cwd(),
+    path.resolve(process.cwd(), '..', '..'),
+  ].filter(Boolean) as string[];
+
+  for (const dir of workspaceDirs) {
+    for (const envFileName of ['.env.local', '.env']) {
+      const envPath = path.join(/*turbopackIgnore: true*/ dir, envFileName);
+      if (fs.existsSync(/*turbopackIgnore: true*/ envPath)) {
+        try {
+          const content = fs.readFileSync(/*turbopackIgnore: true*/ envPath, 'utf-8');
+          for (const line of content.split('\n')) {
+            const match = line.trim().match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+            if (match && !result[match[1]]) {
+              result[match[1]] = match[2].trim().replace(/^["']|["']$/g, '');
+            }
+          }
+        } catch {}
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Reads an environment variable either from process.env or directly from
+ * workspace .env / .env.local files if not already loaded in memory.
+ */
+export function getWorkspaceEnvKey(keyName: string): string | undefined {
+  if (process.env[keyName]) return process.env[keyName];
+  const all = getAllWorkspaceEnv();
+  return all[keyName];
+}
+
 export function resolveTargetAuthConfig(
   incomingAuth?: IncomingAuthConfig,
   spec?: NormalizedSpec
@@ -127,15 +170,21 @@ export function resolveTargetAuthConfig(
   const scopedKey = getScopedEnvKey(spec?.title, spec?.servers?.[0]?.url);
   if (!bearerToken) {
     if (scopedKey === 'BEARER_TOKEN') {
-      bearerToken = process.env.BEARER_TOKEN || process.env.API_KEY;
+      bearerToken =
+        process.env.BEARER_TOKEN ||
+        process.env.API_KEY ||
+        getWorkspaceEnvKey('BEARER_TOKEN') ||
+        getWorkspaceEnvKey('API_KEY');
     } else {
-      bearerToken = process.env[scopedKey];
+      bearerToken = process.env[scopedKey] || getWorkspaceEnvKey(scopedKey);
     }
   }
 
   // Auto-resolve any matching scoped headers from environment
   const scopedPrefix = scopedKey.replace(/_(API_KEY|TOKEN|SECRET_KEY|KEY|AUTH_TOKEN)$/i, '');
-  for (const [envKey, envVal] of Object.entries(process.env)) {
+  const allEnvPairs = getAllWorkspaceEnv();
+
+  for (const [envKey, envVal] of Object.entries(allEnvPairs)) {
     if (envVal && envKey.startsWith(`${scopedPrefix}_HEADER_`)) {
       const headerName = envKey.slice(`${scopedPrefix}_HEADER_`.length).replace(/_/g, '-');
       if (!headers[headerName]) {
@@ -276,14 +325,30 @@ async function executeMcpOperation(
   };
 }
 
+
 /**
  * Resolves a model via Vercel AI Gateway.
  */
 function resolveVercelAiGatewayModel(model: string, apiKey?: string, customGatewayUrl?: string) {
-  const key = apiKey || process.env.AI_GATEWAY_API_KEY || process.env.AI_GATEWAY_TOKEN || process.env.OPENAI_API_KEY;
+  if (process.env.NODE_ENV === 'test') {
+    return null;
+  }
+
+  const key =
+    apiKey ||
+    getWorkspaceEnvKey('AI_GATEWAY_API_KEY') ||
+    getWorkspaceEnvKey('AI_GATEWAY_TOKEN') ||
+    getWorkspaceEnvKey('OPENAI_API_KEY') ||
+    process.env.AI_GATEWAY_API_KEY ||
+    process.env.AI_GATEWAY_TOKEN ||
+    process.env.OPENAI_API_KEY;
   if (!key) return null;
 
-  const rawUrl = customGatewayUrl || process.env.AI_GATEWAY_URL || 'https://ai-gateway.vercel.sh/v1';
+  const rawUrl =
+    customGatewayUrl ||
+    getWorkspaceEnvKey('AI_GATEWAY_URL') ||
+    process.env.AI_GATEWAY_URL ||
+    'https://ai-gateway.vercel.sh/v1';
   const baseURL = rawUrl.replace(/\/$/, '');
 
   const gateway = createOpenAI({

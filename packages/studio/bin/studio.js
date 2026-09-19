@@ -26,6 +26,22 @@ for (let i = 0; i < args.length; i++) {
   }
 }
 
+// Preload workspace .env and .env.local into process.env before launching Next.js
+for (const envFile of ['.env.local', '.env']) {
+  const fullEnvPath = path.join(process.cwd(), envFile);
+  if (fs.existsSync(fullEnvPath)) {
+    try {
+      const content = fs.readFileSync(fullEnvPath, 'utf-8');
+      for (const line of content.split('\n')) {
+        const match = line.trim().match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+        if (match && !process.env[match[1]]) {
+          process.env[match[1]] = match[2].trim().replace(/^["']|["']$/g, '');
+        }
+      }
+    } catch {}
+  }
+}
+
 const child = spawn('npx', ['--yes', 'next', 'start', studioDir, '-p', port], {
   cwd: studioDir,
   stdio: 'inherit',

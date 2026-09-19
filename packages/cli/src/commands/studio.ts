@@ -5,6 +5,7 @@ import { spawn, execSync, ChildProcess } from 'node:child_process';
 import open from 'open';
 import axios from 'axios';
 import pc from 'picocolors';
+import dotenv from 'dotenv';
 
 export interface StudioCommandOptions {
   port?: string;
@@ -103,6 +104,15 @@ export async function studioCommand(specArg?: string, options: StudioCommandOpti
   const targetUrl = specArg ? `${baseUrl}?spec=${encodeURIComponent(specArg)}` : baseUrl;
   const studioDir = findStudioDir();
   const hasLocalStudio = fs.existsSync(path.join(studioDir, 'package.json'));
+
+  // Preload workspace .env and .env.local into process.env before launching Studio
+  const workspaceCwd = process.cwd();
+  for (const envFile of ['.env.local', '.env']) {
+    const fullEnvPath = path.join(workspaceCwd, envFile);
+    if (fs.existsSync(fullEnvPath)) {
+      dotenv.config({ path: fullEnvPath });
+    }
+  }
 
   console.log();
   console.log(pc.bold(pc.cyan(`Starting PostMCP Visual Web Studio...`)));
