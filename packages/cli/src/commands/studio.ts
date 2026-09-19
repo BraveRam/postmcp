@@ -63,7 +63,24 @@ export function findStudioDir(): string {
       if (fs.existsSync(path.join(monorepoCandidate, 'package.json'))) {
         return monorepoCandidate;
       }
-      return resolved;
+      // Check if installed package is an obsolete/stale version (older than CLI version)
+      try {
+        const studioPkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+        const cliPkgPath = path.resolve(__dirname, '../package.json');
+        let minVersion = '0.1.35';
+        if (fs.existsSync(cliPkgPath)) {
+          try {
+            minVersion = JSON.parse(fs.readFileSync(cliPkgPath, 'utf-8')).version || minVersion;
+          } catch {}
+        }
+        if (studioPkg.version && studioPkg.version < minVersion) {
+          // Stale cache, skip to fallback or on-demand
+        } else {
+          return resolved;
+        }
+      } catch {
+        return resolved;
+      }
     }
   } catch {
     // Module resolution fallback
@@ -107,10 +124,29 @@ export async function studioCommand(specArg?: string, options: StudioCommandOpti
 
   // Preload workspace .env and .env.local into process.env before launching Studio
   const workspaceCwd = process.cwd();
-  for (const envFile of ['.env.local', '.env']) {
-    const fullEnvPath = path.join(workspaceCwd, envFile);
-    if (fs.existsSync(fullEnvPath)) {
-      dotenv.config({ path: fullEnvPath });
+  const searchDirs = [
+    workspaceCwd,
+    path.join(process.env.HOME || '', '.postmcp'),
+    path.join(process.env.HOME || '', '.config', 'postmcp'),
+    process.env.HOME || '',
+  ];
+  let searchCur = workspaceCwd;
+  for (let i = 0; i < 6; i++) {
+    if (!searchDirs.includes(searchCur)) {
+      searchDirs.push(searchCur);
+    }
+    const parent = path.dirname(searchCur);
+    if (parent === searchCur) break;
+    searchCur = parent;
+  }
+
+  for (const dir of searchDirs) {
+    if (!dir) continue;
+    for (const envFile of ['.env.local', '.env']) {
+      const fullEnvPath = path.join(dir, envFile);
+      if (fs.existsSync(fullEnvPath)) {
+        dotenv.config({ path: fullEnvPath });
+      }
     }
   }
 
@@ -200,8 +236,8 @@ export async function studioCommand(specArg?: string, options: StudioCommandOpti
     const isBun = hasCommand('bun');
     const runner = isBun ? 'bunx' : 'npx';
     const runnerArgs = isBun
-      ? ['@postmcp/studio', '-p', port]
-      : ['--yes', '@postmcp/studio', '-p', port];
+      ? ['@postmcp/studio@latest', '-p', port]
+      : ['--yes', '@postmcp/studio@latest', '-p', port];
 
     try {
       child = spawn(runner, runnerArgs, {

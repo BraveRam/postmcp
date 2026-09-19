@@ -103,7 +103,21 @@ function getAllWorkspaceEnv(): Record<string, string> {
     process.env.WORKSPACE_CWD,
     process.cwd(),
     path.resolve(process.cwd(), '..', '..'),
+    path.join(process.env.HOME || '', '.postmcp'),
+    path.join(process.env.HOME || '', '.config', 'postmcp'),
+    process.env.HOME,
   ].filter(Boolean) as string[];
+
+  // Also traverse upward from cwd to root looking for .env
+  let currentDir = process.cwd();
+  for (let i = 0; i < 6; i++) {
+    if (!workspaceDirs.includes(currentDir)) {
+      workspaceDirs.push(currentDir);
+    }
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) break;
+    currentDir = parentDir;
+  }
 
   for (const dir of workspaceDirs) {
     for (const envFileName of ['.env.local', '.env']) {
@@ -425,6 +439,8 @@ export async function POST(request: Request) {
     // 1. Live LLM Generation via Vercel AI Gateway if gateway key is available
     const gatewayModel = resolveVercelAiGatewayModel(model, apiKey, gatewayUrl);
 
+    let gatewayErrorNotice = '';
+
     if (gatewayModel) {
       try {
         if (stream) {
@@ -634,7 +650,9 @@ export async function POST(request: Request) {
           result: sdkToolCalls[0]?.result,
         });
       } catch (gatewayError: unknown) {
-        console.warn('Vercel AI Gateway request failed, falling back to simulated execution:', gatewayError instanceof Error ? gatewayError.message : String(gatewayError));
+        const errorMsg = gatewayError instanceof Error ? gatewayError.message : String(gatewayError);
+        console.warn('Vercel AI Gateway request failed, falling back to simulated execution:', errorMsg);
+        gatewayErrorNotice = `\n\n> Warning: Live Vercel AI Gateway request encountered an error: \`${errorMsg}\`. Output below is from local offline simulation.`;
       }
     }
 
@@ -710,9 +728,10 @@ export async function POST(request: Request) {
     }
 
     const simulatedContent =
-      simulatedToolCalls.length > 1
+      (simulatedToolCalls.length > 1
         ? `Executed **${simulatedToolCalls.length} tool calls in sequence** for query: _"${lastUserMessage}"_.\n\nAll tool responses compressed through **Token Diet**.`
-        : `Dispatched tool **${simulatedToolCalls[0].name}** for query: _"${lastUserMessage}"_.\n\nSimulated through Vercel AI Gateway runner (${model}) with **Token Diet** output optimization.`;
+        : `Dispatched tool **${simulatedToolCalls[0].name}** for query: _"${lastUserMessage}"_.\n\nSimulated through Vercel AI Gateway runner (${model}) with **Token Diet** output optimization.`) +
+      gatewayErrorNotice;
 
     if (stream) {
       const encoder = new TextEncoder();
