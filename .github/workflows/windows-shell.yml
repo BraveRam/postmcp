@@ -1,0 +1,27 @@
+name: Windows Interactive Shell
+
+on:
+  workflow_dispatch:
+
+jobs:
+  windows-terminal:
+    name: Windows Runner Terminal
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.0
+
+      - name: Launch Interactive Shell
+        uses: mxschmitt/action-tmate@v3
