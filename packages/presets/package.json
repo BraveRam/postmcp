@@ -1,6 +1,6 @@
 {
   "name": "@postmcp/presets",
-  "version": "0.1.30",
+  "version": "0.1.31",
   "description": "60+ Curated, context-optimized API presets for PostMCP",
   "license": "MIT",
   "author": "PostMCP Contributors",

@@ -78,7 +78,11 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
       process.env.API_KEY ||
       process.env.BEARER_TOKEN,
     apiKey: cliApiKey || fileConfig.auth?.apiKey || presetAuthConfig.apiKey,
-    basicAuth: fileConfig.auth?.basicAuth || presetAuthConfig.basicAuth,
+    basicAuth:
+      options.basicAuth ||
+      fileConfig.auth?.basicAuth ||
+      presetAuthConfig.basicAuth ||
+      process.env.BASIC_AUTH,
     securitySchemes: {
       ...presetAuthConfig.securitySchemes,
       ...fileConfig.auth?.securitySchemes,

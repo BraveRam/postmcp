@@ -36,6 +36,7 @@ export interface RunCommandOptions {
   header?: string[];
   bearer?: string;
   apiKey?: string;
+  basicAuth?: string;
   jit?: boolean;
   hotToolKeywords?: string;
   dryRun?: boolean;

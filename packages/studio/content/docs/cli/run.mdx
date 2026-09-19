@@ -26,6 +26,7 @@ Where `<spec>` can be:
 | `-H, --header <kv...>` | `string[]` | Pass custom HTTP headers (e.g. `-H "X-Custom: value"`). | None |
 | `--bearer <token>` | `string` | Bearer authentication token or `$ENV_VAR`. | Read from env |
 | `--api-key <name=value>` | `string` | API key credentials (e.g. `key=val`, `header:key=val`, `query:key=val`). | Read from env |
+| `--basic-auth <credentials>` | `string` | HTTP Basic authentication credentials (`username:password` or `$ENV_VAR`). | Read from env |
 | `--jit` | `boolean` | Enable Just-In-Time dynamic tool routing with `tool_search`. | Enabled if > 20 tools |
 | `--no-jit` | `boolean` | Disable JIT mode and mount all operations immediately. | - |
 | `--hot-tool-keywords <k...>` | `string` | Comma-separated keywords to identify turn-1 pre-mounted hot tools. | Domain heuristics |
@@ -40,7 +41,7 @@ Where `<spec>` can be:
 
 ## Examples
 
-### 1. Stdio Transport for Claude Desktop and Cursor
+### 1. Stdio Transport for Claude Desktop, Cursor, and OpenCode
 
 Stdio is the standard communication transport for desktop AI applications. To launch a server over stdio:
 
@@ -48,19 +49,35 @@ Stdio is the standard communication transport for desktop AI applications. To la
 postmcp run https://api.petstore.com/v2/openapi.json
 ```
 
-### 2. HTTP Transport with Custom Port
+### 2. Streamable HTTP Transport with Custom Port
 
-Streamable HTTP allows remote AI clients and microservices to communicate over standard HTTP streams:
+Streamable HTTP allows remote AI clients, microservices, and web applications to communicate over standard HTTP streams:
 
 ```bash
 postmcp run @neon --transport http --port 8080 --bearer "$NEON_API_KEY"
 ```
 
-The HTTP server exposes two standard endpoints:
-- `GET /sse`: The streaming connection endpoint.
-- `POST /message`: The JSON-RPC message receipt endpoint.
+The Streamable HTTP server exposes a single unified endpoint:
+- `http://localhost:8080/mcp`: Handles initialization handshakes, tool executions, and server-sent streaming responses with stateful session management via the `mcp-session-id` header.
 
-### 3. Overriding Base URL and Setting Token Limit
+### 3. HTTP Basic Authentication
+
+Pass credentials directly or resolve them from the `BASIC_AUTH` environment variable:
+
+```bash
+postmcp run https://raw.githubusercontent.com/twilio/twilio-oai/main/spec/yaml/twilio_api_v2010.yaml \
+  --basic-auth "AC_ACCOUNT_SID:AUTH_TOKEN"
+```
+
+### 4. API Key via URL Query Parameter
+
+For APIs that accept credentials as query parameters (e.g. `?appid=...` or `?api_key=...`):
+
+```bash
+postmcp run ./weather-api.json --api-key "query:appid=$OPENWEATHER_KEY"
+```
+
+### 5. Overriding Base URL and Setting Token Limit
 
 ```bash
 postmcp run ./internal-api.json \
@@ -69,7 +86,7 @@ postmcp run ./internal-api.json \
   --dry-run
 ```
 
-### 4. Custom Turn-1 Hot Tool Keywords
+### 6. Custom Turn-1 Hot Tool Keywords
 
 Override the default keyword ranking heuristic so that operations matching specific domains are pre-mounted on turn 1:
 

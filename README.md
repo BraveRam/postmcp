@@ -236,6 +236,21 @@ If you are using a preset (like `@neon`, `@supabase`, `@github`, or `@stripe`), 
 | `@sentry` | `SENTRY_AUTH_TOKEN` | Sentry Error & Performance Monitoring |
 | `@slack` | `SLACK_BOT_TOKEN` | Slack Web API |
 
+#### Pattern D: HTTP Basic Auth (`basicAuth`)
+Common services: Jira, Bitbucket, traditional internal microservices.
+
+* **What it means**: The API expects HTTP Basic credentials sent via `Authorization: Basic <base64>`.
+* **How to pass via CLI**:
+  ```bash
+  npx @postmcp/cli run <spec-url> --basic-auth "username:password"
+  ```
+* **How to pass via Environment Variables**:
+  PostMCP automatically checks for `BASIC_AUTH` in your environment (username:password or pre-encoded base64):
+  ```bash
+  export BASIC_AUTH="username:password"
+  npx @postmcp/cli run <spec-url>
+  ```
+
 ---
 
 ### Step 3: Connect to Your AI Coding Assistant
@@ -472,24 +487,31 @@ Commands:
   studio [spec]      Launch the local visual web studio (Next.js + Turbopack)
   inspect <spec>     Analyze an API spec, security schemes, and estimated token savings
   generate <spec>    Generate standalone TypeScript or Python MCP server code
-  export <spec>      Generate configuration snippets for Cursor, Claude, or Windsurf
+  export <spec>      Export configurations for OpenCode, Claude Code, Codex, Cursor, Claude, Windsurf
   presets [action]   List and browse the 60+ built-in API presets
+  docs               Open documentation in your default browser
 ```
 
 ### Options for `postmcp run`
 
 | Flag | Description |
 | :--- | :--- |
-| `--token-diet` | Enable automatic response pruning and Markdown table conversion |
+| `--token-diet` | Enable automatic response pruning and Markdown table conversion (default: enabled) |
+| `--no-token-diet` | Disable Token Diet payload pruning and markdown tables |
+| `--max-tokens <num>` | Token ceiling per tool response (default: 2500) |
 | `--jit` | Enable dynamic JIT tool discovery to save context tokens |
-| `--bearer <token>` | Pass an HTTP Bearer token |
+| `--no-jit` | Disable dynamic JIT tool discovery and expose all tools statically |
+| `--hot-tool-keywords <kw>` | Prioritize specific keywords for turn-1 pre-mounted hot tools |
+| `--bearer <token>` | Pass an HTTP Bearer token or `$ENV_VAR` |
 | `--api-key <key>` | Pass an API key (e.g. `X-API-Key=value` or `query:key=value`) |
+| `--basic-auth <creds>` | Pass HTTP Basic credentials (`username:password` or `$ENV_VAR`) |
 | `-H, --header <k:v>` | Forward custom HTTP header to upstream requests (can be repeated) |
 | `--dry-run` | Intercept and simulate destructive mutations |
 | `-t, --transport <type>`| Transport protocol: `stdio` (default) or `http` |
-| `-p, --port <port>` | Port for HTTP transport mode (default: 3000) |
+| `-p, --port <port>` | Port for Streamable HTTP server (mounts at `/mcp`) |
 | `--base-url <url>` | Override the default upstream API base URL |
-| `--config <path>` | Path to a custom `postmcp.config.json` file |
+| `--env-file <path>` | Load environment variables from a custom `.env` file |
+| `-c, --config <path>` | Path to a custom `postmcp.config.json` file |
 
 ---
 

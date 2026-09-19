@@ -101,4 +101,14 @@ describe('CLI Command Surface & Integration Contract', () => {
 
     logSpy.mockRestore();
   });
+
+  it('should register --basic-auth option on run command', () => {
+    const cli = createCli();
+    const runCmd = cli.commands.find((c) => c.name() === 'run');
+    expect(runCmd).toBeDefined();
+
+    const basicAuthOpt = runCmd?.options.find((o) => o.long === '--basic-auth');
+    expect(basicAuthOpt).toBeDefined();
+    expect(basicAuthOpt?.description).toContain('Basic authentication');
+  });
 });

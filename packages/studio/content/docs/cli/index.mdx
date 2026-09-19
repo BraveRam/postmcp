@@ -27,13 +27,13 @@ npx postmcp <command> [options]
 
 ```bash
 # Using npm
-npm install -g postmcp
+npm install -g @postmcp/cli
 
 # Using pnpm
-pnpm add -g postmcp
+pnpm add -g @postmcp/cli
 
 # Using bun
-bun add -g postmcp
+bun add -g @postmcp/cli
 ```
 
 Once installed globally, you can invoke the CLI directly:
@@ -54,7 +54,7 @@ The PostMCP CLI provides core commands:
 | [`postmcp run`](/docs/cli/run) | Starts a live MCP proxy server. | Connecting to Claude Desktop, Cursor, or OpenCode via stdio or HTTP. |
 | [`postmcp inspect`](/docs/cli/inspect) | Analyzes endpoints, parameters, and risk tiers. | Profiling token footprints and security classifications before deployment. |
 | [`postmcp generate`](/docs/cli/generate) | Exports a standalone TypeScript or Python MCP server codebase. | Creating production services with zero dependencies on PostMCP. |
-| [`postmcp export`](/docs/cli/export) | 1-Click configuration exporter for AI clients. | Merging server configurations into Cursor, Claude Desktop, and Windsurf. |
+| [`postmcp export`](/docs/cli/export) | 1-Click configuration exporter for AI clients. | Merging server configurations into OpenCode, Claude Code, Codex, Cursor, Claude Desktop, and Windsurf. |
 | [`postmcp presets`](/docs/presets) | Lists and resolves bundled API presets. | Discovering pre-tuned configurations for Neon, Stripe, GitHub, Supabase, etc. |
 | `postmcp docs` | Opens documentation in default browser. | Quickly accessing local Studio documentation or online guides. |
 

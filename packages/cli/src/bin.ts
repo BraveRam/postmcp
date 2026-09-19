@@ -43,6 +43,7 @@ export function createCli(): Command {
     .option('-H, --header <key:value...>', 'Custom request headers (can be specified multiple times)', (val, prev: string[] = []) => [...prev, val])
     .option('--bearer <token>', 'Bearer authentication token or $ENV_VAR')
     .option('--api-key <name=value>', 'API key credentials (e.g. key=val, header:key=val, query:key=val)')
+    .option('--basic-auth <credentials>', 'HTTP Basic authentication credentials (username:password or $ENV_VAR)')
     .option('--jit', 'Force Just-In-Time dynamic tool routing')
     .option('--no-jit', 'Disable JIT mode and expose all tools statically')
     .option('--hot-tool-keywords <keywords>', 'Comma-separated keywords to prioritize for turn-1 pre-mounted hot tools')

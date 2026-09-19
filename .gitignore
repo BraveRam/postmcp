@@ -49,3 +49,6 @@ skills-lock.json
 # Local generated configs
 *.postmcp.json
 postmcp.config.json
+
+# Local scratch / test directories
+test-mcp/

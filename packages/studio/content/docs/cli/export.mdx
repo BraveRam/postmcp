@@ -1,6 +1,6 @@
 ---
 title: postmcp export
-description: 1-Click configuration exporter for Cursor, Claude Desktop, and Windsurf.
+description: 1-Click configuration exporter for OpenCode, Claude Code, Codex, Cursor, Claude Desktop, and Windsurf.
 ---
 
 ## Usage
@@ -17,12 +17,23 @@ Where `<spec>` can be a local spec file path, remote URL, or bundled preset (e.g
 
 | Flag | Type | Description | Default |
 | :--- | :--- | :--- | :--- |
-| `-t, --target <name>` | `string` | Target client: `cursor`, `claude`, `windsurf`, or `all`. | `all` |
+| `-t, --target <name>` | `string` | Target client: `cursor`, `opencode`, `claude-code`, `codex`, `claude`, `windsurf`, or `all`. | `all` |
 | `--client <name>` | `string` | Alias for `--target`. | `all` |
 | `-w, --write` | `boolean` | Automatically merge and write configuration directly to the client config file on disk. | `false` |
 | `--bearer <token>` | `string` | Bearer token for client configuration environment. | None |
 | `-b, --base-url <url>` | `string` | Base URL override for client configuration environment. | Spec URL |
-| `-e, --env <key=val...>` | `string[]` | Environment variables for client configuration. | None |
+| `-e, --env <key=val...>` | `string[]` | Environment variables for client configuration (can be repeated). | None |
+
+---
+
+## Supported Clients
+
+- **`opencode`**: Generates `opencode.json` configuration.
+- **`claude-code`**: Generates `.mcp.json` configuration for Claude Code.
+- **`codex`**: Generates `.codex/config.toml` configuration with `--no-jit` for OpenAI Codex.
+- **`cursor`**: Generates `.cursor/mcp.json` configuration.
+- **`claude`**: Generates `claude_desktop_config.json` configuration.
+- **`windsurf`**: Generates `mcp_config.json` configuration.
 
 ---
 
@@ -34,17 +45,23 @@ Where `<spec>` can be a local spec file path, remote URL, or bundled preset (e.g
 postmcp export @neon --bearer "$NEON_API_KEY"
 ```
 
-Prints formatted JSON snippets for Claude Desktop (`claude_desktop_config.json`), Cursor (`~/.cursor/mcp.json`), and Windsurf (`~/.codeium/windsurf/mcp_config.json`).
+Prints copy-paste ready configurations for OpenCode, Claude Code, Codex, Cursor, Claude Desktop, and Windsurf.
 
-### 2. Automatically Write Configuration to Claude Desktop
+### 2. Export Directly for OpenCode
 
 ```bash
-postmcp export @stripe --target claude --write --bearer "$STRIPE_API_KEY"
+postmcp export https://api.weather.gov/openapi.json --target opencode
 ```
 
-Automatically locates your operating system's Claude Desktop configuration directory, parses existing servers, and merges the new MCP server definition safely into disk.
+### 3. Export for OpenAI Codex (Automatic `--no-jit`)
 
-### 3. Automatically Write Configuration to Cursor
+```bash
+postmcp export @stripe --target codex --bearer "$STRIPE_SECRET_KEY"
+```
+
+Generates the TOML snippet for `.codex/config.toml` automatically configured with `--no-jit` to accommodate Codex's static startup caching.
+
+### 4. Automatically Write Configuration to Cursor
 
 ```bash
 postmcp export ./openapi.yaml --target cursor --write -e API_KEY=secret_123 -e ORG_ID=org_456

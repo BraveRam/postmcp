@@ -21,16 +21,53 @@ When you invoke a preset via `postmcp run @<preset>`, PostMCP checks your shell 
 
 ---
 
-## Overriding Preset Authentication
+## Overriding & Specifying Authentication Credentials
 
-If your credentials are stored in custom environment variables or secret vaults, you can override preset defaults using the `--api-key` or `--header` flags:
+PostMCP supports four primary authentication mechanisms across presets and custom OpenAPI specifications:
 
+### 1. Bearer Token Authentication
+Pass a Bearer token directly on the CLI or expose `BEARER_TOKEN` in your environment:
 ```bash
-# Pass custom variable
-postmcp run @stripe --api-key "$MY_CUSTOM_STRIPE_SECRET"
+# Pass via CLI flag
+postmcp run @stripe --bearer "$STRIPE_SECRET_KEY"
 
-# Pass custom header directly
-postmcp run @sentry -H "Authorization: Bearer $MY_SENTRY_KEY"
+# Or via environment variable
+export BEARER_TOKEN="sk_live_..."
+postmcp run @stripe
+```
+
+### 2. Custom Header or Query API Keys
+Supply credentials formatted as `key=value`, `header:key=value`, or `query:key=value`:
+```bash
+# Header API key
+postmcp run @neon --api-key "X-API-Key=secret123"
+
+# Query parameter API key
+postmcp run @weather --api-key "query:appid=secret123"
+
+# Or via environment variable
+export API_KEY="secret123"
+postmcp run @neon
+```
+
+### 3. HTTP Basic Authentication
+Send username and password credentials encoded as Base64 in the `Authorization: Basic ...` header:
+```bash
+# Pass username:password directly
+postmcp run https://api.internal.corp/openapi.json --basic-auth "admin:supersecret"
+
+# Pass an environment variable reference
+postmcp run https://api.internal.corp/openapi.json --basic-auth "$INTERNAL_AUTH"
+
+# Or via environment variable
+export BASIC_AUTH="admin:supersecret"
+postmcp run https://api.internal.corp/openapi.json
+```
+
+### 4. Direct Custom Headers (`-H`, `--header`)
+Inject arbitrary custom headers for bespoke gateway requirements:
+```bash
+postmcp run @sentry -H "Authorization: Bearer $MY_SENTRY_KEY" -H "X-Client-Id: agent-1"
 ```
 
 ---
