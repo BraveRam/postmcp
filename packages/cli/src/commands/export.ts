@@ -172,6 +172,106 @@ args = ["-y", "@postmcp/cli", "run", "${targetSpecPath}", "--no-jit"]${envLine}`
 
 const ALL_CLIENTS: SupportedExportClient[] = ['cursor', 'opencode', 'claude-code', 'codex', 'claude', 'windsurf'];
 
+export interface WriteConfigResult {
+  success: boolean;
+  configPath: string;
+  backupPath?: string;
+  action: 'appended' | 'merged' | 'skipped';
+  message: string;
+}
+
+export function writeClientConfig(
+  client: SupportedExportClient,
+  serverKey: string,
+  specPath: string,
+  options: ExportCommandOptions,
+  customConfigPath?: string
+): WriteConfigResult {
+  const configPath = customConfigPath || getClientConfigPath(client);
+  const parentDir = path.dirname(configPath);
+  if (!fs.existsSync(parentDir)) {
+    fs.mkdirSync(parentDir, { recursive: true });
+  }
+
+  if (client === 'codex') {
+    const formattedSnippet = buildCodexTomlSnippet(serverKey, specPath, options);
+    let content = '';
+    if (fs.existsSync(configPath)) {
+      content = fs.readFileSync(configPath, 'utf-8');
+    }
+    if (!content.includes(`[mcp_servers.${serverKey}]`)) {
+      content = content ? `${content.trim()}\n\n${formattedSnippet}\n` : `${formattedSnippet}\n`;
+      fs.writeFileSync(configPath, content, 'utf-8');
+      return {
+        success: true,
+        configPath,
+        action: 'appended',
+        message: `Successfully appended to ${configPath}`,
+      };
+    } else {
+      return {
+        success: true,
+        configPath,
+        action: 'skipped',
+        message: `Server [mcp_servers.${serverKey}] already exists in ${configPath}`,
+      };
+    }
+  }
+
+  let existingConfig: McpClientConfigFile = {};
+  let backupPath: string | undefined = undefined;
+
+  if (fs.existsSync(configPath)) {
+    const raw = fs.readFileSync(configPath, 'utf-8');
+    if (raw.trim().length > 0) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+          throw new Error('Root configuration must be a JSON object');
+        }
+        existingConfig = parsed as McpClientConfigFile;
+      } catch (parseErr: unknown) {
+        if (!options.force) {
+          const parseMsg = parseErr instanceof Error ? parseErr.message : String(parseErr);
+          throw new Error(
+            `Existing config file at ${configPath} contains invalid JSON (${parseMsg}). ` +
+            `Aborting to prevent losing existing servers. Fix the syntax error or pass '--force' to overwrite.`
+          );
+        }
+        backupPath = `${configPath}.bak`;
+        fs.copyFileSync(configPath, backupPath);
+        existingConfig = {};
+      }
+    }
+  }
+
+  if (client === 'opencode') {
+    existingConfig.$schema = existingConfig.$schema || 'https://opencode.ai/config.json';
+    existingConfig.mcp = (existingConfig.mcp as Record<string, unknown>) || {};
+    const openCodeSnippet = buildOpenCodeConfigSnippet(serverKey, specPath, options);
+    const newMcp = (openCodeSnippet.mcp as Record<string, unknown>)?.[serverKey];
+    if (newMcp) {
+      (existingConfig.mcp as Record<string, unknown>)[serverKey] = newMcp;
+    }
+    fs.writeFileSync(configPath, JSON.stringify(existingConfig, null, 2), 'utf-8');
+  } else {
+    existingConfig.mcpServers = existingConfig.mcpServers || {};
+    const snippet = buildClientConfigSnippet(serverKey, specPath, options);
+    if (snippet.mcpServers?.[serverKey]) {
+      existingConfig.mcpServers[serverKey] = snippet.mcpServers[serverKey];
+    }
+    fs.writeFileSync(configPath, JSON.stringify(existingConfig, null, 2), 'utf-8');
+  }
+
+  return {
+    success: true,
+    configPath,
+    backupPath,
+    action: 'merged',
+    message: `Successfully merged and written to ${configPath}`,
+  };
+}
+
 export async function exportCommand(specArg: string, options: ExportCommandOptions): Promise<void> {
   let specPath = specArg;
   if (!specPath) {
@@ -223,60 +323,14 @@ export async function exportCommand(specArg: string, options: ExportCommandOptio
 
     if (options.write) {
       try {
-        const parentDir = path.dirname(configPath);
-        if (!fs.existsSync(parentDir)) {
-          fs.mkdirSync(parentDir, { recursive: true });
+        const result = writeClientConfig(c, serverKey, specPath, options, configPath);
+        if (result.backupPath) {
+          console.log(pc.yellow(`  Warning: Existing malformed config backed up to ${result.backupPath}`));
         }
-
-        if (c === 'codex') {
-          let content = '';
-          if (fs.existsSync(configPath)) {
-            content = fs.readFileSync(configPath, 'utf-8');
-          }
-          if (!content.includes(`[mcp_servers.${serverKey}]`)) {
-            content = content ? `${content.trim()}\n\n${formattedSnippet}\n` : `${formattedSnippet}\n`;
-            fs.writeFileSync(configPath, content, 'utf-8');
-            console.log(pc.green(`  Successfully appended to ${configPath}`));
-          } else {
-            console.log(pc.yellow(`  Server [mcp_servers.${serverKey}] already exists in ${configPath}`));
-          }
-        } else if (c === 'opencode') {
-          let existingConfig: McpClientConfigFile = {};
-          if (fs.existsSync(configPath)) {
-            try {
-              existingConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-            } catch {
-              existingConfig = {};
-            }
-          }
-          existingConfig.$schema = existingConfig.$schema || 'https://opencode.ai/config.json';
-          existingConfig.mcp = (existingConfig.mcp as Record<string, unknown>) || {};
-          const openCodeSnippet = buildOpenCodeConfigSnippet(serverKey, specPath, options);
-          const newMcp = (openCodeSnippet.mcp as Record<string, unknown>)?.[serverKey];
-          if (newMcp) {
-            (existingConfig.mcp as Record<string, unknown>)[serverKey] = newMcp;
-          }
-          fs.writeFileSync(configPath, JSON.stringify(existingConfig, null, 2), 'utf-8');
-          console.log(pc.green(`  Successfully merged and written to ${configPath}`));
+        if (result.action === 'skipped') {
+          console.log(pc.yellow(`  ${result.message}`));
         } else {
-          let existingConfig: McpClientConfigFile = {};
-          if (fs.existsSync(configPath)) {
-            const raw = fs.readFileSync(configPath, 'utf-8');
-            try {
-              existingConfig = JSON.parse(raw) as McpClientConfigFile;
-            } catch {
-              existingConfig = {};
-            }
-          }
-
-          existingConfig.mcpServers = existingConfig.mcpServers || {};
-          const snippet = buildClientConfigSnippet(serverKey, specPath, options);
-          if (snippet.mcpServers?.[serverKey]) {
-            existingConfig.mcpServers[serverKey] = snippet.mcpServers[serverKey];
-          }
-
-          fs.writeFileSync(configPath, JSON.stringify(existingConfig, null, 2), 'utf-8');
-          console.log(pc.green(`  Successfully merged and written to ${configPath}`));
+          console.log(pc.green(`  ${result.message}`));
         }
       } catch (err: unknown) {
         const errMsg = err instanceof Error ? err.message : String(err);

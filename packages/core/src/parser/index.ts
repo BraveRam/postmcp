@@ -22,7 +22,7 @@ export async function parseOpenAPI(input: string | object, basePath?: string): P
       const response = await axios.get(trimmed, {
         headers: {
           'Accept': 'application/json, application/yaml, text/yaml, */*',
-          'User-Agent': 'PostMCP/0.1.35 (https://github.com/BraveRam/postmcp)',
+          'User-Agent': 'PostMCP/0.1.36 (https://github.com/BraveRam/postmcp)',
         },
         responseType: 'text',
       });

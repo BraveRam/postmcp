@@ -20,6 +20,7 @@ Where `<spec>` can be a local spec file path, remote URL, or bundled preset (e.g
 | `-t, --target <name>` | `string` | Target client: `cursor`, `opencode`, `claude-code`, `codex`, `claude`, `windsurf`, or `all`. | `all` |
 | `--client <name>` | `string` | Alias for `--target`. | `all` |
 | `-w, --write` | `boolean` | Automatically merge and write configuration directly to the client config file on disk. | `false` |
+| `-f, --force` | `boolean` | Force overwrite even if existing config file contains invalid JSON (creates a `.bak` backup). | `false` |
 | `--bearer <token>` | `string` | Bearer token for client configuration environment. | None |
 | `-b, --base-url <url>` | `string` | Base URL override for client configuration environment. | Spec URL |
 | `-e, --env <key=val...>` | `string[]` | Environment variables for client configuration (can be repeated). | None |

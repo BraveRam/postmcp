@@ -111,4 +111,15 @@ describe('CLI Command Surface & Integration Contract', () => {
     expect(basicAuthOpt).toBeDefined();
     expect(basicAuthOpt?.description).toContain('Basic authentication');
   });
+
+  it('should register -f, --force option on export command', () => {
+    const cli = createCli();
+    const exportCmd = cli.commands.find((c) => c.name() === 'export');
+    expect(exportCmd).toBeDefined();
+
+    const forceOpt = exportCmd?.options.find((o) => o.long === '--force');
+    expect(forceOpt).toBeDefined();
+    expect(forceOpt?.short).toBe('-f');
+    expect(forceOpt?.description).toContain('Force overwrite');
+  });
 });

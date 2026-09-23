@@ -513,6 +513,17 @@ Commands:
 | `--env-file <path>` | Load environment variables from a custom `.env` file |
 | `-c, --config <path>` | Path to a custom `postmcp.config.json` file |
 
+### Options for `postmcp export`
+
+| Flag | Description |
+| :--- | :--- |
+| `-t, --target <client>` | Target client: `cursor`, `opencode`, `claude-code`, `codex`, `claude`, `windsurf`, or `all` (default: `all`) |
+| `-w, --write` | Automatically merge and write configuration directly to the client config file on disk |
+| `-f, --force` | Force overwrite even if existing config file contains invalid JSON (creates a `.bak` backup) |
+| `--bearer <token>` | Pass Bearer token or `$ENV_VAR` to configure in client environment |
+| `-b, --base-url <url>` | Base URL override for client configuration environment |
+| `-e, --env <k=v...>` | Custom environment variables to configure for the server (can be repeated) |
+
 ---
 
 ## Monorepo Architecture

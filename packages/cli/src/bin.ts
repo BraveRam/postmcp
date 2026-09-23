@@ -93,6 +93,7 @@ export function createCli(): Command {
     .option('-t, --target <name>', 'Target client: cursor, opencode, claude-code, codex, claude, windsurf, or all')
     .option('--client <name>', 'Alias for --target')
     .option('-w, --write', 'Automatically merge and write configuration directly to the client config file on disk')
+    .option('-f, --force', 'Force overwrite even if existing config file contains invalid JSON (creates a .bak backup)')
     .option('--bearer <token>', 'Bearer token for client configuration environment')
     .option('-b, --base-url <url>', 'Base URL override for client configuration environment')
     .option('-e, --env <key=val...>', 'Environment variables for client configuration', (val, prev: string[] = []) => [...prev, val])

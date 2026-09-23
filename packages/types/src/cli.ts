@@ -62,6 +62,7 @@ export interface ExportCommandOptions {
   target?: SupportedExportClient | 'all' | string;
   client?: SupportedExportClient | 'all' | string;
   write?: boolean;
+  force?: boolean;
   env?: string[];
   bearer?: string;
   baseUrl?: string;
