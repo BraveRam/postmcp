@@ -9,4 +9,5 @@ export type {
   MacroDefinition,
   TokenDietConfig,
   NormalizedSpec,
+  ParseOpenApiOptions,
 } from '@postmcp/types';

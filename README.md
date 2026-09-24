@@ -510,6 +510,8 @@ Commands:
 | `-t, --transport <type>`| Transport protocol: `stdio` (default) or `http` |
 | `-p, --port <port>` | Port for Streamable HTTP server (mounts at `/mcp`) |
 | `--base-url <url>` | Override the default upstream API base URL |
+| `--refresh` | Bypass cached OpenAPI specification and re-download fresh copy |
+| `--no-cache` | Disable remote specification disk caching (~/.postmcp/cache/specs/) |
 | `--env-file <path>` | Load environment variables from a custom `.env` file |
 | `-c, --config <path>` | Path to a custom `postmcp.config.json` file |
 
@@ -520,6 +522,8 @@ Commands:
 | `-t, --target <client>` | Target client: `cursor`, `opencode`, `claude-code`, `codex`, `claude`, `windsurf`, or `all` (default: `all`) |
 | `-w, --write` | Automatically merge and write configuration directly to the client config file on disk |
 | `-f, --force` | Force overwrite even if existing config file contains invalid JSON (creates a `.bak` backup) |
+| `--refresh` | Bypass cached OpenAPI specification and re-download fresh copy |
+| `--no-cache` | Disable remote specification disk caching |
 | `--bearer <token>` | Pass Bearer token or `$ENV_VAR` to configure in client environment |
 | `-b, --base-url <url>` | Base URL override for client configuration environment |
 | `-e, --env <k=v...>` | Custom environment variables to configure for the server (can be repeated) |

@@ -41,7 +41,10 @@ export async function runCommand(specArg: string, options: RunCommandOptions): P
   // 2. Parse OpenAPI Specification
   let parsedSpec: NormalizedSpec;
   try {
-    parsedSpec = await parseOpenAPI(specPath);
+    parsedSpec = await parseOpenAPI(specPath, undefined, {
+      refresh: options.refresh,
+      noCache: options.cache === false,
+    });
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : String(err);
     console.error(pc.red(`Failed to parse OpenAPI specification: ${errMsg}`));

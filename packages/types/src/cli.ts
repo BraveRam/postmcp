@@ -44,10 +44,14 @@ export interface RunCommandOptions {
   maxTokens?: string;
   envFile?: string;
   config?: string;
+  refresh?: boolean;
+  cache?: boolean;
 }
 
 export interface InspectCommandOptions {
   json?: boolean;
+  refresh?: boolean;
+  cache?: boolean;
 }
 
 export interface GenerateCommandOptions {
@@ -66,6 +70,8 @@ export interface ExportCommandOptions {
   env?: string[];
   bearer?: string;
   baseUrl?: string;
+  refresh?: boolean;
+  cache?: boolean;
 }
 
 export interface StudioCommandOptions {

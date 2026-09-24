@@ -67,7 +67,7 @@ export async function dereferenceSpec(rawDoc: unknown, basePath?: string): Promi
       const res = await axios.get(fullUrl, {
         headers: {
           'Accept': 'application/json, application/yaml, text/yaml, */*',
-          'User-Agent': 'PostMCP/0.1.36 (https://github.com/BraveRam/postmcp)',
+          'User-Agent': 'PostMCP/0.1.37 (https://github.com/BraveRam/postmcp)',
         },
         responseType: 'text',
       });

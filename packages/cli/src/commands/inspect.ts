@@ -52,7 +52,10 @@ export async function inspectCommand(specArg: string, options: InspectCommandOpt
 
   let spec;
   try {
-    spec = await parseOpenAPI(specPath);
+    spec = await parseOpenAPI(specPath, undefined, {
+      refresh: options.refresh,
+      noCache: options.cache === false,
+    });
     if (preset && preset.macros && preset.macros.length > 0) {
       spec.macros = [...(spec.macros || []), ...preset.macros];
     }

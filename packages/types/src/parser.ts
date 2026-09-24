@@ -107,3 +107,9 @@ export interface NormalizedSpec {
   macros?: MacroDefinition[];
   tokenDiet?: TokenDietConfig;
 }
+
+export interface ParseOpenApiOptions {
+  refresh?: boolean;
+  noCache?: boolean;
+  cacheDir?: string;
+}

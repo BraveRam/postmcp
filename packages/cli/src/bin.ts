@@ -53,6 +53,8 @@ export function createCli(): Command {
     .option('--max-tokens <number>', 'Token ceiling per tool response', '2500')
     .option('--env-file <path>', 'Custom .env file path to load')
     .option('-c, --config <path>', 'Custom postmcp.config.json path')
+    .option('--refresh', 'Bypass local spec cache and fetch fresh remote specification')
+    .option('--no-cache', 'Disable local specification caching')
     .action((spec, opts) => {
       runCommand(spec, opts).catch((err) => {
         console.error(pc.red(`Fatal error: ${err.message}`));
@@ -65,6 +67,8 @@ export function createCli(): Command {
     .command('inspect <spec>')
     .description('Inspect an OpenAPI specification: summary, methods breakdown, risk tiers, and JIT recommendation')
     .option('--json', 'Output machine-readable normalized AST JSON')
+    .option('--refresh', 'Bypass local spec cache and fetch fresh remote specification')
+    .option('--no-cache', 'Disable local specification caching')
     .action((spec, opts) => {
       inspectCommand(spec, opts).catch((err) => {
         console.error(pc.red(`Fatal error: ${err.message}`));
@@ -97,6 +101,8 @@ export function createCli(): Command {
     .option('--bearer <token>', 'Bearer token for client configuration environment')
     .option('-b, --base-url <url>', 'Base URL override for client configuration environment')
     .option('-e, --env <key=val...>', 'Environment variables for client configuration', (val, prev: string[] = []) => [...prev, val])
+    .option('--refresh', 'Bypass local spec cache and fetch fresh remote specification')
+    .option('--no-cache', 'Disable local specification caching')
     .action((spec, opts) => {
       const target = opts.target || opts.client || 'all';
       exportCommand(spec, { ...opts, target, client: target }).catch((err) => {

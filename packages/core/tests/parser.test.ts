@@ -1,7 +1,16 @@
 import { describe, it, expect, vi } from 'vitest';
 import * as path from 'node:path';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
 import axios, { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
-import { parseOpenAPI, dereferenceSpec } from '../src/parser/index.js';
+import {
+  parseOpenAPI,
+  dereferenceSpec,
+  readCachedSpec,
+  writeCachedSpec,
+  clearSpecCache,
+  getSpecCachePaths,
+} from '../src/parser/index.js';
 
 function createMockResponse(overrides: Partial<AxiosResponse>): AxiosResponse {
   return {
@@ -280,5 +289,145 @@ User:
     expect(op.inputSchema?.properties?.formats).toBeDefined();
     expect(op.inputSchema?.properties?.onlyMainContent).toBeDefined();
     expect(op.inputSchema?.required).toEqual(['url']);
+  });
+
+  describe('Remote Spec Disk Caching & Fallback', () => {
+    const testUrl = 'https://api.example.com/openapi.json';
+    const mockSpecObject = {
+      openapi: '3.0.0',
+      info: { title: 'Cached Remote Spec', version: '2.0.0' },
+      paths: {
+        '/status': {
+          get: {
+            summary: 'Get Status',
+            operationId: 'getStatus',
+            responses: { '200': { description: 'OK' } },
+          },
+        },
+      },
+    };
+    const mockSpecRaw = JSON.stringify(mockSpecObject);
+
+    it('should fetch remote spec, cache to disk, and reuse cache on subsequent call', async () => {
+      const tempCacheDir = path.join(os.tmpdir(), `postmcp-cache-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      const getSpy = vi.spyOn(axios, 'get').mockResolvedValue(
+        createMockResponse({
+          status: 200,
+          data: mockSpecRaw,
+        })
+      );
+
+      try {
+        // First call - downloads and caches
+        const spec1 = await parseOpenAPI(testUrl, { cacheDir: tempCacheDir });
+        expect(spec1.title).toBe('Cached Remote Spec');
+        expect(getSpy).toHaveBeenCalledTimes(1);
+
+        // Verify disk cache was written
+        const cached = await readCachedSpec(testUrl, tempCacheDir);
+        expect(cached).not.toBeNull();
+        expect(cached?.content).toBe(mockSpecRaw);
+        expect(cached?.metadata?.url).toBe(testUrl);
+
+        // Second call - should load from disk cache, no second axios.get call
+        const spec2 = await parseOpenAPI(testUrl, { cacheDir: tempCacheDir });
+        expect(spec2.title).toBe('Cached Remote Spec');
+        expect(getSpy).toHaveBeenCalledTimes(1);
+      } finally {
+        getSpy.mockRestore();
+        await fs.rm(tempCacheDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should bypass cache and re-download when refresh option is enabled', async () => {
+      const tempCacheDir = path.join(os.tmpdir(), `postmcp-cache-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      const getSpy = vi.spyOn(axios, 'get').mockResolvedValue(
+        createMockResponse({
+          status: 200,
+          data: mockSpecRaw,
+        })
+      );
+
+      try {
+        await parseOpenAPI(testUrl, { cacheDir: tempCacheDir });
+        expect(getSpy).toHaveBeenCalledTimes(1);
+
+        // Call again with refresh: true
+        await parseOpenAPI(testUrl, { cacheDir: tempCacheDir, refresh: true });
+        expect(getSpy).toHaveBeenCalledTimes(2);
+      } finally {
+        getSpy.mockRestore();
+        await fs.rm(tempCacheDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should not read or write cache when noCache option is enabled', async () => {
+      const tempCacheDir = path.join(os.tmpdir(), `postmcp-cache-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      const getSpy = vi.spyOn(axios, 'get').mockResolvedValue(
+        createMockResponse({
+          status: 200,
+          data: mockSpecRaw,
+        })
+      );
+
+      try {
+        await parseOpenAPI(testUrl, { cacheDir: tempCacheDir, noCache: true });
+        expect(getSpy).toHaveBeenCalledTimes(1);
+
+        const cached = await readCachedSpec(testUrl, tempCacheDir);
+        expect(cached).toBeNull();
+
+        await parseOpenAPI(testUrl, { cacheDir: tempCacheDir, noCache: true });
+        expect(getSpy).toHaveBeenCalledTimes(2);
+      } finally {
+        getSpy.mockRestore();
+        await fs.rm(tempCacheDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should fall back gracefully to cached spec when remote network fails', async () => {
+      const tempCacheDir = path.join(os.tmpdir(), `postmcp-cache-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      await writeCachedSpec(testUrl, mockSpecRaw, tempCacheDir);
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const getSpy = vi.spyOn(axios, 'get').mockRejectedValue(new Error('Connection timeout 30000ms'));
+
+      try {
+        // Call with refresh: true to trigger network attempt which will fail
+        const spec = await parseOpenAPI(testUrl, { cacheDir: tempCacheDir, refresh: true });
+        expect(spec.title).toBe('Cached Remote Spec');
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Connection timeout 30000ms')
+        );
+      } finally {
+        getSpy.mockRestore();
+        warnSpy.mockRestore();
+        await fs.rm(tempCacheDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should support clearing specific and all cached specs with clearSpecCache', async () => {
+      const tempCacheDir = path.join(os.tmpdir(), `postmcp-cache-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      const url2 = 'https://api.example.com/v2/openapi.json';
+
+      try {
+        await writeCachedSpec(testUrl, mockSpecRaw, tempCacheDir);
+        await writeCachedSpec(url2, mockSpecRaw, tempCacheDir);
+
+        expect(await readCachedSpec(testUrl, tempCacheDir)).not.toBeNull();
+        expect(await readCachedSpec(url2, tempCacheDir)).not.toBeNull();
+
+        // Clear specific url
+        await clearSpecCache(testUrl, tempCacheDir);
+        expect(await readCachedSpec(testUrl, tempCacheDir)).toBeNull();
+        expect(await readCachedSpec(url2, tempCacheDir)).not.toBeNull();
+
+        // Clear all specs
+        await clearSpecCache(undefined, tempCacheDir);
+        expect(await readCachedSpec(url2, tempCacheDir)).toBeNull();
+      } finally {
+        await fs.rm(tempCacheDir, { recursive: true, force: true });
+      }
+    });
   });
 });

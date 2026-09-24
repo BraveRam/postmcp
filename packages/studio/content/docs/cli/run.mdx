@@ -34,6 +34,8 @@ Where `<spec>` can be:
 | `--token-diet` | `boolean` | Enable Token Diet response optimization. | Enabled by default |
 | `--no-token-diet` | `boolean` | Disable Token Diet payload pruning and markdown tables. | - |
 | `--max-tokens <number>` | `string` | Token ceiling per tool response. | `2500` |
+| `--refresh` | `boolean` | Bypass local spec cache and fetch fresh remote specification. | `false` |
+| `--no-cache` | `boolean` | Disable local specification disk caching (`~/.postmcp/cache/specs/`). | `false` |
 | `--env-file <path>` | `string` | Custom `.env` file path to load. | `.env` |
 | `-c, --config <path>` | `string` | Custom `postmcp.config.json` path. | `postmcp.config.json` |
 

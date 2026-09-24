@@ -284,7 +284,10 @@ export async function exportCommand(specArg: string, options: ExportCommandOptio
     serverKey = specPath.replace(/^@/, '').toLowerCase();
   } else {
     try {
-      const parsed = await parseOpenAPI(specPath);
+      const parsed = await parseOpenAPI(specPath, undefined, {
+        refresh: options.refresh,
+        noCache: options.cache === false,
+      });
       serverKey = parsed.title.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'api-server';
     } catch {
       serverKey = 'api-server';

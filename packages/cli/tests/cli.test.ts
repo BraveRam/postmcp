@@ -122,4 +122,23 @@ describe('CLI Command Surface & Integration Contract', () => {
     expect(forceOpt?.short).toBe('-f');
     expect(forceOpt?.description).toContain('Force overwrite');
   });
+
+  it('should register --refresh and --no-cache options on run, inspect, and export commands', () => {
+    const cli = createCli();
+    const commandNames = ['run', 'inspect', 'export'];
+
+    for (const name of commandNames) {
+      const cmd = cli.commands.find((c) => c.name() === name);
+      expect(cmd, `Command ${name} should be registered`).toBeDefined();
+
+      const refreshOpt = cmd?.options.find((o) => o.long === '--refresh');
+      expect(refreshOpt, `Command ${name} should have --refresh option`).toBeDefined();
+      expect(refreshOpt?.description).toContain('Bypass local spec cache');
+
+      const noCacheOpt = cmd?.options.find((o) => o.long === '--no-cache');
+      expect(noCacheOpt, `Command ${name} should have --no-cache option`).toBeDefined();
+      expect(noCacheOpt?.description).toContain('Disable local specification caching');
+    }
+  });
 });
+

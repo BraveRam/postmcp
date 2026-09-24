@@ -1,6 +1,6 @@
 {
   "name": "@postmcp/core",
-  "version": "0.1.36",
+  "version": "0.1.37",
   "description": "PostMCP core engine - OpenAPI parser, Token Diet, JIT router, and MCP protocol server",
   "license": "MIT",
   "author": "PostMCP Contributors",
